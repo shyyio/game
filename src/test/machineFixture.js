@@ -29,7 +29,7 @@ export const TestMachineType = new ObjectType({
     textureName: "demo-machine/0",
     label: "Test Machine",
     inspectable: true,
-    placement: new PlacementRule({replaceSameKind: true}),
+    placement: new PlacementRule({shouldReplaceSameKind: true}),
     behavior: new MachineBehavior({
         processingTicks: 2,
         recipes: [new RecipeDefinition([ITEM_TYPE_TEST_MACHINE_INPUT], ITEM_TYPE_TEST_MACHINE_OUTPUT)],

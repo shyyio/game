@@ -41,16 +41,16 @@ export class ObjectGhostLayer extends AbstractDrawLayer {
      * Stays visible in map mode: the active placement preview reads at any zoom.
      * @param {boolean} value
      */
-    set mapMode(value) {}
+    set isMapMode(value) {}
 
     /**
      * Shows a single ghost at the tile facing `direction`, tinted red when blocked.
      * @param {number} tileX
      * @param {number} tileY
      * @param {Direction} direction
-     * @param {boolean} [blocked]
+     * @param {boolean} [isBlocked]
      */
-    showGhost(tileX, tileY, direction, blocked=false) {
+    showGhost(tileX, tileY, direction, isBlocked=false) {
         this.clear();
         this._anchorTileX = tileX;
         this._anchorTileY = tileY;
@@ -59,7 +59,7 @@ export class ObjectGhostLayer extends AbstractDrawLayer {
         const sprite = new ObjectSprite(0, tileX, tileY, direction, this.textureCache.get(this._type.textureName), this._type);
         let ghostTint;
         let ghostAlpha;
-        if (blocked) {
+        if (isBlocked) {
             ghostTint = GHOST_BLOCKED_TINT;
             ghostAlpha = GHOST_BLOCKED_ALPHA;
         } else {
@@ -93,13 +93,13 @@ export class ObjectGhostLayer extends AbstractDrawLayer {
 
     /**
      * Applies the current tint/alpha to the ghost sprite.
-     * @param {boolean} blocked
+     * @param {boolean} isBlocked
      * @private
      */
-    _tint(blocked) {
+    _tint(isBlocked) {
         let ghostTint;
         let ghostAlpha;
-        if (blocked) {
+        if (isBlocked) {
             ghostTint = GHOST_BLOCKED_TINT;
             ghostAlpha = GHOST_BLOCKED_ALPHA;
         } else {

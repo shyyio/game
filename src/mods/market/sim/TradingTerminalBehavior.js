@@ -152,7 +152,7 @@ export class TradingTerminalBehavior extends AbstractBehavior {
                 continue;
             }
             terminal.pendingPrice[row] = match.price;
-            if (match.npc) {
+            if (match.isNpc) {
                 engine.transfers.submitDrain(inputPort);
                 terminal.pendingIsNpc[row] = 1;
             } else {

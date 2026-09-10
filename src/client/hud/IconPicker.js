@@ -117,17 +117,17 @@ export class IconPicker extends Container {
      * @private
      * @param {TextureCache} textureCache
      * @param {IconPickerEntry} entry
-     * @param {boolean} selected
+     * @param {boolean} isSelected
      * @param {function(number): void} onPick
      * @param {number} cellSize
      * @param {function(number|null, Container): void|null} onHover
      * @returns {Container}
      */
-    _buildCell(textureCache, entry, selected, onPick, cellSize, onHover) {
+    _buildCell(textureCache, entry, isSelected, onPick, cellSize, onHover) {
         const cell = new Container();
         cell.tooltipText = entry.tooltipText;
         const backdrop = new Graphics().roundRect(0, 0, cellSize, cellSize, 4).fill(ACTIVE_ACCENT);
-        if (selected) {
+        if (isSelected) {
             backdrop.alpha = SELECTED_ALPHA;
         } else {
             backdrop.alpha = 0;
@@ -152,7 +152,7 @@ export class IconPicker extends Container {
         cell.cursor = "pointer";
         cell.hitArea = new Rectangle(0, 0, cellSize, cellSize);
         cell.on("pointerover", () => {
-            if (!selected) {
+            if (!isSelected) {
                 backdrop.alpha = HOVER_ALPHA;
             }
             if (onHover !== null) {
@@ -160,7 +160,7 @@ export class IconPicker extends Container {
             }
         });
         cell.on("pointerout", () => {
-            if (!selected) {
+            if (!isSelected) {
                 backdrop.alpha = 0;
             }
             if (onHover !== null) {

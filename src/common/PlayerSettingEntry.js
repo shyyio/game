@@ -5,14 +5,14 @@ export class PlayerSettingEntry {
 
     /**
      * @param {number} key
-     * @param {boolean} clientWritable whether a SetPlayerSettingMessage may write the key;
+     * @param {boolean} isClientWritable whether a SetPlayerSettingMessage may write the key;
      *     server-authoritative keys (progress, unlocks) stay false
      * @param {number} optionCount client writes must hold an integer in [0, optionCount);
      *     toggles hold 2
      */
-    constructor(key, clientWritable, optionCount) {
+    constructor(key, isClientWritable, optionCount) {
         this.key = key;
-        this.clientWritable = clientWritable;
+        this.isClientWritable = isClientWritable;
         this.optionCount = optionCount;
     }
 }

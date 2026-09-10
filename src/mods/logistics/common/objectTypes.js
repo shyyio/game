@@ -40,7 +40,7 @@ class BeltObjectType extends ObjectType {
             behavior: new BeltBehavior({beltKind}),
             bespokeClient: true,
             conveys: CONVEYS_ITEM,
-            placement: new PlacementRule({conveyor: beltKind === BELT_NORMAL}),
+            placement: new PlacementRule({isConveyor: beltKind === BELT_NORMAL}),
             inputPorts: [
                 new PortDefinition("virtualLeft", {x: 0, y: 0, direction: Direction.RIGHT}),
                 new PortDefinition("virtualDown", {x: 0, y: 0, direction: Direction.UP}),
@@ -153,7 +153,7 @@ export const RoadType = new ObjectType({
     directional: false,
     label: "Road",
     behavior: new RoadBehavior(),
-    placement: new PlacementRule({replaceSameKind: true, dragToPlace: true}),
+    placement: new PlacementRule({shouldReplaceSameKind: true, shouldDragToPlace: true}),
 });
 
 /**
@@ -254,5 +254,5 @@ export const HousingType = new ObjectType({
     directional: false,
     label: "Housing",
     behavior: new HousingBehavior({workerSupply: HOUSING_WORKER_SUPPLY}),
-    placement: new PlacementRule({advanceOnPlace: false}),
+    placement: new PlacementRule({shouldAdvanceOnPlace: false}),
 });

@@ -39,7 +39,7 @@ export class BeltGhostLayer extends AbstractDrawLayer {
      * Stays visible in map mode.
      * @param {boolean} value
      */
-    set mapMode(value) {}
+    set isMapMode(value) {}
 
     /**
      * Shows a single ghost belt/mouth at the tile facing `direction`.
@@ -48,14 +48,14 @@ export class BeltGhostLayer extends AbstractDrawLayer {
      * @param {Direction} direction
      * @param {BeltType} beltType
      * @param {BeltBend} [bend]
-     * @param {boolean} [blocked] tints the ghost red
+     * @param {boolean} [isBlocked] tints the ghost red
      */
-    showGhost(tileX, tileY, direction, beltType, bend=BeltBend.STRAIGHT, blocked=false) {
+    showGhost(tileX, tileY, direction, beltType, bend=BeltBend.STRAIGHT, isBlocked=false) {
         this.clear();
         this._anchorTileX = tileX;
         this._anchorTileY = tileY;
-        const tint = blocked ? GHOST_BLOCKED_TINT : GHOST_TINT;
-        const alpha = blocked ? GHOST_BLOCKED_ALPHA : GHOST_ALPHA;
+        const tint = isBlocked ? GHOST_BLOCKED_TINT : GHOST_TINT;
+        const alpha = isBlocked ? GHOST_BLOCKED_ALPHA : GHOST_ALPHA;
         this._addSprite(this._floatingContainer, tileX, tileY, direction, beltType, tint, bend, alpha);
         this._layoutPin();
     }
@@ -67,14 +67,14 @@ export class BeltGhostLayer extends AbstractDrawLayer {
      * @param {Direction} direction
      * @param {BeltType} mouthType TUNNEL_DOWN / TUNNEL_UP
      * @param {{x: number, y: number}[]} undergroundTiles tunnel tiles between the pair
-     * @param {boolean} atMax tints the buried belts amber at maximum tunnel length
+     * @param {boolean} isAtMax tints the buried belts amber at maximum tunnel length
      */
-    showTunnelPreview(mouthTileX, mouthTileY, direction, mouthType, undergroundTiles, atMax) {
+    showTunnelPreview(mouthTileX, mouthTileY, direction, mouthType, undergroundTiles, isAtMax) {
         this.clear();
         this._anchorTileX = mouthTileX;
         this._anchorTileY = mouthTileY;
         this._addSprite(this._floatingContainer, mouthTileX, mouthTileY, direction, mouthType, GHOST_TINT, BeltBend.STRAIGHT);
-        const undergroundTint = atMax ? GHOST_AT_MAX_TINT : GHOST_TINT;
+        const undergroundTint = isAtMax ? GHOST_AT_MAX_TINT : GHOST_TINT;
         for (const tile of undergroundTiles) {
             this._addSprite(this._gridContainer, tile.x, tile.y, direction, BELT_UNDERGROUND, undergroundTint, BeltBend.STRAIGHT);
         }

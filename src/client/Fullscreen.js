@@ -5,7 +5,7 @@
 class Fullscreen {
 
     constructor() {
-        this._enabled = false;
+        this._isEnabled = false;
         this._installed = false;
     }
 
@@ -20,7 +20,7 @@ class Fullscreen {
         }
         this._installed = true;
         window.addEventListener("pointerdown", () => {
-            if (this._enabled) {
+            if (this._isEnabled) {
                 this._request();
             }
         }, {capture: true});
@@ -28,12 +28,12 @@ class Fullscreen {
 
     /**
      * Applies the fullscreen preference; entering needs a user gesture, so call from one.
-     * @param {boolean} on
+     * @param {boolean} isEnabled
      * @returns {void}
      */
-    setEnabled(on) {
-        this._enabled = on;
-        if (on) {
+    setEnabled(isEnabled) {
+        this._isEnabled = isEnabled;
+        if (isEnabled) {
             this._request();
         } else if (document.fullscreenElement !== null && document.exitFullscreen) {
             document.exitFullscreen().catch(() => {});

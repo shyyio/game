@@ -163,7 +163,7 @@ export async function createPixiApp() {
     // HUD-touch routing glue.
     let touchInput = null;
     const applyMobileTouchInput = () => {
-        if (Mobile.enabled) {
+        if (Mobile.isEnabled) {
             if (touchInput === null) {
                 viewport.pinch();
                 touchInput = new MobileTouchInput(app, viewport);

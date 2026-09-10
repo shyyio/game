@@ -36,9 +36,9 @@ export class BeltTool extends AbstractTool {
 
     onTap(tileX, tileY) {
         const direction = this._rotation.direction;
-        const blocked = this._isTileBlocked(tileX, tileY, direction);
+        const isBlocked = this._isTileBlocked(tileX, tileY, direction);
         this._place(tileX, tileY, direction);
-        if (!blocked) {
+        if (!isBlocked) {
             // Advance the center-lock crosshair one tile so consecutive taps lay a line.
             this._client.centerLock.advance(tileX, tileY, direction);
         }
@@ -54,12 +54,12 @@ export class BeltTool extends AbstractTool {
      */
     _showGhost(tileX, tileY, direction) {
         const occupant = this._cache.getObjectAtOrNull(tileX, tileY, LAYER_SURFACE);
-        const blocked = this._isTileBlocked(tileX, tileY, direction);
-        const overwrite = occupant !== null && !blocked;
-        this._placementFeedbackLayer.showTile({tileX, tileY, blocked, overwrite});
+        const isBlocked = this._isTileBlocked(tileX, tileY, direction);
+        const isOverwrite = occupant !== null && !isBlocked;
+        this._placementFeedbackLayer.showTile({tileX, tileY, isBlocked, isOverwrite});
         const {parentX, parentY} = inferBeltParent(this._cache, tileX, tileY, direction);
         const bend = Belt.getBend(direction, tileX, tileY, parentX, parentY);
-        this._ghostLayer.showGhost(tileX, tileY, direction, BELT_NORMAL, bend, blocked);
+        this._ghostLayer.showGhost(tileX, tileY, direction, BELT_NORMAL, bend, isBlocked);
     }
 
     onTileExit(tileX, tileY) {
@@ -94,7 +94,7 @@ export class BeltTool extends AbstractTool {
      * @returns {boolean}
      */
     _isOccupantOverwritable(occupant) {
-        return occupant.data.type.placement.conveyor;
+        return occupant.data.type.placement.isConveyor;
     }
 
     /**

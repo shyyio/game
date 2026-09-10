@@ -23,6 +23,6 @@ export class MarketTerminalComponent extends AbstractComponent {
             new FieldDefinition("inputPort", "eid", NO_EID),
             new FieldDefinition("outputPort", "eid", NO_EID),
             new FieldDefinition("lastOutput", "item", EMPTY),
-        ], {sparse: true});
+        ], {isSparse: true});
     }
 }

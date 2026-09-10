@@ -23,6 +23,6 @@ export class GateComponent extends AbstractComponent {
             new FieldDefinition("lastOutput", "item", EMPTY),
             // Toggle request applied at the next tick; PENDING_NONE when idle.
             new FieldDefinition("pendingOpen", "i32", PENDING_NONE),
-        ], {sparse: true});
+        ], {isSparse: true});
     }
 }

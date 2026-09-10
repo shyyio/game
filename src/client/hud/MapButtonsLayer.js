@@ -25,8 +25,8 @@ class MapButton {
         this.onPress = onPress;
         this.container = container;
         this.face = face;
-        this.shown = true;
-        this.hovered = false;
+        this.isShown = true;
+        this.isHovered = false;
     }
 }
 
@@ -67,11 +67,11 @@ export class MapButtonsLayer extends Container {
         const button = new MapButton(id, drawIcon, onPress, container, face);
         trackTap(container, () => button.onPress());
         container.on("pointerover", () => {
-            button.hovered = true;
+            button.isHovered = true;
             this._drawButton(button);
         });
         container.on("pointerout", () => {
-            button.hovered = false;
+            button.isHovered = false;
             this._drawButton(button);
         });
         this._buttons.push(button);
@@ -82,15 +82,15 @@ export class MapButtonsLayer extends Container {
 
     /**
      * @param {string} id
-     * @param {boolean} shown
+     * @param {boolean} isShown
      * @returns {void}
      */
-    setButtonVisible(id, shown) {
+    setButtonVisible(id, isShown) {
         const button = this._require(id);
-        if (button.shown === shown) {
+        if (button.isShown === isShown) {
             return;
         }
-        button.shown = shown;
+        button.isShown = isShown;
         this._resync();
     }
 
@@ -133,9 +133,9 @@ export class MapButtonsLayer extends Container {
      */
     _resync() {
         for (const button of this._buttons) {
-            button.container.visible = button.shown;
+            button.container.visible = button.isShown;
         }
-        this.visible = this._zoomedOut && this._buttons.some(b => b.shown);
+        this.visible = this._zoomedOut && this._buttons.some(b => b.isShown);
         this._layout();
     }
 
@@ -148,7 +148,7 @@ export class MapButtonsLayer extends Container {
         const x = this._app.screen.width - MARGIN - BUTTON_RADIUS;
         let y = this._app.screen.height - HUD_BOTTOM_OFFSET - BUTTON_RADIUS;
         for (const button of this._buttons) {
-            if (!button.shown) {
+            if (!button.isShown) {
                 continue;
             }
             button.container.x = x;
@@ -166,7 +166,7 @@ export class MapButtonsLayer extends Container {
     _drawButton(button) {
         const face = button.face;
         face.clear();
-        drawCircleButtonFace(face, BUTTON_RADIUS, button.hovered);
+        drawCircleButtonFace(face, BUTTON_RADIUS, button.isHovered);
         button.drawIcon(face);
     }
 }

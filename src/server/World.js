@@ -32,14 +32,14 @@ export class World {
      * @param {GameAPI} parts.api
      * @param {string} parts.modListJson the mod list it serves joining clients
      * @param {ModLockfile} parts.lockfile the external mods it booted with, empty when it runs none
-     * @param {boolean} parts.loaded whether a saved world was loaded rather than started fresh
+     * @param {boolean} parts.isLoaded whether a saved world was loaded rather than started fresh
      */
-    constructor({game, api, modListJson, lockfile, loaded}) {
+    constructor({game, api, modListJson, lockfile, isLoaded}) {
         this.game = game;
         this.api = api;
         this.modListJson = modListJson;
         this.lockfile = lockfile;
-        this.loaded = loaded;
+        this.isLoaded = isLoaded;
     }
 
     /**
@@ -208,14 +208,14 @@ export class World {
             config.tickMs, seed,
         );
         await game.init();
-        let loaded;
+        let isLoaded;
         try {
             if (snapshot === null) {
-                loaded = await game.load();
+                isLoaded = await game.load();
             } else {
                 game.loadSnapshot(convertSnapshot(snapshot, game.simEngine.snapshots.loadout, game.simEngine.components.components));
                 await game.save();
-                loaded = true;
+                isLoaded = true;
             }
         } catch (error) {
             await game.metrics.close();
@@ -224,7 +224,7 @@ export class World {
         }
         if (snapshot !== null) {
             console.log(`Converted world onto ${modRegistry.modNames.length} mods (seed ${game.seed})`);
-        } else if (loaded) {
+        } else if (isLoaded) {
             console.log(`Loaded world from ${config.db} (seed ${game.seed})`);
         } else {
             console.log(`Fresh world; saving to ${config.db} (seed ${game.seed})`);
@@ -232,6 +232,6 @@ export class World {
         if (config.seed !== null && game.seed !== config.seed) {
             throw new Error(`The configured seed ${config.seed} does not match the saved world seed ${game.seed}`);
         }
-        return new World({game, api: new GameAPI(game), modListJson: modList, lockfile, loaded});
+        return new World({game, api: new GameAPI(game), modListJson: modList, lockfile, isLoaded});
     }
 }

@@ -24,7 +24,7 @@ export class InspectSlot extends Container {
         this._textureCache = textureCache;
         this._items = items;
         this._item = 0;
-        this._present = false;
+        this._isPresent = false;
 
         this._frame = slotFrameSprite(textureCache, SLOT_SIZE, SLOT_SIZE, PANEL_TINT);
         this.addChild(this._frame);
@@ -60,15 +60,15 @@ export class InspectSlot extends Container {
     /**
      * Shows an item (0 = empty); the presence drives the icon opacity.
      * @param {number} item
-     * @param {boolean} present - whether the item is resting in the port
+     * @param {boolean} isPresent - whether the item is resting in the port
      * @returns {void}
      */
-    setItem(item, present) {
-        if (item === this._item && present === this._present) {
+    setItem(item, isPresent) {
+        if (item === this._item && isPresent === this._isPresent) {
             return;
         }
         this._item = item;
-        this._present = present;
+        this._isPresent = isPresent;
         this._resync();
     }
 
@@ -94,7 +94,7 @@ export class InspectSlot extends Container {
         this._icon.tint = definition.tint;
         fitIcon(this._icon, SLOT_SIZE, ITEM_INSET);
         this._icon.visible = true;
-        if (this._present) {
+        if (this._isPresent) {
             this._icon.alpha = 1;
         } else {
             this._icon.alpha = ABSENT_ALPHA;

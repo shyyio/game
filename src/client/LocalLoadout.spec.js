@@ -42,11 +42,11 @@ function listing(name, versions) {
 /**
  * @param {string} name
  * @param {string} [version]
- * @param {boolean} [pinned]
+ * @param {boolean} [isPinned]
  * @returns {LocalMod}
  */
-function chosen(name, version="1.0.0", pinned=false) {
-    return LocalMod.fromListing(listing(name, [published(version)]), published(version), pinned);
+function chosen(name, version="1.0.0", isPinned=false) {
+    return LocalMod.fromListing(listing(name, [published(version)]), published(version), isPinned);
 }
 
 test("a chosen mod round-trips through JSON", () => {
@@ -54,7 +54,7 @@ test("a chosen mod round-trips through JSON", () => {
     const parsed = LocalMod.parse(JSON.parse(JSON.stringify(mod.toJSON())));
 
     assert.equal(parsed.name, "widgets");
-    assert.equal(parsed.pinned, false);
+    assert.equal(parsed.isPinned, false);
     assert.deepEqual(Array.from(parsed.integrity), Array.from(mod.integrity));
 });
 
@@ -73,7 +73,7 @@ test("only an unpinned mod tracks the newest version", () => {
 
 test("a registry mod without an integrity map is refused", () => {
     assert.throws(
-        () => LocalMod.parse({name: "x", title: "X", url: "https://e/", version: "1.0.0", pinned: false}),
+        () => LocalMod.parse({name: "x", title: "X", url: "https://e/", version: "1.0.0", isPinned: false}),
         /no integrity map/,
     );
 });
@@ -85,26 +85,26 @@ test("a registry mod that does not pin its manifest is refused", () => {
             title: "X",
             url: "https://e/",
             version: "1.0.0",
-            pinned: false,
+            isPinned: false,
             integrity: {"mod.js": HASH},
         }),
         /does not pin mod\.json/,
     );
 });
 
-test("an unknown key, a bad url, and a missing pinned flag are all refused", () => {
+test("an unknown key, a bad url, and a missing isPinned flag are all refused", () => {
     const base = {
         name: "x",
         title: "X",
         url: "https://e/",
         version: "1.0.0",
-        pinned: false,
+        isPinned: false,
         integrity: {[MANIFEST_FILE]: HASH},
     };
 
     assert.throws(() => LocalMod.parse({...base, extra: 1}), /Unknown key "extra"/);
     assert.throws(() => LocalMod.parse({...base, url: "https://e"}), /must end in/);
-    assert.throws(() => LocalMod.parse({...base, pinned: undefined}), /does not say whether/);
+    assert.throws(() => LocalMod.parse({...base, isPinned: undefined}), /does not say whether/);
 });
 
 test("a listing with no published file hashes is refused rather than loaded unverified", () => {
@@ -147,7 +147,7 @@ test("a refresh moves a tracking mod onto the newest compatible version", () => 
     const refreshed = buildLatestLoadout(loadout, listings);
 
     assert.equal(refreshed.getEntryByNameOrNull("widgets").version, "2.0.0");
-    assert.equal(refreshed.getEntryByNameOrNull("widgets").pinned, false);
+    assert.equal(refreshed.getEntryByNameOrNull("widgets").isPinned, false);
 });
 
 test("a refresh leaves a pinned mod exactly where it was", () => {
@@ -181,7 +181,7 @@ test("adding appends, and re-choosing the same mod keeps its position", () => {
     const pinnedA = loadout.with(chosen("a", "2.0.0", true));
     assert.deepEqual(pinnedA.mods.map(mod => mod.name), ["a", "b", "c"]);
     assert.equal(pinnedA.getEntryByNameOrNull("a").version, "2.0.0");
-    assert.equal(pinnedA.getEntryByNameOrNull("a").pinned, true);
+    assert.equal(pinnedA.getEntryByNameOrNull("a").isPinned, true);
 });
 
 test("removing drops only that mod, and leaves the rest in order", () => {
@@ -196,7 +196,7 @@ test("a loadout round-trips through JSON", () => {
     const parsed = LocalLoadout.parse(JSON.parse(JSON.stringify(loadout.toJSON())));
 
     assert.deepEqual(parsed.mods.map(mod => `${mod.name}@${mod.version}`), ["a@1.0.0", "b@3.0.0"]);
-    assert.deepEqual(parsed.mods.map(mod => mod.pinned), [false, true]);
+    assert.deepEqual(parsed.mods.map(mod => mod.isPinned), [false, true]);
 });
 
 test("a loadout listing the same mod twice is refused", () => {
@@ -250,7 +250,7 @@ test("a server's mod list reads back as the mods it runs, each at its exact vers
 
     const loadout = LocalLoadout.fromLockfile(lockfile, [listing("widgets", [published("1.0.0")])]);
 
-    assert.deepEqual(loadout.mods.map(mod => [mod.name, mod.title, mod.version, mod.pinned]), [
+    assert.deepEqual(loadout.mods.map(mod => [mod.name, mod.title, mod.version, mod.isPinned]), [
         ["widgets", "The widgets", "1.0.0", true],
     ]);
 });

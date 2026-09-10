@@ -22,14 +22,14 @@ export class NoteTooltipLayer extends AbstractTooltipLayer {
     /**
      * @param {Application} app
      * @param {ClientCache} cache the hovered note and the open editor
-     * @param {boolean} showAuthor false in solo play, where every note is the reader's own
+     * @param {boolean} shouldShowAuthor false in solo play, where every note is the reader's own
      */
-    constructor(app, cache, showAuthor) {
+    constructor(app, cache, shouldShowAuthor) {
         super(app);
         this._cache = cache;
-        this._showAuthor = showAuthor;
+        this._shouldShowAuthor = shouldShowAuthor;
         this._players = cache.view("players");
-        this._mapMode = false;
+        this._isMapMode = false;
 
         this._text = new Text({
             text: "",
@@ -58,7 +58,7 @@ export class NoteTooltipLayer extends AbstractTooltipLayer {
      * @returns {void}
      */
     setMapMode(value) {
-        this._mapMode = value;
+        this._isMapMode = value;
         this._follow();
     }
 
@@ -94,10 +94,10 @@ export class NoteTooltipLayer extends AbstractTooltipLayer {
             return;
         }
         this._text.text = note.text;
-        this._author.visible = this._showAuthor;
+        this._author.visible = this._shouldShowAuthor;
         let contentWidth = this._text.width;
         let contentBottom = this._text.height;
-        if (this._showAuthor) {
+        if (this._shouldShowAuthor) {
             this._author.text = this._players.getUsernameByPlayerRef(note.authorRef);
             this._author.y = this._text.y + contentBottom + TOOLTIP_PADDING / 2;
             contentWidth = Math.max(contentWidth, this._author.width);
@@ -117,7 +117,7 @@ export class NoteTooltipLayer extends AbstractTooltipLayer {
         if (note === null || this.viewport === null) {
             return;
         }
-        const world = noteAnchor(note, this._mapMode);
+        const world = noteAnchor(note, this._isMapMode);
         this.placeAt(world.x, world.y, PIN_CLEARANCE_X, PIN_CLEARANCE_Y);
     }
 }

@@ -126,24 +126,24 @@ export class AbstractDrawLayer extends Container {
      * screen-feedback layers stay visible.
      * @param {boolean} value
      */
-    set mapMode(value) {
+    set isMapMode(value) {
         this.visible = !value;
     }
 
     /**
      * Applies a view mode: overworld hides the layer outright; otherwise visibility is restored
-     * first so each layer's own mapMode setter decides its presentation.
+     * first so each layer's own isMapMode setter decides its presentation.
      * @param {ViewMode} mode
      * @returns {void}
      */
     setViewMode(mode) {
         if (mode === ViewMode.OVERWORLD) {
-            this.mapMode = true;
+            this.isMapMode = true;
             this.visible = false;
             return;
         }
         this.visible = true;
-        this.mapMode = mode === ViewMode.MAP;
+        this.isMapMode = mode === ViewMode.MAP;
     }
 
     /**

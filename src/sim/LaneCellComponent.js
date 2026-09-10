@@ -13,6 +13,6 @@ export class LaneCellComponent extends AbstractComponent {
             new FieldDefinition("childCell", "eid", NO_EID),
             // In the cell's own frame: UP is its straight back edge.
             new FieldDefinition("parentEdge", "i32", Direction.UP),
-        ], {sparse: true});
+        ], {isSparse: true});
     }
 }

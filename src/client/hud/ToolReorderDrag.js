@@ -26,7 +26,7 @@ export class ToolReorderDrag {
         this._iconBaseScale = icon.scale.x;
         this._detachTracking = detachTracking;
         this._lift = new Tween(1, LIFT_DURATION_MS);
-        if (ReducedMotion.enabled) {
+        if (ReducedMotion.isEnabled) {
             this._lift.reset(LIFT_SCALE);
         } else {
             this._lift.to(LIFT_SCALE, easeOutBack);

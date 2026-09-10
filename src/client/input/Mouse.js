@@ -582,9 +582,9 @@ class Mouse {
     _resyncAxisLock(speed) {
         const vx = this.currentX - this._clickStartX;
         const vy = this.currentY - this._clickStartY;
-        const horizontal = Math.abs(vx) > Math.abs(vy);
+        const isHorizontal = Math.abs(vx) > Math.abs(vy);
         let offAxisRad;
-        if (horizontal) {
+        if (isHorizontal) {
             offAxisRad = Math.abs(Math.atan2(vy, vx));
         } else {
             offAxisRad = Math.abs(Math.atan2(vx, vy));
@@ -594,7 +594,7 @@ class Mouse {
         if (this._dragAxis === null) {
             const moved = Math.hypot(vx, vy) > TILE_SIZE / 4;
             if (moved && speed > STRAIGHT_SNAP_SPEED_ON && offAxis < STRAIGHT_SNAP_ANGLE_ON) {
-                this._dragAxis = horizontal ? "x" : "y";
+                this._dragAxis = isHorizontal ? "x" : "y";
             }
             return;
         }

@@ -64,7 +64,7 @@ export class InspectTooltipLayer extends AbstractTooltipLayer {
         }
         this._heldMS += deltaMS;
         // A tap is deliberate already, so touch skips the dwell.
-        if (!Mobile.enabled && this._heldMS < TOOLTIP_HOVER_DELAY_MS) {
+        if (!Mobile.isEnabled && this._heldMS < TOOLTIP_HOVER_DELAY_MS) {
             this.visible = false;
             return;
         }

@@ -42,7 +42,7 @@ const RecordingType = new ObjectType({
     geometry: "1x1",
     textureName: "demo-machine/0",
     label: "RecordingHookObject",
-    placement: new PlacementRule({replaceSameKind: true}),
+    placement: new PlacementRule({shouldReplaceSameKind: true}),
     behavior: new RecordingBehavior(),
 });
 

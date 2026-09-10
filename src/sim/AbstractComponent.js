@@ -59,16 +59,16 @@ export class AbstractComponent {
     /**
      * @param {string} name
      * @param {FieldDefinition[]} fields
-     * @param {{snapshotOnly?:boolean, sparse?:boolean}} [options] - snapshotOnly components hold
+     * @param {{isSnapshotOnly?:boolean, isSparse?:boolean}} [options] - snapshotOnly components hold
      *     state materialized at save (pipe networks), not kept in sync during play, so the port
      *     sweep ignores their eid fields (the module's live pin hook is authoritative instead);
      *     sparse components index their columns by row instead of by eid
      */
-    constructor(name, fields, {snapshotOnly=false, sparse=false}={}) {
+    constructor(name, fields, {isSnapshotOnly = false, isSparse = false} = {}) {
         this.name = name;
         this.fields = fields;
-        this.snapshotOnly = snapshotOnly;
-        this.sparse = sparse;
+        this.isSnapshotOnly = isSnapshotOnly;
+        this.isSparse = isSparse;
         this.capacity = AbstractComponent.INITIAL_CAPACITY;
         /**
          * Column per field, indexed by {@link slot}.
@@ -134,7 +134,7 @@ export class AbstractComponent {
      * @returns {number}
      */
     getSlotByEid(eid) {
-        if (this.sparse) {
+        if (this.isSparse) {
             return this.getRowByEid(eid);
         }
         return eid;
@@ -146,7 +146,7 @@ export class AbstractComponent {
      * @returns {number}
      */
     getEidBySlot(slot) {
-        if (this.sparse) {
+        if (this.isSparse) {
             return this.set.dense[slot];
         }
         return slot;
@@ -159,7 +159,7 @@ export class AbstractComponent {
      */
     bind(world) {
         this.world = world;
-        if (!this.sparse) {
+        if (!this.isSparse) {
             return;
         }
         this.set = world.trackRows(this.store, (fromRow, toRow) => {
@@ -211,7 +211,7 @@ export class AbstractComponent {
      * @returns {void}
      */
     attach(eid) {
-        if (!this.sparse) {
+        if (!this.isSparse) {
             this.grow(eid);
             this.world.addComponent(eid, this.store);
             return;
@@ -251,7 +251,7 @@ export class AbstractComponent {
      * @returns {Int32Array}
      */
     getLiveEids() {
-        if (this.sparse) {
+        if (this.isSparse) {
             return this.eids.slice(0, this.count);
         }
         return this.world.query([this.store]);
@@ -263,7 +263,7 @@ export class AbstractComponent {
      * @returns {Int32Array}
      */
     getSlots() {
-        if (!this.sparse) {
+        if (!this.isSparse) {
             return this.world.query([this.store]);
         }
         const slots = new Int32Array(this.count);

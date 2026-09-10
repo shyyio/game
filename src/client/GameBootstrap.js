@@ -172,8 +172,8 @@ export async function createClient(app, viewport, props) {
         session.connect();
         // A tab regaining focus or the network coming back online means the current backoff
         // wait is likely stale; retry immediately.
-        unsubWindowFocus = WindowFocus.onChange(focused => {
-            if (focused) {
+        unsubWindowFocus = WindowFocus.onChange(isFocused => {
+            if (isFocused) {
                 session.retryNow();
             }
         });

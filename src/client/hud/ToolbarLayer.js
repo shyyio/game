@@ -67,11 +67,11 @@ function cellHeight() {
  * How many tools the visible top row holds at `screenWidth`: fixed on touch, else as many cells as
  * fit beside the none cell, within the desktop bounds.
  * @param {number} screenWidth
- * @param {boolean} mobile
+ * @param {boolean} isMobile
  * @returns {number}
  */
-export function barToolCapacity(screenWidth, mobile) {
-    if (mobile) {
+export function barToolCapacity(screenWidth, isMobile) {
+    if (isMobile) {
         return MIN_BAR_TOOLS;
     }
     const maxWidth = screenWidth - SIDE_MARGIN * 2;
@@ -338,11 +338,11 @@ export class ToolbarLayer extends Container {
      * @param {string|null} label
      * @param {string|null} shortcut - the key badge drawn top-left, or null for none
      * @param {function(Container): void} addIcon - adds the slot's icon
-     * @param {boolean} [liveBadge] - keeps the badge around even with no shortcut yet, so a
+     * @param {boolean} [hasLiveBadge] - keeps the badge around even with no shortcut yet, so a
      *     reorder drag can fill it in live (mod-tool cells: their hotkey slot can change)
      * @returns {Container}
      */
-    _createSlot(label, shortcut, addIcon, liveBadge=false) {
+    _createSlot(label, shortcut, addIcon, hasLiveBadge=false) {
         const slot = new Container();
         slot.cursor = "pointer";
 
@@ -355,7 +355,7 @@ export class ToolbarLayer extends Container {
         addIcon(slot);
 
         // Badge sits above the icon, hidden on the resting top row; no badges on Mobile (no keyboard).
-        if ((shortcut !== null || liveBadge) && !Mobile.enabled) {
+        if ((shortcut !== null || hasLiveBadge) && !Mobile.isEnabled) {
             const badge = new Text({
                 text: shortcut === null ? "" : shortcut,
                 style: {fontFamily: GAME_FONT, fontSize: SLOT_SIZE - 3, fill: PANEL_TINT_TEXT, stroke: {color: PANEL_TINT, width: 1}},
@@ -395,11 +395,11 @@ export class ToolbarLayer extends Container {
      * pick up for a reorder drag on a long press.
      * @private
      * @param {AbstractTool} tool
-     * @param {boolean} draggable
+     * @param {boolean} isDraggable
      * @returns {Container}
      */
-    _createCell(tool, draggable) {
-        const slot = this._createSlot(tool.label, this._getShortcutByTool(tool), (slot) => this._addSprite(slot, tool.textureName), draggable);
+    _createCell(tool, isDraggable) {
+        const slot = this._createSlot(tool.label, this._getShortcutByTool(tool), (slot) => this._addSprite(slot, tool.textureName), isDraggable);
         const onPress = () => {
             if (tool === this._activeTool) {
                 this.setActiveTool(null);
@@ -407,7 +407,7 @@ export class ToolbarLayer extends Container {
                 this.setActiveTool(tool);
             }
         };
-        if (draggable) {
+        if (isDraggable) {
             this._wireDraggableCell(slot, tool, onPress);
         } else {
             // trackTap swallows the press and only counts a release matching the press that landed here.
@@ -702,7 +702,7 @@ export class ToolbarLayer extends Container {
             slideTarget = 0;
             slideEase = easeInCubic;
         }
-        if (ReducedMotion.enabled) {
+        if (ReducedMotion.isEnabled) {
             this._slide.reset(slideTarget);
         } else {
             this._slide.to(slideTarget, slideEase);
@@ -749,7 +749,7 @@ export class ToolbarLayer extends Container {
      * @returns {number}
      */
     _computeBarTools() {
-        return barToolCapacity(this._viewport.screenWidth, Mobile.enabled);
+        return barToolCapacity(this._viewport.screenWidth, Mobile.isEnabled);
     }
 
     /**

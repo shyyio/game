@@ -57,7 +57,7 @@ function wireButtonPress(button, hover, onClick) {
  * @returns {string}
  */
 export function hotkeyLabel(label, key) {
-    if (Mobile.enabled) {
+    if (Mobile.isEnabled) {
         return label;
     }
     if (key.length === 1) {
@@ -73,10 +73,10 @@ export function hotkeyLabel(label, key) {
  * @param {string} label
  * @param {number} borderColor
  * @param {function(): void} onClick
- * @param {boolean} [disabled]
+ * @param {boolean} [isDisabled]
  * @returns {Container}
  */
-export function buildPanelButton(textureCache, label, borderColor, onClick, disabled = false) {
+export function buildPanelButton(textureCache, label, borderColor, onClick, isDisabled = false) {
     const text = new Text({
         text: label,
         style: {fontFamily: GAME_FONT, fontSize: BUTTON_FONT_SIZE, fill: textOn(borderColor), fontWeight: "bold"},
@@ -89,7 +89,7 @@ export function buildPanelButton(textureCache, label, borderColor, onClick, disa
     text.y = (BUTTON_HEIGHT - text.height) / 2;
     button.addChild(text);
 
-    if (disabled) {
+    if (isDisabled) {
         button.alpha = DISABLED_ALPHA;
         return button;
     }

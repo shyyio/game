@@ -4,19 +4,19 @@ import {AbstractDevicePreference} from "@/client/AbstractDevicePreference.js";
 const ROOT_CLASS = "reduced-motion";
 
 /**
- * Singleton holding the reduced-motion preference; while on, scripted animations
+ * Singleton holding the reduced-motion preference; while isEnabled, scripted animations
  * (viewport glides, drawer slides) snap to their target instead of tweening, and
  * looping ones (belt scroll) hold still.
  */
 class ReducedMotion extends AbstractDevicePreference {
 
     /**
-     * @param {boolean} on
+     * @param {boolean} isEnabled
      * @returns {void}
      */
-    setEnabled(on) {
-        document.documentElement.classList.toggle(ROOT_CLASS, on);
-        super.setEnabled(on);
+    setEnabled(isEnabled) {
+        document.documentElement.classList.toggle(ROOT_CLASS, isEnabled);
+        super.setEnabled(isEnabled);
     }
 
     isDevicePreferred() {

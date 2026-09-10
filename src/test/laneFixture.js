@@ -39,7 +39,7 @@ export const TestLaneType = new ObjectType({
     textureName: "demo-machine/0",
     label: "Test Lane",
     conveys: CONVEYS_ITEM,
-    placement: new PlacementRule({conveyor: true}),
+    placement: new PlacementRule({isConveyor: true}),
     inputPorts: [PORT_INPUT_LEFT, PORT_INPUT_BACK, PORT_INPUT_RIGHT],
     outputPorts: [PORT_OUTPUT],
     behavior: new LaneBehavior({}),

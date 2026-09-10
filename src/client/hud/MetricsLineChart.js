@@ -280,14 +280,14 @@ export class MetricsLineChart {
     /**
      * Fires onWindowChange for the current zoom's ideal (tier, windowTicks); zooming in reuses
      * data already on hand.
-     * @param {boolean} force always fires, even at the same tier (construction)
+     * @param {boolean} shouldForce always fires, even at the same tier (construction)
      * @returns {void}
      * @private
      */
-    _requestWindow(force) {
+    _requestWindow(shouldForce) {
         const tier = selectTier(this._rangeTicks);
         const window = windowTicksFor(this._rangeTicks, tier);
-        if (!force && tier === this._requestedTier && window <= this._requestedWindowTicks) {
+        if (!shouldForce && tier === this._requestedTier && window <= this._requestedWindowTicks) {
             return;
         }
         this._requestedTier = tier;

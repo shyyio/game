@@ -54,7 +54,7 @@ export class VersionWatermarkLayer extends Container {
      * @returns {void}
      */
     resync() {
-        this.visible = !Mobile.enabled;
+        this.visible = !Mobile.isEnabled;
         this._layout();
     }
 

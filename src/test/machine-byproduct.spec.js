@@ -28,7 +28,7 @@ function fixtureMachineType(name, chance) {
         geometry: "1x1",
         textureName: "demo-machine/0",
         label: name,
-        placement: new PlacementRule({replaceSameKind: true}),
+        placement: new PlacementRule({shouldReplaceSameKind: true}),
         behavior: new MachineBehavior({
             processingTicks: 1,
             recipes: [new RecipeDefinition([ITEM_INPUT], ITEM_OUTPUT, new RecipeByproduct(ITEM_BYPRODUCT, chance))],

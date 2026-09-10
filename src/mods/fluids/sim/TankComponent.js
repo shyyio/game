@@ -13,6 +13,6 @@ export class TankComponent extends AbstractComponent {
             new FieldDefinition("amount"),
             // Denormalized from the behavior so the tick pass stays on the row.
             new FieldDefinition("capacity"),
-        ], {sparse: true});
+        ], {isSparse: true});
     }
 }

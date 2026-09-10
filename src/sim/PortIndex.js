@@ -355,7 +355,7 @@ export class PortIndex {
         const engine = this.engine;
         const referenced = new Set();
         for (const component of engine.components.components) {
-            if (component.snapshotOnly) {
+            if (component.isSnapshotOnly) {
                 continue;
             }
             const eidFields = component.fields.filter(field => field.kind === "eid");

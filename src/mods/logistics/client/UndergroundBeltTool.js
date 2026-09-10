@@ -47,12 +47,12 @@ export class UndergroundBeltTool extends AbstractTool {
 
     onTileEnter(tileX, tileY) {
         const placement = this._resolvePlacement(tileX, tileY, this._rotation.direction);
-        const blocked = this._isTileBlocked(tileX, tileY, placement);
+        const isBlocked = this._isTileBlocked(tileX, tileY, placement);
         // An overwritable same-axis belt is deleted before the mouth lands.
-        const overwrite = !blocked && this._getSurfaceBeltAtOrNull(tileX, tileY) !== null;
-        this._placementFeedbackLayer.showTile({tileX, tileY, blocked, overwrite});
-        if (blocked || placement.parentId === null) {
-            this._ghostLayer.showGhost(tileX, tileY, placement.direction, placement.type, BeltBend.STRAIGHT, blocked);
+        const isOverwrite = !isBlocked && this._getSurfaceBeltAtOrNull(tileX, tileY) !== null;
+        this._placementFeedbackLayer.showTile({tileX, tileY, isBlocked, isOverwrite});
+        if (isBlocked || placement.parentId === null) {
+            this._ghostLayer.showGhost(tileX, tileY, placement.direction, placement.type, BeltBend.STRAIGHT, isBlocked);
             return;
         }
         const undergroundTiles = this._getUndergroundTilesByParentId(
@@ -62,8 +62,8 @@ export class UndergroundBeltTool extends AbstractTool {
             placement.type,
             placement.direction,
         );
-        const atMax = undergroundTiles.length === MAX_UNDERGROUND_LENGTH;
-        this._ghostLayer.showTunnelPreview(tileX, tileY, placement.direction, placement.type, undergroundTiles, atMax);
+        const isAtMax = undergroundTiles.length === MAX_UNDERGROUND_LENGTH;
+        this._ghostLayer.showTunnelPreview(tileX, tileY, placement.direction, placement.type, undergroundTiles, isAtMax);
     }
 
     onTileExit(tileX, tileY) {
@@ -107,7 +107,7 @@ export class UndergroundBeltTool extends AbstractTool {
     }
 
     /**
-     * Whether a mouth facing `direction` can overwrite the belt: only a straight normal belt on the mouth's axis.
+     * Whether a mouth facing `direction` can isOverwrite the belt: only a straight normal belt on the mouth's axis.
      * @private
      * @returns {boolean}
      */

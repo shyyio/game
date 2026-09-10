@@ -17,6 +17,6 @@ export class ExtractorComponent extends AbstractComponent {
             // The countdown length, kept on the row so the submit pass reaches no behavior instance
             // while an extractor is merely counting down.
             new FieldDefinition("processingTicks"),
-        ], {sparse: true});
+        ], {isSparse: true});
     }
 }

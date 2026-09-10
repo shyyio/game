@@ -171,11 +171,11 @@ export class NoteTool extends AbstractTool {
      * @returns {void}
      */
     _setHoveredTile(tileX, tileY) {
-        const blocked = tileX !== null && !this._client.canBuildAt(tileX, tileY);
+        const isBlocked = tileX !== null && !this._client.canBuildAt(tileX, tileY);
         this._notesLayer.setToolTile(tileX, tileY);
-        this._ghostLayer.setHoveredTile(tileX, tileY, blocked);
+        this._ghostLayer.setHoveredTile(tileX, tileY, isBlocked);
         // Only the rejection is drawn on the tile: the ghost already shows where the note lands.
-        if (!blocked) {
+        if (!isBlocked) {
             this._placementFeedbackLayer.clear();
             return;
         }

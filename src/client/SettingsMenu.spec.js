@@ -112,7 +112,7 @@ test("the engine contributes a Display section", () => {
 
 test("a mod's section merges in behind the engine's", () => {
     const {menu, client} = build();
-    client.modRegistry.settingEntries.set(SETTING_KEY, {clientWritable: true, optionCount: BINARY});
+    client.modRegistry.settingEntries.set(SETTING_KEY, {isClientWritable: true, optionCount: BINARY});
     client.addSettingsMod([new PlayerSettingToggle(SETTING_KEY, "Ghost preview")]);
     assert.deepEqual(menu.categories().map(category => category.name), [DISPLAY, MOD_CATEGORY]);
 });
@@ -125,21 +125,21 @@ test("a control on an unregistered player setting is rejected", () => {
 
 test("a control on a server-authoritative setting is rejected", () => {
     const {menu, client} = build();
-    client.modRegistry.settingEntries.set(SETTING_KEY, {clientWritable: false, optionCount: BINARY});
+    client.modRegistry.settingEntries.set(SETTING_KEY, {isClientWritable: false, optionCount: BINARY});
     client.addSettingsMod([new PlayerSettingToggle(SETTING_KEY, "Ghost preview")]);
     assert.throws(() => menu.categories(), /server-authoritative/);
 });
 
 test("a choice offering a different number of options than the setting allows is rejected", () => {
     const {menu, client} = build();
-    client.modRegistry.settingEntries.set(SETTING_KEY, {clientWritable: true, optionCount: 3});
+    client.modRegistry.settingEntries.set(SETTING_KEY, {isClientWritable: true, optionCount: 3});
     client.addSettingsMod([new PlayerSettingChoice(SETTING_KEY, "Ghost style", ["a", "b"], 0)]);
     assert.throws(() => menu.categories(), /offers 2 options but/);
 });
 
 test("a toggle on a setting with more than two values is rejected", () => {
     const {menu, client} = build();
-    client.modRegistry.settingEntries.set(SETTING_KEY, {clientWritable: true, optionCount: 3});
+    client.modRegistry.settingEntries.set(SETTING_KEY, {isClientWritable: true, optionCount: 3});
     client.addSettingsMod([new PlayerSettingToggle(SETTING_KEY, "Ghost preview")]);
     assert.throws(() => menu.categories(), /which allows 3 values/);
 });
@@ -150,7 +150,7 @@ test("a player control that is neither a choice nor a toggle is rejected", () =>
     }
 
     const {menu, client} = build();
-    client.modRegistry.settingEntries.set(SETTING_KEY, {clientWritable: true, optionCount: BINARY});
+    client.modRegistry.settingEntries.set(SETTING_KEY, {isClientWritable: true, optionCount: BINARY});
     client.addSettingsMod([new MysteryControl(SETTING_KEY, "Ghost preview")]);
     assert.throws(() => menu.categories(), /unknown control type/);
 });

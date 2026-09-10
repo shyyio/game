@@ -34,9 +34,9 @@ export class NotesClientMod extends AbstractClientMod {
         this._layer = new NotesDrawLayer(client.cache);
         this._ghostLayer = new NoteGhostLayer(client.cache);
         // Solo play has one author, whose name every note would repeat back at them.
-        const showAuthor = !client.session.isLocal;
-        this._panelLayer = new NotePanelLayer(client.app, client.cache, client.session, showAuthor);
-        this._tooltipLayer = new NoteTooltipLayer(client.app, client.cache, showAuthor);
+        const shouldShowAuthor = !client.session.isLocal;
+        this._panelLayer = new NotePanelLayer(client.app, client.cache, client.session, shouldShowAuthor);
+        this._tooltipLayer = new NoteTooltipLayer(client.app, client.cache, shouldShowAuthor);
         this._tool = new NoteTool(client, this._layer, this._ghostLayer);
     }
 
@@ -83,7 +83,7 @@ export class NotesClientMod extends AbstractClientMod {
      */
     onObjectTap(tileX, tileY, client) {
         const note = this._layer.getNoteAtOrNull(Mouse.aimPoint());
-        if (!Mobile.enabled) {
+        if (!Mobile.isEnabled) {
             if (note === null) {
                 return false;
             }
@@ -106,7 +106,7 @@ export class NotesClientMod extends AbstractClientMod {
      * @returns {boolean}
      */
     onObjectHold(tileX, tileY, client) {
-        if (!Mobile.enabled) {
+        if (!Mobile.isEnabled) {
             return false;
         }
         const note = this._layer.getNoteAtOrNull(Mouse.aimPoint());

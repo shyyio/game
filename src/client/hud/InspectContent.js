@@ -94,7 +94,7 @@ export class InspectContent extends Container {
             });
             this._workerLabel.y = secondRowY + SLOT_SIZE + SLOT_MARGIN_Y;
             this.addChild(this._workerLabel);
-            this._workerStaffed = true;
+            this._workerIsStaffed = true;
         }
     }
 
@@ -119,16 +119,16 @@ export class InspectContent extends Container {
 
         // Output port item first, else the inferred recipe output, else the last produced item; only
         // the first is really in the port, so only it renders as present.
-        const present = event.outputItem !== null;
+        const isPresent = event.outputItem !== null;
         let outputItem = 0;
-        if (present) {
+        if (isPresent) {
             outputItem = event.outputItem;
         } else if (event.recipeOutput !== null) {
             outputItem = event.recipeOutput;
         } else if (lastProduced !== undefined) {
             outputItem = lastProduced;
         }
-        this._outputSlot.setItem(outputItem, present);
+        this._outputSlot.setItem(outputItem, isPresent);
 
         if (this._workerLabel !== null) {
             this._applyWorkerRow(event);
@@ -147,7 +147,7 @@ export class InspectContent extends Container {
         this._outputSlot.restyle();
         if (this._workerLabel !== null) {
             this._workerLabel.style.stroke = {color: PROGRESS_TEXT_STROKE, width: WORKER_TEXT_STROKE_WIDTH};
-            this._workerLabel.style.fill = workerRowColor(this._workerStaffed);
+            this._workerLabel.style.fill = workerRowColor(this._workerIsStaffed);
         }
     }
 
@@ -159,27 +159,27 @@ export class InspectContent extends Container {
      * @private
      */
     _applyWorkerRow(event) {
-        const staffed = event.workers === event.workerCost;
-        this._workerStaffed = staffed;
+        const isStaffed = event.workers === event.workerCost;
+        this._workerIsStaffed = isStaffed;
         let text;
         if (event.workerSupply === null) {
             text = `No road access · needs ${event.workerCost} workers`;
-        } else if (staffed) {
+        } else if (isStaffed) {
             text = `Manned · ${event.workerCost} workers · network ${event.workerDemand}/${event.workerSupply}`;
         } else {
             text = `Staffed ${event.workers}/${event.workerCost} · network ${event.workerDemand}/${event.workerSupply}`;
         }
         this._workerLabel.text = text;
-        this._workerLabel.style.fill = workerRowColor(staffed);
+        this._workerLabel.style.fill = workerRowColor(isStaffed);
     }
 }
 
 /**
- * @param {boolean} staffed
+ * @param {boolean} isStaffed
  * @returns {number}
  */
-function workerRowColor(staffed) {
-    if (staffed) {
+function workerRowColor(isStaffed) {
+    if (isStaffed) {
         return WORKER_OK_TEXT;
     }
     return WORKER_MISSING_TEXT;
@@ -188,11 +188,11 @@ function workerRowColor(staffed) {
 /**
  * The hold counter after a tick: an input item recharges it, an empty port spends one tick of it.
  * @param {number} hold
- * @param {boolean} inputPort
+ * @param {boolean} isInputPort
  * @returns {number}
  */
-function holdAfter(hold, inputPort) {
-    if (inputPort) {
+function holdAfter(hold, isInputPort) {
+    if (isInputPort) {
         return PRESENCE_HOLD_TICKS;
     }
     return Math.max(0, hold - 1);

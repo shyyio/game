@@ -11,7 +11,7 @@ class WidgetComponent extends AbstractComponent {
             new FieldDefinition("parent", "eid", NO_EID),
             new FieldDefinition("weight", "f32", 1),
             new FieldDefinition("size"),
-        ], {sparse: true});
+        ], {isSparse: true});
     }
 }
 

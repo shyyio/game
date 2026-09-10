@@ -11,7 +11,7 @@ export const TradingTerminalType = new ObjectType({
     // Placeholder sprite; mod adds no new art.
     textureName: "demo-machine/0",
     label: "Trading Terminal",
-    placement: new PlacementRule({replaceSameKind: true}),
+    placement: new PlacementRule({shouldReplaceSameKind: true}),
     // Never sends a message itself; submitting the panel is what sends ConfigureTradingTerminalMessage.
     tapAction: (entry, session, client) => client.cache.writer("market").openConfig(entry.id),
     behavior: new TradingTerminalBehavior(),

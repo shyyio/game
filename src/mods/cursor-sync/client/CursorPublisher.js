@@ -21,7 +21,7 @@ export class CursorPublisher {
         this._windowFocus = windowFocus;
         this._viewMode = ViewMode.WORLD;
         // Whether the cursor is currently shown remotely (a hide is owed when sending stops).
-        this._shown = false;
+        this._isShown = false;
         this._lastSentX = null;
         this._lastSentY = null;
         state.subscribe("playerSettings.values", (key, value) => {
@@ -31,8 +31,8 @@ export class CursorPublisher {
                 this._reset();
             }
         });
-        windowFocus.onChange(focused => {
-            if (!focused) {
+        windowFocus.onChange(isFocused => {
+            if (!isFocused) {
                 this._hide();
             }
         });
@@ -72,7 +72,7 @@ export class CursorPublisher {
         }
         this._lastSentX = x;
         this._lastSentY = y;
-        this._shown = true;
+        this._isShown = true;
         this._session.sendMessage(new CursorMoveMessage(x, y));
     }
 
@@ -81,7 +81,7 @@ export class CursorPublisher {
      * @returns {boolean}
      */
     _canSendCursor() {
-        return this._windowFocus.focused
+        return this._windowFocus.isFocused
             && this._viewMode === ViewMode.WORLD
             && this._playerSettings.getValueByKey(CURSOR_SETTING_SHARE) !== CURSOR_AUDIENCE_NONE;
     }
@@ -92,9 +92,9 @@ export class CursorPublisher {
      * @returns {void}
      */
     _hide() {
-        const shown = this._shown;
+        const isShown = this._isShown;
         this._reset();
-        if (shown) {
+        if (isShown) {
             this._session.sendMessage(new CursorHideMessage());
         }
     }
@@ -105,7 +105,7 @@ export class CursorPublisher {
      * @returns {void}
      */
     _reset() {
-        this._shown = false;
+        this._isShown = false;
         this._lastSentX = null;
         this._lastSentY = null;
     }

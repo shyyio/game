@@ -16,7 +16,7 @@ const ORIGIN = "ws://127.0.0.1:27500";
  */
 async function makeWorld(modListJson = "{\"mods\": []}") {
     const game = await makeGame();
-    return new World({game, api: new GameAPI(game), modListJson, lockfile: new ModLockfile([]), loaded: false});
+    return new World({game, api: new GameAPI(game), modListJson, lockfile: new ModLockfile([]), isLoaded: false});
 }
 
 /**

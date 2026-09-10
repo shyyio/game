@@ -52,7 +52,7 @@ function resourceBody(name, label, resourceType, toolId) {
         directional: false,
         label,
         extractionTiles: [{x: 0, y: 0}],
-        placement: new PlacementRule({solid: false}),
+        placement: new PlacementRule({isSolid: false}),
         behavior: new ResourceBehavior({resourceType}),
         toolId,
     });
@@ -83,7 +83,7 @@ export const ExtractorType = new ObjectType({
     textureName: "demo-machine/0",
     label: "Extractor",
     inspectable: true,
-    placement: new PlacementRule({replaceSameKind: true, placeOn: RESOURCE_TYPES}),
+    placement: new PlacementRule({shouldReplaceSameKind: true, placeOn: RESOURCE_TYPES}),
     behavior: new ExtractorBehavior({
         processingTicks: 4,
         recipes: [
@@ -142,7 +142,7 @@ function machine(name, label, {toolId, inputPorts, outputPorts, recipes, process
         textureName: TEXTURE_BY_GEOMETRY[geometry],
         label,
         inspectable: true,
-        placement: new PlacementRule({replaceSameKind: true}),
+        placement: new PlacementRule({shouldReplaceSameKind: true}),
         behavior: new MachineBehavior({processingTicks, recipes, fallback: ITEM_TYPE_WASTE, workerCost}),
         wireAnchor: {x: 0.5, y: 0.2},
     });
@@ -267,7 +267,7 @@ export const AirFilterType = new ObjectType({
     textureName: TEXTURE_BY_GEOMETRY["2x2"],
     label: "Air Filter",
     inspectable: true,
-    placement: new PlacementRule({replaceSameKind: true}),
+    placement: new PlacementRule({shouldReplaceSameKind: true}),
     behavior: new GeneratorBehavior({
         processingTicks: 4,
         output: ITEM_TYPE_OXYGEN,

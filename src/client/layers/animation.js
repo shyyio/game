@@ -33,7 +33,7 @@ let elapsedMS = 0;
  * @returns {number} the current frame, in [0, 8)
  */
 export function advanceAnimationFrame(deltaMS) {
-    if (ReducedMotion.enabled) {
+    if (ReducedMotion.isEnabled) {
         // Every sequence holds its base frame: no belt scroll, no cycling machines.
         elapsedMS = 0;
         frame = 0;

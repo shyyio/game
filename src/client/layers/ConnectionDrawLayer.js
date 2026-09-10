@@ -60,7 +60,7 @@ export class ConnectionDrawLayer extends AbstractTileMeshDrawLayer {
      * @returns {void}
      */
     _applyMapMode() {
-        this.visible = !this._mapMode;
+        this.visible = !this._isMapMode;
     }
 
     /**

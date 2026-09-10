@@ -9,6 +9,6 @@ export class PipeNetworkMemberComponent extends AbstractComponent {
         super("PipeNetworkMember", [
             new FieldDefinition("network", "eid", NO_EID),
             new FieldDefinition("objectRef", "i32", NO_EID),
-        ], {snapshotOnly: true});
+        ], {isSnapshotOnly: true});
     }
 }

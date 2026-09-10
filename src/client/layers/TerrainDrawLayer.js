@@ -92,8 +92,8 @@ export class TerrainDrawLayer extends AbstractChunkedDrawLayer {
      * The ground looks the same in map mode; no pooled geometry swap.
      * @param {boolean} value
      */
-    set mapMode(value) {
-        this._mapMode = value;
+    set isMapMode(value) {
+        this._isMapMode = value;
     }
 
     /**
@@ -103,7 +103,7 @@ export class TerrainDrawLayer extends AbstractChunkedDrawLayer {
      */
     setViewMode(mode) {
         this.visible = true;
-        this._mapMode = mode === ViewMode.MAP;
+        this._isMapMode = mode === ViewMode.MAP;
         this._overworldShown = mode === ViewMode.OVERWORLD;
         this._applyOverworldMode();
     }

@@ -100,8 +100,8 @@ export class TerrainDetailLayer extends AbstractChunkedDrawLayer {
      * Map mode hides the details outright; no pooled geometry swap.
      * @param {boolean} value
      */
-    set mapMode(value) {
-        this._mapMode = value;
+    set isMapMode(value) {
+        this._isMapMode = value;
         this.visible = !value;
     }
 
@@ -114,7 +114,7 @@ export class TerrainDetailLayer extends AbstractChunkedDrawLayer {
      * @returns {void}
      */
     tick(frame, deltaMS, visibleChunks) {
-        if (!this._enabled || this._mapMode || this._terrain === null || !this._hasDetails) {
+        if (!this._enabled || this._isMapMode || this._terrain === null || !this._hasDetails) {
             return;
         }
         this._reconcileViewport(visibleChunks);

@@ -7,25 +7,25 @@ import {NotImplementedError} from "@/common/error.js";
 export class AbstractDevicePreference {
 
     constructor() {
-        this._enabled = false;
+        this._isEnabled = false;
         this._onChange = [];
     }
 
     /**
      * @returns {boolean}
      */
-    get enabled() {
-        return this._enabled;
+    get isEnabled() {
+        return this._isEnabled;
     }
 
     /**
-     * @param {boolean} on
+     * @param {boolean} isEnabled
      * @returns {void}
      */
-    setEnabled(on) {
-        this._enabled = on;
+    setEnabled(isEnabled) {
+        this._isEnabled = isEnabled;
         for (const callback of this._onChange) {
-            callback(on);
+            callback(isEnabled);
         }
     }
 

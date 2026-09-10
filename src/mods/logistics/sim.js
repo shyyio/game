@@ -121,7 +121,7 @@ export class LogisticsSimMod extends AbstractSimMod {
             game.bus.publishTo(session.sessionRef, engine.sync.getObjectFieldsEventByEid(engine.components.getComponentByName("Gate"), eid));
             return;
         }
-        engine.placed.getBehaviorByTypeId(objectTypeId).requestOpen(engine, eid, message.open === 1);
+        engine.placed.getBehaviorByTypeId(objectTypeId).requestOpen(engine, eid, message.isOpen);
     }
 
     /**

@@ -64,7 +64,7 @@ export class ItemInspectLayer extends AbstractDrawLayer {
      * Never hides itself: the bracket is parked in {@link tick} instead, with the items it marks.
      * @param {boolean} value
      */
-    set mapMode(value) {}
+    set isMapMode(value) {}
 
     /**
      * @returns {ItemParticle|null} the bracketed item, null while none is locked
@@ -111,7 +111,7 @@ export class ItemInspectLayer extends AbstractDrawLayer {
             return;
         }
         // Touch synthesizes a hover around every tap, so there the tap alone picks.
-        if (!Mobile.enabled) {
+        if (!Mobile.isEnabled) {
             this._pickUnderCursor();
         }
         this._follow();

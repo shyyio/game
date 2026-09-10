@@ -70,7 +70,7 @@ function press(name, label, toolId, input, output) {
         textureName: "demo-machine/0",
         label,
         inspectable: true,
-        placement: new PlacementRule({replaceSameKind: true}),
+        placement: new PlacementRule({shouldReplaceSameKind: true}),
         behavior: new MachineBehavior({
             processingTicks: 0,
             recipes: [new RecipeDefinition([input], output)],
@@ -166,7 +166,7 @@ export const ThroughputSinkType = new ObjectType({
     renderConnections: true,
     textureName: "demo-machine/0",
     label: "Throughput Sink",
-    placement: new PlacementRule({replaceSameKind: true}),
+    placement: new PlacementRule({shouldReplaceSameKind: true}),
     behavior: new SinkBehavior(),
 });
 

@@ -15,7 +15,7 @@ export class LaneItemComponent extends AbstractComponent {
             new FieldDefinition("itemTypeId", "item", EMPTY),
             new FieldDefinition("gap"),
             new FieldDefinition("itemRef"),
-        ], {sparse: true});
+        ], {isSparse: true});
     }
 
     /**

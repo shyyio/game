@@ -13,7 +13,7 @@ export class AbstractDebugDrawLayer extends AbstractDrawLayer {
         this.visible = false;
         this._debugMode = false;
         // Map mode (zoomed far out) is too coarse for an overlay; it hides regardless of debug mode.
-        this._mapMode = false;
+        this._isMapMode = false;
         this._stale = true;
     }
 
@@ -30,8 +30,8 @@ export class AbstractDebugDrawLayer extends AbstractDrawLayer {
     /**
      * @param {boolean} value
      */
-    set mapMode(value) {
-        this._mapMode = value;
+    set isMapMode(value) {
+        this._isMapMode = value;
         this._resyncVisibility();
     }
 
@@ -48,7 +48,7 @@ export class AbstractDebugDrawLayer extends AbstractDrawLayer {
      * @returns {void}
      */
     _resyncVisibility() {
-        this.visible = this._debugMode && !this._mapMode;
+        this.visible = this._debugMode && !this._isMapMode;
         this._stale = true;
     }
 

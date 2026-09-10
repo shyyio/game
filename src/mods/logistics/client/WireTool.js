@@ -45,7 +45,7 @@ export class WireTool extends AbstractTool {
     onTap(tileX, tileY) {
         const entry = this._cache.getObjectAtOrNull(tileX, tileY, LAYER_SURFACE);
         if (entry === null || !WireTool._isEntryWireable(entry)) {
-            if (!Mobile.enabled) {
+            if (!Mobile.isEnabled) {
                 this._select(null);
             }
             return;
@@ -90,13 +90,13 @@ export class WireTool extends AbstractTool {
         const entry = this._cache.getObjectAtOrNull(tileX, tileY, LAYER_SURFACE);
         const tile = [{x: tileX, y: tileY}];
         if (entry === null) {
-            this._placementFeedbackLayer.show({blocked: [], overwrite: [], clear: [], showTarget: true});
+            this._placementFeedbackLayer.show({blocked: [], overwrite: [], clear: [], shouldShowTarget: true});
             return;
         }
         if (this._isEntryActionable(entry)) {
-            this._placementFeedbackLayer.show({blocked: [], overwrite: [], clear: tile, showTarget: true});
+            this._placementFeedbackLayer.show({blocked: [], overwrite: [], clear: tile, shouldShowTarget: true});
         } else {
-            this._placementFeedbackLayer.show({blocked: tile, overwrite: [], clear: [], showTarget: true});
+            this._placementFeedbackLayer.show({blocked: tile, overwrite: [], clear: [], shouldShowTarget: true});
         }
     }
 

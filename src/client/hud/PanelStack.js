@@ -144,12 +144,12 @@ export class PanelStack extends Container {
      * @param {string} emptyLabel - shown in place of rows when `items` is empty
      * @param {object} [options]
      * @param {number} [options.visibleRows]
-     * @param {boolean} [options.fixedHeight] keeps the section at `visibleRows` tall regardless of
+     * @param {boolean} [options.hasFixedHeight] keeps the section at `visibleRows` tall regardless of
      *     item count, so the row set can change later
      * @param {number|null} [options.centerRow] the index of a row to scroll into the middle
-     * @returns {ScrollSectionHandle|null} an rebuild handle for a fixedHeight section, null otherwise
+     * @returns {ScrollSectionHandle|null} an rebuild handle for a hasFixedHeight section, null otherwise
      */
-    scrollSection(items, describe, emptyLabel, {visibleRows, fixedHeight = false, centerRow = null} = {}) {
+    scrollSection(items, describe, emptyLabel, {visibleRows, hasFixedHeight = false, centerRow = null} = {}) {
         const innerWidth = this._contentWidth - SECTION_PADDING_LEFT;
         // Always built at scrollbar-reserved width, so a short list never reflows crossing the threshold.
         const rowsWidth = ScrollView.getContentWidth(innerWidth);
@@ -158,7 +158,7 @@ export class PanelStack extends Container {
 
         let maxRows = visibleRows;
         if (maxRows === undefined) {
-            if (Mobile.enabled) {
+            if (Mobile.isEnabled) {
                 maxRows = DEFAULT_VISIBLE_ROWS_MOBILE;
             } else {
                 maxRows = DEFAULT_VISIBLE_ROWS;
@@ -166,7 +166,7 @@ export class PanelStack extends Container {
         }
         const viewportHeight = maxRows * (ROW_HEIGHT + ROW_GAP) - ROW_GAP;
         let visibleHeight = viewportHeight;
-        if (!fixedHeight) {
+        if (!hasFixedHeight) {
             visibleHeight = Math.min(rowsHeight, viewportHeight);
         }
         const insetHeight = visibleHeight + SECTION_PADDING_TOP;
@@ -175,7 +175,7 @@ export class PanelStack extends Container {
         inset.y = this._y;
         this.addChild(inset);
 
-        if (fixedHeight) {
+        if (hasFixedHeight) {
             // Always a ScrollView: the row set can grow past the viewport after later updates.
             const scrollView = this._buildScrollView(innerWidth, viewportHeight, rows, rowsHeight);
             this._centerRow(scrollView, viewportHeight, centerRow);
@@ -259,7 +259,7 @@ export class PanelStack extends Container {
             const descriptor = describe(item, index);
             const row = new PanelRow(width);
             row.y = y;
-            if (descriptor.selected === true) {
+            if (descriptor.isSelected === true) {
                 // Behind the flow, spanning the row.
                 row.addChild(new Graphics()
                     .roundRect(0, 0, width, ROW_HEIGHT, SELECTED_RADIUS)
@@ -320,17 +320,17 @@ export class PanelRowDescriptor {
      * @param {string} fields.label
      * @param {number} [fields.swatchColor] left color swatch
      * @param {string} [fields.rightLabel] right-aligned text (not combined with a button)
-     * @param {boolean} [fields.selected] accent row background
+     * @param {boolean} [fields.isSelected] accent row background
      * @param {function(): void} [fields.onRowClick] fired on a tap anywhere on the row
      * @param {string} [fields.buttonLabel] right button
      * @param {number} [fields.buttonTint]
      * @param {function(): void} [fields.onClick] fired by the right button
      */
-    constructor({label, swatchColor, rightLabel, selected, onRowClick, buttonLabel, buttonTint, onClick}) {
+    constructor({label, swatchColor, rightLabel, isSelected, onRowClick, buttonLabel, buttonTint, onClick}) {
         this.label = label;
         this.swatchColor = swatchColor;
         this.rightLabel = rightLabel;
-        this.selected = selected;
+        this.isSelected = isSelected;
         this.onRowClick = onRowClick;
         this.buttonLabel = buttonLabel;
         this.buttonTint = buttonTint;
@@ -339,7 +339,7 @@ export class PanelRowDescriptor {
 }
 
 /**
- * Handle to a fixedHeight scrollSection: swaps the row set in place, keeping the inset and
+ * Handle to a hasFixedHeight scrollSection: swaps the row set in place, keeping the inset and
  * scroll machinery (and scroll position, clamped) alive.
  */
 export class ScrollSectionHandle {

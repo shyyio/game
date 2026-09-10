@@ -39,9 +39,9 @@ export class TextInput extends Container {
      * @param {number} height
      * @param {number} maxLength
      * @param {string} [placeholder]
-     * @param {boolean} [numeric] - raises the numeric keyboard on touch devices
+     * @param {boolean} [isNumeric] - raises the numeric keyboard on touch devices
      */
-    constructor(app, width, height, maxLength, placeholder = "", numeric = false) {
+    constructor(app, width, height, maxLength, placeholder = "", isNumeric = false) {
         super();
         this._app = app;
         this._width = width;
@@ -53,7 +53,7 @@ export class TextInput extends Container {
         // Screen rect the DOM input is clipped to (a host ScrollView's viewport); null = unclipped.
         // The input paints nothing, so this clips what it can still capture: pointer events.
         this._clipProvider = null;
-        this._domShown = true;
+        this._isDomShown = true;
         // Last painted selection, so the tick repaints only when the caret actually moved.
         this._lastSelectionStart = null;
         this._lastSelectionEnd = null;
@@ -65,7 +65,7 @@ export class TextInput extends Container {
         // How far the text is scrolled left to keep the caret inside the box.
         this._scrollX = 0;
 
-        this._buildDomInput(maxLength, placeholder, numeric);
+        this._buildDomInput(maxLength, placeholder, isNumeric);
         this._buildContent(placeholder);
 
         this._tick = () => this._advance();
@@ -81,10 +81,10 @@ export class TextInput extends Container {
      * @private
      * @param {number} maxLength
      * @param {string} placeholder
-     * @param {boolean} numeric
+     * @param {boolean} isNumeric
      * @returns {void}
      */
-    _buildDomInput(maxLength, placeholder, numeric) {
+    _buildDomInput(maxLength, placeholder, isNumeric) {
         this._domInput = document.createElement("input");
         this._domInput.type = "text";
         this._domInput.maxLength = maxLength;
@@ -95,7 +95,7 @@ export class TextInput extends Container {
         if (placeholder !== "") {
             this._domInput.setAttribute("aria-label", placeholder);
         }
-        if (numeric) {
+        if (isNumeric) {
             this._domInput.inputMode = "numeric";
         }
         this._domInput.autocapitalize = "off";
@@ -346,19 +346,19 @@ export class TextInput extends Container {
         // The input captures pointer events over every pixi layer, so a hidden widget (a collapsed
         // section, a closed panel) must take its input with it. Walked by hand: pixi v8 has no
         // worldVisible.
-        let shown = this.visible;
-        for (let node = this.parent; shown && node !== null; node = node.parent) {
-            shown = node.visible;
+        let isShown = this.visible;
+        for (let node = this.parent; isShown && node !== null; node = node.parent) {
+            isShown = node.visible;
         }
-        if (shown !== this._domShown) {
-            this._domShown = shown;
-            if (shown) {
+        if (isShown !== this._isDomShown) {
+            this._isDomShown = isShown;
+            if (isShown) {
                 this._domInput.style.display = "block";
             } else {
                 this._domInput.style.display = "none";
             }
         }
-        if (!shown) {
+        if (!isShown) {
             return;
         }
         const bounds = this.getBounds();

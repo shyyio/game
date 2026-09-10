@@ -53,7 +53,7 @@ export class SettingsMenu {
             if (entry === null) {
                 throw new Error(`Settings control "${control.label}" targets unregistered player setting key ${control.key}`);
             }
-            if (!entry.clientWritable) {
+            if (!entry.isClientWritable) {
                 throw new Error(`Settings control "${control.label}" targets server-authoritative player setting key ${control.key}`);
             }
             if (control instanceof PlayerSettingChoice) {

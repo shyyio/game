@@ -36,6 +36,6 @@ export class MachineComponent extends AbstractComponent {
             new FieldDefinition("workerStep", "f32", 1),
             // Logic-network switch; a disabled machine pauses whole (no gather, craft, or output).
             new FieldDefinition("enabled", "i32", 1),
-        ], {sparse: true});
+        ], {isSparse: true});
     }
 }

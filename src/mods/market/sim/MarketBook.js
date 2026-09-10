@@ -44,13 +44,13 @@ class GuidePrice {
 class MarketMatch {
 
     /**
-     * @param {boolean} npc
+     * @param {boolean} isNpc
      * @param {number} price
      * @param {number} eid - NO_EID for an NPC match
      * @param {number} outputPort - EMPTY for an NPC match
      */
-    constructor(npc, price, eid, outputPort) {
-        this.npc = npc;
+    constructor(isNpc, price, eid, outputPort) {
+        this.isNpc = isNpc;
         this.price = price;
         this.eid = eid;
         this.outputPort = outputPort;

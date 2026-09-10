@@ -21,7 +21,7 @@ const DualOutputGeneratorType = new ObjectType({
     geometry: "1x1",
     textureName: "demo-machine/0",
     label: "DualOutputGenerator",
-    placement: new PlacementRule({replaceSameKind: true}),
+    placement: new PlacementRule({shouldReplaceSameKind: true}),
     behavior: new GeneratorBehavior({
         processingTicks: 1,
         output: ITEM_MAIN,
@@ -35,7 +35,7 @@ const SingleOutputGeneratorType = new ObjectType({
     geometry: "1x1",
     textureName: "demo-machine/0",
     label: "SingleOutputGenerator",
-    placement: new PlacementRule({replaceSameKind: true}),
+    placement: new PlacementRule({shouldReplaceSameKind: true}),
     behavior: new GeneratorBehavior({processingTicks: 1, output: ITEM_MAIN}),
 });
 

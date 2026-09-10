@@ -67,29 +67,29 @@ export class PlacementRule {
     /**
      * How an object type may be placed.
      * @param {object} [config]
-     * @param {boolean} [config.replaceSameKind] - placing over a same-kind conveyor lane overwrites it
-     * @param {boolean} [config.advanceOnPlace] - center-lock advances one tile after placing;
+     * @param {boolean} [config.shouldReplaceSameKind] - placing over a same-kind conveyor lane overwrites it
+     * @param {boolean} [config.shouldAdvanceOnPlace] - center-lock advances one tile after placing;
      *     off for one-off objects
      * @param {ObjectType[]} [config.placeOn] - restrict placement to these types' extraction tiles
-     * @param {boolean} [config.solid] - whether the object occupies its footprint (blocks the tile)
-     * @param {boolean} [config.dragToPlace] - dragging lays one placement per tile entered
-     * @param {boolean} [config.conveyor] - the type is a straight surface lane an aligned
+     * @param {boolean} [config.isSolid] - whether the object occupies its footprint (blocks the tile)
+     * @param {boolean} [config.shouldDragToPlace] - dragging lays one placement per tile entered
+     * @param {boolean} [config.isConveyor] - the type is a straight surface lane an aligned
      *     placement may overwrite
      */
     constructor({
-        replaceSameKind=false,
-        advanceOnPlace=true,
-        placeOn=[],
-        solid=true,
-        dragToPlace=false,
-        conveyor=false,
-    }={}) {
-        this.replaceSameKind = replaceSameKind;
-        this.advanceOnPlace = advanceOnPlace;
+        shouldReplaceSameKind = false,
+        shouldAdvanceOnPlace = true,
+        placeOn = [],
+        isSolid = true,
+        shouldDragToPlace = false,
+        isConveyor = false,
+    } = {}) {
+        this.shouldReplaceSameKind = shouldReplaceSameKind;
+        this.shouldAdvanceOnPlace = shouldAdvanceOnPlace;
         this.placeOn = placeOn;
-        this.solid = solid;
-        this.dragToPlace = dragToPlace;
-        this.conveyor = conveyor;
+        this.isSolid = isSolid;
+        this.shouldDragToPlace = shouldDragToPlace;
+        this.isConveyor = isConveyor;
     }
 }
 

@@ -296,10 +296,10 @@ export class TradingTerminalConfigLayer extends ConnectedPanelLayer {
      * @returns {void}
      */
     _buildPriceRow(row, snapshot) {
-        const npcSelected = snapshot.itemTypeIds.length > 0 && snapshot.npcPrices[this._itemIndex] !== MARKET_SNAPSHOT_NONE;
-        this._priceText = panelText(this._priceLabel(npcSelected), TextRole.BODY);
+        const isNpcSelected = snapshot.itemTypeIds.length > 0 && snapshot.npcPrices[this._itemIndex] !== MARKET_SNAPSHOT_NONE;
+        this._priceText = panelText(this._priceLabel(isNpcSelected), TextRole.BODY);
         row.pushLeft(this._priceText);
-        if (!npcSelected) {
+        if (!isNpcSelected) {
             row.pushRight(buildPanelButton(this.textureCache, "+", ACTIVE_ACCENT, () => this._stepPrice(1)));
             row.pushRight(buildPanelButton(this.textureCache, "-", ACTIVE_ACCENT, () => this._stepPrice(-1)));
         }
@@ -307,11 +307,11 @@ export class TradingTerminalConfigLayer extends ConnectedPanelLayer {
 
     /**
      * @private
-     * @param {boolean} npcSelected
+     * @param {boolean} isNpcSelected
      * @returns {string}
      */
-    _priceLabel(npcSelected) {
-        if (npcSelected) {
+    _priceLabel(isNpcSelected) {
+        if (isNpcSelected) {
             return `Price: ${this._price} (fixed)`;
         }
         return `Price: ${this._price}`;

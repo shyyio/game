@@ -121,7 +121,7 @@ export class CounterListLayer extends Container {
         this.visible = false;
         this._topOffset = 0;
         // Set while the top status bar occupies the top edge: the list stays out of its way.
-        this._suppressed = false;
+        this._isSuppressed = false;
         // Counter id -> its row, in insertion order.
         this._rows = new Map();
         this._layout();
@@ -168,12 +168,12 @@ export class CounterListLayer extends Container {
      * Shifts the list down by `offset` px and, once the top status bar occupies the edge at all,
      * hides it: the bar owns that corner.
      * @param {number} offset
-     * @param {boolean} barPresent
+     * @param {boolean} isBarPresent
      * @returns {void}
      */
-    setTopOffset(offset, barPresent) {
+    setTopOffset(offset, isBarPresent) {
         this._topOffset = offset;
-        this._suppressed = barPresent;
+        this._isSuppressed = isBarPresent;
         this._layout();
     }
 
@@ -193,7 +193,7 @@ export class CounterListLayer extends Container {
      * @returns {void}
      */
     _layout() {
-        this.visible = !this._suppressed && this._rows.size > 0;
+        this.visible = !this._isSuppressed && this._rows.size > 0;
         this.x = SafeArea.insets().left + MARGIN;
         this.y = this._topOffset + MARGIN;
         let y = 0;

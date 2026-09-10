@@ -49,7 +49,7 @@ export const TestExtractorType = new ObjectType({
     textureName: "demo-machine/0",
     label: "Test Extractor",
     inspectable: true,
-    placement: new PlacementRule({replaceSameKind: true, placeOn: [TestVolcanoResourceType]}),
+    placement: new PlacementRule({shouldReplaceSameKind: true, placeOn: [TestVolcanoResourceType]}),
     behavior: new ExtractorBehavior({
         processingTicks: 4,
         recipes: [new RecipeDefinition([RESOURCE_TEST_VOLCANO], ITEM_TYPE_TEST_SULFUR)],
@@ -64,7 +64,7 @@ export const TestDeepExtractorType = new ObjectType({
     textureName: "demo-machine/0",
     label: "Test Deep Extractor",
     inspectable: true,
-    placement: new PlacementRule({replaceSameKind: true, placeOn: [TestVolcanoResourceType]}),
+    placement: new PlacementRule({shouldReplaceSameKind: true, placeOn: [TestVolcanoResourceType]}),
     behavior: new ExtractorBehavior({
         processingTicks: 8,
         recipes: [new RecipeDefinition([RESOURCE_TEST_VOLCANO], ITEM_TYPE_TEST_BRINE)],

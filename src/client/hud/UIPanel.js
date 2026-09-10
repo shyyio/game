@@ -305,7 +305,7 @@ export class UIPanel extends Container {
      * @returns {number}
      */
     static maxTop(app, height) {
-        if (Mobile.enabled) {
+        if (Mobile.isEnabled) {
             return app.screen.height * KEYBOARD_CLEAR_FRACTION - height;
         }
         return app.screen.height - height - PANEL_SCREEN_MARGIN;

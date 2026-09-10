@@ -83,7 +83,7 @@ export class ChunkSelectionLayer extends AbstractDrawLayer {
      * @returns {void}
      */
     setHoverChunk(chunkKey) {
-        if (Mobile.enabled) {
+        if (Mobile.isEnabled) {
             chunkKey = null;
         }
         if (chunkKey === this._hoverChunk) {

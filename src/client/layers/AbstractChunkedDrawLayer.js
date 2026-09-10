@@ -24,7 +24,7 @@ export class AbstractChunkedDrawLayer extends AbstractDrawLayer {
         this._mounted = new Set();
         this._dirtyChunks = new Set();
         this._visibleChunks = new Set();
-        this._mapMode = false;
+        this._isMapMode = false;
     }
 
     /**
@@ -32,8 +32,8 @@ export class AbstractChunkedDrawLayer extends AbstractDrawLayer {
      * the map flag itself is unchanged (overworld to map), so the hook must always re-apply.
      * @param {boolean} value
      */
-    set mapMode(value) {
-        this._mapMode = value;
+    set isMapMode(value) {
+        this._isMapMode = value;
         this._applyMapMode();
     }
 
@@ -57,7 +57,7 @@ export class AbstractChunkedDrawLayer extends AbstractDrawLayer {
      */
     tick(frame, deltaMS, visibleChunks) {
         this._reconcileViewport(visibleChunks);
-        if (this._mapMode) {
+        if (this._isMapMode) {
             this._tickMapMode();
             return;
         }
@@ -242,7 +242,7 @@ export class AbstractChunkedDrawLayer extends AbstractDrawLayer {
      * @returns {void}
      */
     _rebuildChunk(chunkKey) {
-        if (this._mapMode) {
+        if (this._isMapMode) {
             this._rebuildChunkGeometry(chunkKey);
             return;
         }
@@ -264,7 +264,7 @@ export class AbstractChunkedDrawLayer extends AbstractDrawLayer {
      */
     _applyMode(chunkKey) {
         const node = this._chunks.get(chunkKey);
-        if (this._mapMode) {
+        if (this._isMapMode) {
             node.showGraphics(this._rebuildChunkGeometry(chunkKey));
             return;
         }

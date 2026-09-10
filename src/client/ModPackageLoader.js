@@ -157,12 +157,12 @@ export async function importBundle(bytes) {
  * hosts one in the page, a remote join leaves it to the server.
  * @param {object} bundle the factory exports
  * @param {string[]} parts which factories the manifest declares
- * @param {boolean} withSim
+ * @param {boolean} shouldLoadSim
  * @returns {ModPackage}
  */
-export function instantiatePackage(bundle, parts, withSim) {
+export function instantiatePackage(bundle, parts, shouldLoadSim) {
     let sim = null;
-    if (withSim && parts.includes(MOD_PART_SIM)) {
+    if (shouldLoadSim && parts.includes(MOD_PART_SIM)) {
         sim = bundle.createSim(sdk);
     }
     let client = null;
@@ -192,10 +192,10 @@ function assertSdkVersion(manifest) {
  * the entry records, and the manifest checked against what the entry says it is.
  * @param {ModFileStore} store
  * @param {ModLockEntry} entry
- * @param {boolean} withSim
+ * @param {boolean} shouldLoadSim
  * @returns {Promise<ModPackage>}
  */
-export async function loadModPackage(store, entry, withSim) {
+export async function loadModPackage(store, entry, shouldLoadSim) {
     const manifestHex = integrityHex(entry.getIntegrityByFile(MANIFEST_FILE));
     const manifestBytes = await fetchVerifiedFile(
         store, `${entry.url}${MANIFEST_FILE}`, contentName(manifestHex, MANIFEST_FILE), manifestHex,
@@ -212,6 +212,6 @@ export async function loadModPackage(store, entry, withSim) {
     const bundleBytes = await fetchVerifiedFile(
         store, `${entry.url}${manifest.entry}`, contentName(entryHex, manifest.entry), entryHex,
     );
-    return instantiatePackage(await importBundle(bundleBytes), manifest.parts, withSim);
+    return instantiatePackage(await importBundle(bundleBytes), manifest.parts, shouldLoadSim);
 }
 

@@ -29,7 +29,7 @@ export class InputHandler {
         this._hoverTileX = null;
         this._hoverTileY = null;
         // Map mode (zoomed far out) temporarily deactivates the active tool.
-        this._mapMode = false;
+        this._isMapMode = false;
         // Keyboard bindings registered in init(), unbound in destroy() so a stale InputHandler from
         // a torn-down Game mount doesn't keep driving a destroyed toolbar/tool/draw layer.
         this._keyboardBindings = [];
@@ -42,7 +42,7 @@ export class InputHandler {
         // In map mode the tool is deactivated without clearing the toolbar
         // selection, so the cursor acts as if nothing were selected: no placement,
         // no drag, no ghost preview.
-        if (this._mapMode) {
+        if (this._isMapMode) {
             return null;
         }
         return this._toolbar.activeTool;
@@ -60,7 +60,7 @@ export class InputHandler {
 
     init() {
         Mouse.onTap((tileX, tileY) => {
-            if (this._mapMode) {
+            if (this._isMapMode) {
                 return;
             }
             if (this.activeTool == null) {
@@ -72,7 +72,7 @@ export class InputHandler {
 
         // Chunk selection rides the press (a pan's start included), not the release.
         Mouse.onPress((tileX, tileY, shiftKey) => {
-            if (this._mapMode) {
+            if (this._isMapMode) {
                 this._notifyMapTap(tileX, tileY, shiftKey);
             }
         });
@@ -97,7 +97,7 @@ export class InputHandler {
 
         Mouse.onTileExit((tileX, tileY) => {
             // Map-mode hover persists across exits; the next enter retargets it.
-            if (this._mapMode) {
+            if (this._isMapMode) {
                 return;
             }
             if (this.activeTool == null) {
@@ -221,15 +221,15 @@ export class InputHandler {
     /**
      * Enters/leaves map mode: activeTool reads null without clearing the toolbar
      * selection; hover reroutes to the map-hover handler.
-     * @param {boolean} mapMode
+     * @param {boolean} isMapMode
      * @returns {void}
      */
-    setMapMode(mapMode) {
-        if (this._mapMode === mapMode) {
+    setMapMode(isMapMode) {
+        if (this._isMapMode === isMapMode) {
             return;
         }
-        this._mapMode = mapMode;
-        if (mapMode) {
+        this._isMapMode = isMapMode;
+        if (isMapMode) {
             if (this._hoverTileX != null) {
                 this._notifyMapHover(this._hoverTileX, this._hoverTileY);
             }
@@ -243,7 +243,7 @@ export class InputHandler {
      * no-op in map mode.
      */
     resyncHover() {
-        if (this._mapMode || this._hoverTileX == null) {
+        if (this._isMapMode || this._hoverTileX == null) {
             return;
         }
         this._enterTile(this._hoverTileX, this._hoverTileY);
@@ -257,7 +257,7 @@ export class InputHandler {
     _enterTile(tileX, tileY) {
         this._hoverTileX = tileX;
         this._hoverTileY = tileY;
-        if (this._mapMode) {
+        if (this._isMapMode) {
             this._notifyMapHover(tileX, tileY);
             return;
         }
@@ -325,7 +325,7 @@ export class InputHandler {
      * @private
      */
     _onContextGesture(tileX, tileY, screenX, screenY) {
-        if (this._mapMode) {
+        if (this._isMapMode) {
             return;
         }
         if (this.activeTool == null) {

@@ -37,7 +37,7 @@ test("a mod's player-setting entries collect at freeze", () => {
     const registry = new ModRegistry();
     registry.register(new ModPackage(new EntriesDeclaration("A", [new PlayerSettingEntry(MOD_KEY, false, 2)])));
     registry.freeze();
-    assert.equal(registry.getPlayerSettingEntryByKeyOrNull(MOD_KEY).clientWritable, false);
+    assert.equal(registry.getPlayerSettingEntryByKeyOrNull(MOD_KEY).isClientWritable, false);
     assert.equal(registry.getPlayerSettingEntryByKeyOrNull(999), null);
 });
 

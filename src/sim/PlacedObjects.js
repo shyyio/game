@@ -234,7 +234,7 @@ export class PlacedObjects extends AbstractSystem {
     }
 
     /**
-     * The generic spawn path: footprint/position check (honoring placement.solid), the PlacedObject
+     * The generic spawn path: footprint/position check (honoring placement.isSolid), the PlacedObject
      * columns, the behavior's wiring, and the insert event. Returns false for types the host doesn't
      * own (bespoke placement falls through to the mod's own handler).
      * @private
@@ -263,7 +263,7 @@ export class PlacedObjects extends AbstractSystem {
             return true;
         }
         const footprint = engine.getFootprintAt(type, message.x, message.y, message.direction);
-        if (type.placement.solid && !engine.space.isEveryCellFree(footprint)) {
+        if (type.placement.isSolid && !engine.space.isEveryCellFree(footprint)) {
             return true;
         }
         const eid = this.objects.create();
@@ -279,7 +279,7 @@ export class PlacedObjects extends AbstractSystem {
         if (synced !== null) {
             engine.sync.markSpawned(engine.components.getComponentByName(synced.component), eid);
         }
-        if (type.placement.solid) {
+        if (type.placement.isSolid) {
             engine.track(objectRef, footprint);
         }
         this._eidByObjectRef.set(objectRef, eid);

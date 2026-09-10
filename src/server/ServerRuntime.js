@@ -172,16 +172,16 @@ export class ServerRuntime {
         const next = this._withHeldFieldsKept(config);
         const changed = this._running.diff(next);
         const verifier = await this._createVerifier(next, changed);
-        const armed = this._tickInterval !== null;
+        const isArmed = this._tickInterval !== null;
         this.stop();
         try {
             await this._world.discard();
             // The files of the world about to boot, so a reset onto another save resets that one and
             // leaves the save it came from alone.
             this._deleteWorldFiles(this.resolvePaths(next));
-            this._installWorld(await this._bootWorld(this.resolvePaths(next)), armed);
+            this._installWorld(await this._bootWorld(this.resolvePaths(next)), isArmed);
         } catch (error) {
-            this._installWorld(await this._bootWorld(this.resolvePaths(this._running)), armed);
+            this._installWorld(await this._bootWorld(this.resolvePaths(this._running)), isArmed);
             throw error;
         }
         this._applyLive(next, changed, verifier);
@@ -249,13 +249,13 @@ export class ServerRuntime {
     /**
      * @private
      * @param {World} world
-     * @param {boolean} armed whether the loops were running
+     * @param {boolean} isArmed whether the loops were running
      * @returns {void}
      */
-    _installWorld(world, armed) {
+    _installWorld(world, isArmed) {
         this._world = world;
         this._gameServer.setWorld(world);
-        if (armed) {
+        if (isArmed) {
             this.start();
         }
     }
@@ -271,20 +271,20 @@ export class ServerRuntime {
      * @returns {Promise<void>}
      */
     async _convertWorld(config, loadout, before) {
-        const armed = this._tickInterval !== null;
+        const isArmed = this._tickInterval !== null;
         this.stop();
         let next;
         try {
             next = await this._bootWorld(this.resolvePaths(config), this._world.snapshotForConversion(loadout));
         } catch (error) {
             this._world.restore(before);
-            if (armed) {
+            if (isArmed) {
                 this.start();
             }
             throw error;
         }
         const old = this._world;
-        this._installWorld(next, armed);
+        this._installWorld(next, isArmed);
         await old.discard();
     }
 
@@ -296,20 +296,20 @@ export class ServerRuntime {
      * @returns {Promise<void>}
      */
     async _swapWorld(config) {
-        const armed = this._tickInterval !== null;
+        const isArmed = this._tickInterval !== null;
         this.stop();
         let next;
         try {
             await this._world.save();
             next = await this._bootWorld(this.resolvePaths(config));
         } catch (error) {
-            if (armed) {
+            if (isArmed) {
                 this.start();
             }
             throw error;
         }
         const old = this._world;
-        this._installWorld(next, armed);
+        this._installWorld(next, isArmed);
         await old.close();
     }
 

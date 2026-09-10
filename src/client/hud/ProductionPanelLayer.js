@@ -157,7 +157,7 @@ export class ProductionPanelLayer extends Container {
             stack.gap();
             // Fixed-height list section, so pushes can swap the row set without resizing the panel.
             this._listHandle = stack.scrollSection([], entry => this._describeEntry(entry),
-                "No production yet", {fixedHeight: true});
+                "No production yet", {hasFixedHeight: true});
         });
         this.addChild(panel);
 
@@ -241,7 +241,7 @@ export class ProductionPanelLayer extends Container {
             label: this._itemName(entry.category),
             swatchColor: this._chart.getColorByKey(entry.key),
             rightLabel: this._rateLabel(entry.ratePerTick),
-            selected: entry.key === this._selectedKey,
+            isSelected: entry.key === this._selectedKey,
             onRowClick: () => this._toggleSelect(entry.key),
         });
     }

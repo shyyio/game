@@ -99,16 +99,16 @@ export function contrastRatio(a, b) {
 
 /**
  * @param {number} fontSize - px
- * @param {boolean} bold
+ * @param {boolean} isBold
  * @param {string} level - LEVEL_AA or LEVEL_AAA
  * @returns {number} the ratio that level demands of text that size
  */
-export function requiredRatio(fontSize, bold, level) {
+export function requiredRatio(fontSize, isBold, level) {
     const ratios = RATIOS[level];
     if (ratios === undefined) {
         throw new Error(`Unknown conformance level "${level}"`);
     }
-    if (fontSize >= LARGE_SIZE || (bold && fontSize >= LARGE_BOLD_SIZE)) {
+    if (fontSize >= LARGE_SIZE || (isBold && fontSize >= LARGE_BOLD_SIZE)) {
         return ratios.large;
     }
     return ratios.normal;

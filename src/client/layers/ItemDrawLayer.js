@@ -207,7 +207,7 @@ export class ItemDrawLayer extends AbstractDrawLayer {
     }
 
     /**
-     * Places or repositions an item at a belt tile, with the texture for its item type. A hidden
+     * Places or repositions an item at a belt tile, with the texture for its item type. A isHidden
      * item is still positioned, keeping its glide continuous.
      * @param {Object} move
      * @param {number|string} move.key - particle key (row id for belt items, namespaced string for output port items)
@@ -217,9 +217,9 @@ export class ItemDrawLayer extends AbstractDrawLayer {
      * @param {Direction} move.sourceDirection - toward the belt feeding this one (the input/bend edge)
      * @param {number} move.type - item type, selecting the texture
      * @param {boolean} [move.snap] - place at the target without animating (a re-sync)
-     * @param {boolean} [move.hidden] - the item is under cover (in a tunnel)
+     * @param {boolean} [move.isHidden] - the item is under cover (in a tunnel)
      */
-    moveItem({key, tileX, tileY, halfTile, sourceDirection, type, snap=false, hidden=false}) {
+    moveItem({key, tileX, tileY, halfTile, sourceDirection, type, snap=false, isHidden=false}) {
         const definition = this._itemRegistry.getItemTypeOrDefaultByTypeId(type);
         const texture = this.textureCache.get(definition.texture);
         const particle = this._items.acquire(key, texture);
@@ -227,23 +227,23 @@ export class ItemDrawLayer extends AbstractDrawLayer {
         particle.itemTypeId = type;
         particle.setTexture(texture);
         particle.setTint(definition.tint);
-        particle.hidden = hidden;
+        particle.isHidden = isHidden;
         this._applyItemVisibility(particle);
         // Reduced motion puts the item on its new tile outright, no glide.
-        particle.moveTo(tileX, tileY, halfTile, sourceDirection, snap || ReducedMotion.enabled);
+        particle.moveTo(tileX, tileY, halfTile, sourceDirection, snap || ReducedMotion.isEnabled);
         if (particle.gliding) {
             this._gliding.add(particle);
         }
     }
 
     /**
-     * Applies an item's hidden state: hidden items render at alpha 0, except at 0.7 in debug mode.
+     * Applies an item's isHidden state: isHidden items render at alpha 0, except at 0.7 in debug mode.
      * @param {ItemParticle} particle
      * @private
      */
     _applyItemVisibility(particle) {
         let alpha = 1;
-        if (particle.hidden) {
+        if (particle.isHidden) {
             alpha = this._debugMasks ? 0.7 : 0;
         }
         particle.setAlpha(alpha);
@@ -299,7 +299,7 @@ export class ItemDrawLayer extends AbstractDrawLayer {
         if (particle === undefined) {
             return;
         }
-        if (ReducedMotion.enabled || particle.hidden) {
+        if (ReducedMotion.isEnabled || particle.isHidden) {
             this.removeItem(key);
             return;
         }
@@ -392,7 +392,7 @@ export class ItemDrawLayer extends AbstractDrawLayer {
     }
 
     /**
-     * Debug mode shows the occluders and hidden items semi-transparent instead of masking.
+     * Debug mode shows the occluders and isHidden items semi-transparent instead of masking.
      * @param {boolean} enabled
      * @returns {void}
      */
@@ -419,7 +419,7 @@ class ItemParticle extends Particle {
         // False once released to the pool.
         this.live = false;
         // Under cover (in a tunnel): positioned but rendered at alpha 0 outside debug mode.
-        this.hidden = false;
+        this.isHidden = false;
         // Glide state: start/target pixels and ms elapsed into the current move.
         // _startX is null when not gliding (freshly placed or arrived).
         this._startX = null;
@@ -434,7 +434,7 @@ class ItemParticle extends Particle {
      * @returns {boolean}
      */
     get pickable() {
-        return this.live && !this.hidden;
+        return this.live && !this.isHidden;
     }
 
     /**
@@ -489,7 +489,7 @@ class ItemParticle extends Particle {
      */
     reset() {
         this.itemTypeId = null;
-        this.hidden = false;
+        this.isHidden = false;
         this._startX = null;
         this._startY = null;
         this._targetX = null;

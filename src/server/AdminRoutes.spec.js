@@ -59,12 +59,12 @@ class FakeRuntime {
 
     /**
      * @param {ServerConfig} running
-     * @param {boolean} loaded
+     * @param {boolean} isLoaded
      * @param {object[]} mods the world's pins
      */
-    constructor(running, loaded, mods) {
+    constructor(running, isLoaded, mods) {
         this.running = running;
-        this.world = {loaded, game: {seed: 7}, lockfile: ModLockfile.parse({mods})};
+        this.world = {isLoaded, game: {seed: 7}, lockfile: ModLockfile.parse({mods})};
         this.applied = [];
         this.resets = [];
         this.failNext = "";
@@ -196,7 +196,7 @@ test("the state reports the saved and running configs without the token, the ove
     assert.equal(state.saved.adminToken, undefined);
     assert.equal(state.running.adminToken, undefined);
     assert.deepEqual(state.overridden, ["port"]);
-    assert.deepEqual(state.world, {loaded: true, seed: 7});
+    assert.deepEqual(state.world, {isLoaded: true, seed: 7});
     assert.equal(state.saved.mods, null);
     assert.equal(state.baseDir, "/srv/game");
 });

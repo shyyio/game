@@ -8,7 +8,7 @@ import {ClientCache, PLAYER_SETTINGS_SCHEMA, PlayerSettingsWriter, PlayerSetting
 class FakeWindowFocus {
 
     constructor() {
-        this.focused = true;
+        this.isFocused = true;
         this._listeners = [];
     }
 
@@ -16,10 +16,10 @@ class FakeWindowFocus {
         this._listeners.push(callback);
     }
 
-    set(focused) {
-        this.focused = focused;
+    set(isFocused) {
+        this.isFocused = isFocused;
         for (const callback of this._listeners) {
-            callback(focused);
+            callback(isFocused);
         }
     }
 }

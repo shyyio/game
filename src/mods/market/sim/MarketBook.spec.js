@@ -11,7 +11,7 @@ test("a lone qualifying buyer is matched at its own price, not the seller's floo
     const book = new MarketBook(new Map());
     book.postBuy(100, ITEM, 10, /* outputPort */ 1);
     const match = book.getBestEligibleBuyerOrNull(ITEM, 5, OPEN, RICH);
-    assert.equal(match.npc, false);
+    assert.equal(match.isNpc, false);
     assert.equal(match.eid, 100);
     assert.equal(match.price, 10, "settles at the buyer's own bid, not the seller's floor");
 });
@@ -68,21 +68,21 @@ test("a player buyer wins a tie against the NPC price", () => {
     const book = new MarketBook(new Map([[ITEM, 10]]));
     book.postBuy(100, ITEM, 10, 1);
     const match = book.getBestEligibleBuyerOrNull(ITEM, 5, OPEN, RICH);
-    assert.equal(match.npc, false, "a tie favors the player buyer over the NPC");
+    assert.equal(match.isNpc, false, "a tie favors the player buyer over the NPC");
 });
 
 test("the NPC wins only by strictly beating every player bid", () => {
     const book = new MarketBook(new Map([[ITEM, 12]]));
     book.postBuy(100, ITEM, 10, 1);
     const match = book.getBestEligibleBuyerOrNull(ITEM, 5, OPEN, RICH);
-    assert.equal(match.npc, true);
+    assert.equal(match.isNpc, true);
     assert.equal(match.price, 12);
 });
 
 test("the NPC price is used when no player buyer is posted at all", () => {
     const book = new MarketBook(new Map([[ITEM, 12]]));
     const match = book.getBestEligibleBuyerOrNull(ITEM, 5, OPEN, RICH);
-    assert.equal(match.npc, true);
+    assert.equal(match.isNpc, true);
     assert.equal(match.price, 12);
 });
 

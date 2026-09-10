@@ -13,7 +13,7 @@ export class GridDrawLayer extends AbstractDrawLayer {
          * @type {Map<number, GridChunk>}
          */
         this._chunks = new Map();
-        this._mapMode = false;
+        this._isMapMode = false;
         // Every chunk's grid is the same geometry: built once, shared by all chunk Graphics.
         this._majorContext = GridDrawLayer._buildMajorContext();
         this._minorContext = GridDrawLayer._buildMinorContext();
@@ -35,7 +35,7 @@ export class GridDrawLayer extends AbstractDrawLayer {
         const tileX = x * CHUNK_SIZE;
         const tileY = y * CHUNK_SIZE;
         const grid = new GridChunk(this._majorContext, this._minorContext);
-        grid.minor.visible = !this._mapMode;
+        grid.minor.visible = !this._isMapMode;
         grid.position.set(tileX * TILE_SIZE, tileY * TILE_SIZE);
         grid.zIndex = tileX + tileY;
         this._chunks.set(chunkKey, grid);
@@ -57,8 +57,8 @@ export class GridDrawLayer extends AbstractDrawLayer {
         this._chunks.delete(chunkKey);
     }
 
-    set mapMode(value) {
-        this._mapMode = value;
+    set isMapMode(value) {
+        this._isMapMode = value;
         for (const grid of this._chunks.values()) {
             grid.minor.visible = !value;
         }

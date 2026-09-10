@@ -15,7 +15,7 @@ import Haptics from "@/client/Haptics.js";
 /**
  * Tap-to-place tool: drops one object over its geometry, overwriting an aligned conveyor lane (and
  * optionally its own type), with orientation + center-lock. Placement knobs come from the type's
- * PlacementRule; `dragToPlace` adds drag-to-lay, one placement per tile entered. Belt's drag-to-lay
+ * PlacementRule; `shouldDragToPlace` adds drag-to-lay, one placement per tile entered. Belt's drag-to-lay
  * tools are bespoke.
  */
 export class ObjectTool extends AbstractTool {
@@ -35,10 +35,10 @@ export class ObjectTool extends AbstractTool {
         this._cache = client.objects;
         this._type = type;
         this._ghostLayer = ghostLayer;
-        this._replaceSameKind = type.placement.replaceSameKind;
-        this._advanceOnPlace = type.placement.advanceOnPlace;
+        this._replaceSameKind = type.placement.shouldReplaceSameKind;
+        this._advanceOnPlace = type.placement.shouldAdvanceOnPlace;
         this._placeOn = type.placement.placeOn;
-        this._dragToPlace = type.placement.dragToPlace;
+        this._dragToPlace = type.placement.shouldDragToPlace;
         this._placementFeedbackLayer = client.placementFeedbackLayer;
         // A non-directional type keeps _rotation null: rotate() no-ops, the rotate buttons hide
         // (orientable), and placement always faces UP.
@@ -112,7 +112,7 @@ export class ObjectTool extends AbstractTool {
             blocked: result.blockedCells,
             overwrite: result.overwriteCells,
             clear: result.clearCells,
-            showTarget: true,
+            shouldShowTarget: true,
         });
         return result.blockedCells.length > 0;
     }
@@ -323,7 +323,7 @@ export class ObjectTool extends AbstractTool {
     _getSolidOccupantAtOrNull(tileX, tileY) {
         const stacked = this._cache.getObjectsAt(tileX, tileY, this._type.positionLayer);
         for (let i = stacked.length - 1; i >= 0; i -= 1) {
-            if (stacked[i].data.type.placement.solid) {
+            if (stacked[i].data.type.placement.isSolid) {
                 return stacked[i];
             }
         }
@@ -341,7 +341,7 @@ export class ObjectTool extends AbstractTool {
     _positionsByLayer(excludeIds) {
         const byLayer = new Map();
         for (const entry of this._cache.values()) {
-            if (excludeIds.has(entry.id) || !entry.data.type.placement.solid) {
+            if (excludeIds.has(entry.id) || !entry.data.type.placement.isSolid) {
                 continue;
             }
             for (const {layer, cells} of entry.data.type.getPositionLayerTilesByDirection(entry.data.direction)) {
@@ -359,7 +359,7 @@ export class ObjectTool extends AbstractTool {
 
     /**
      * Whether a surface occupant may be deleted to lay this object over it: an aligned conveyor
-     * lane (the type's placement.conveyor) or, when enabled, another object of this type.
+     * lane (the type's placement.isConveyor) or, when enabled, another object of this type.
      * @private
      * @returns {boolean}
      */
@@ -371,7 +371,7 @@ export class ObjectTool extends AbstractTool {
             // No facing, no alignment: UP would match every vertical lane tile.
             return false;
         }
-        return occupant.data.type.placement.conveyor
+        return occupant.data.type.placement.isConveyor
             && Direction.axis(occupant.data.direction) === Direction.axis(direction);
     }
 

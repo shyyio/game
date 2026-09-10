@@ -65,12 +65,12 @@ export function centerGlyph(text) {
  * Draws a circular button's idle/hover face — filled circle with a border stroke, centered on (0, 0).
  * @param {Graphics} face
  * @param {number} radius
- * @param {boolean} hovered
+ * @param {boolean} isHovered
  * @returns {void}
  */
-export function drawCircleButtonFace(face, radius, hovered) {
+export function drawCircleButtonFace(face, radius, isHovered) {
     let fill = PANEL_FILL;
-    if (hovered) {
+    if (isHovered) {
         fill = PANEL_HOVER_FILL;
     }
     face

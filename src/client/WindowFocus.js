@@ -2,17 +2,17 @@ import {ListenerList} from "@/common/ListenerList.js";
 
 /**
  * @callback windowFocusCallback
- * @param {boolean} focused
+ * @param {boolean} isFocused
  */
 
 /**
- * Singleton tracking whether the window is focused and its tab visible, collapsed into one
- * `focused` boolean. Listeners attach in init (browser only), like Mouse.
+ * Singleton tracking whether the window is isFocused and its tab visible, collapsed into one
+ * `isFocused` boolean. Listeners attach in init (browser only), like Mouse.
  */
 class WindowFocus {
 
     constructor() {
-        this._focused = true;
+        this._isFocused = true;
         this._listeners = new ListenerList();
         this._initialized = false;
     }
@@ -20,8 +20,8 @@ class WindowFocus {
     /**
      * @returns {boolean}
      */
-    get focused() {
-        return this._focused;
+    get isFocused() {
+        return this._isFocused;
     }
 
     /**
@@ -52,12 +52,12 @@ class WindowFocus {
      * @returns {void}
      */
     _apply() {
-        const focused = document.hasFocus() && !document.hidden;
-        if (focused === this._focused) {
+        const isFocused = document.hasFocus() && !document.hidden;
+        if (isFocused === this._isFocused) {
             return;
         }
-        this._focused = focused;
-        this._listeners.notify(focused);
+        this._isFocused = isFocused;
+        this._listeners.notify(isFocused);
     }
 }
 

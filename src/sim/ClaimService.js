@@ -132,7 +132,7 @@ export class ClaimService {
                     continue;
                 }
                 const type = this.game.modRegistry.getObjectTypeByTypeId(single.objectTypeId);
-                if (type.placement.solid) {
+                if (type.placement.isSolid) {
                     ids.push(single.objectRef);
                 }
             }

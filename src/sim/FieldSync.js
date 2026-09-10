@@ -58,14 +58,14 @@ class SyncedSet {
      * @returns {boolean} whether any differed from the shadow
      */
     adopt(eid, values) {
-        let changed = false;
+        let hasChanged = false;
         for (const [i, value] of values.entries()) {
             if (this.shadow[i][eid] !== value) {
                 this.shadow[i][eid] = value;
-                changed = true;
+                hasChanged = true;
             }
         }
-        return changed;
+        return hasChanged;
     }
 
     /**
@@ -103,7 +103,7 @@ export class FieldSync {
      * @returns {void}
      */
     register(component, fields) {
-        if (!component.sparse) {
+        if (!component.isSparse) {
             throw new Error(`Synced fields need a sparse component, "${component.name}" is dense`);
         }
         if (this._sets.has(component)) {

@@ -32,7 +32,7 @@ export class EffectiveToolController {
         // Map and overworld mode (zoomed far out) deactivate the active tool without clearing the
         // toolbar selection, so the cursor acts as if nothing were selected and the tool resumes on
         // zoom-in. The effective tool (null when zoomed out) drives the side effects below.
-        this.mapMode = false;
+        this.isMapMode = false;
     }
 
     /**
@@ -55,7 +55,7 @@ export class EffectiveToolController {
     _onViewMode(mode) {
         const zoomedOut = mode !== ViewMode.WORLD;
         this.inputHandler.setMapMode(zoomedOut);
-        this.mapMode = zoomedOut;
+        this.isMapMode = zoomedOut;
         this.applyEffectiveTool();
     }
 
@@ -72,9 +72,9 @@ export class EffectiveToolController {
         this.inputHandler.resyncHover();
         this.client.hud.rotateButtonsLayer.setVisible(tool != null && tool.orientable);
         this.client.hud.topStatusBar.setSection(SECTION_ID, this._statusBarSection(tool));
-        const mobile = Mobile.enabled;
+        const mobile = Mobile.isEnabled;
         // Map mode locks the "cursor" to the screen center too.
-        this.client.centerLock.setEnabled(mobile && (this.mapMode || (tool != null && tool.usesCenterLock)));
+        this.client.centerLock.setEnabled(mobile && (this.isMapMode || (tool != null && tool.usesCenterLock)));
         if (mobile) {
             return;
         }
@@ -107,7 +107,7 @@ export class EffectiveToolController {
      */
     _onToolbarChange() {
         this.applyEffectiveTool();
-        const mobile = Mobile.enabled;
+        const mobile = Mobile.isEnabled;
         const target = mobile ? TOOL_SELECT_ZOOM_MOBILE : TOOL_SELECT_ZOOM_DESKTOP;
         if (this.toolbar.activeTool == null || this.viewport.scale.x >= target) {
             return;

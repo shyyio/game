@@ -160,7 +160,7 @@ class LaneComponent extends AbstractComponent {
             new FieldDefinition("firstItem", "eid", NO_EID),
             new FieldDefinition("lastItem", "eid", NO_EID),
             new FieldDefinition("nextItemRef", "i32", 1),
-        ], {sparse: true});
+        ], {isSparse: true});
     }
 
     /**

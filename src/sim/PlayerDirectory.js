@@ -84,9 +84,9 @@ export class PlayerDirectory {
     addFriendByCode(session, code) {
         const target = this.game.players.getPlayerByFriendCodeOrNull(code);
         const playerRef = target === null ? PLAYER_REF_NONE : target.playerRef;
-        const found = playerRef !== PLAYER_REF_NONE && playerRef !== session.playerRef;
+        const isFound = playerRef !== PLAYER_REF_NONE && playerRef !== session.playerRef;
         this.addFriend(session, playerRef);
-        this.game.bus.publishTo(session.sessionRef, new AddFriendByCodeResultEvent(code, found));
+        this.game.bus.publishTo(session.sessionRef, new AddFriendByCodeResultEvent(code, isFound));
     }
 
     /**

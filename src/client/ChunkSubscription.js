@@ -108,11 +108,11 @@ export class ChunkSubscription {
      * Requests the visible overworld rect when any of its chunks is missing or stale, then
      * evicts stale entries outside it. Throttled while panning; `force` bypasses.
      * @private
-     * @param {boolean} force
+     * @param {boolean} shouldForce
      */
-    _requestOverworld(force) {
+    _requestOverworld(shouldForce) {
         const now = Date.now();
-        if (!force && now - this._lastOverworldRequestMs < OVERWORLD_REQUEST_THROTTLE_MS) {
+        if (!shouldForce && now - this._lastOverworldRequestMs < OVERWORLD_REQUEST_THROTTLE_MS) {
             return;
         }
         this._lastOverworldRequestMs = now;
@@ -185,12 +185,12 @@ export class ChunkSubscription {
 
         // Unsubscribe only past a one-chunk hysteresis ring, so a pan grazing a boundary
         // never re-syncs the chunk.
-        let changed = false;
+        let hasChanged = false;
         const retained = new Set(this._chunksInView(1));
         for (const chunk of Array.from(this._requestedChunks)) {
             if (!retained.has(chunk)) {
                 this._requestedChunks.delete(chunk);
-                changed = true;
+                hasChanged = true;
             }
         }
         let added = false;
@@ -198,10 +198,10 @@ export class ChunkSubscription {
             if (!this._requestedChunks.has(chunk)) {
                 this._requestedChunks.add(chunk);
                 added = true;
-                changed = true;
+                hasChanged = true;
             }
         }
-        if (changed) {
+        if (hasChanged) {
             this._sendSetViewport(added);
         }
     }
@@ -209,11 +209,11 @@ export class ChunkSubscription {
     /**
      * Sends the current requested-chunk set to the server.
      * @private
-     * @param {boolean} loading - whether to drive the loading status (only when subscribing)
+     * @param {boolean} isLoading - whether to drive the loading status (only when subscribing)
      */
-    _sendSetViewport(loading) {
+    _sendSetViewport(isLoading) {
         const chunks = Array.from(this._requestedChunks);
-        if (loading) {
+        if (isLoading) {
             // Track the request before sending: single-player replies with the
             // ChunkSubscribeEvents synchronously, so the layer must already be counting.
             this._statusLayer.beginChunkLoad(chunks);

@@ -18,7 +18,7 @@ test("setEnabled stores the value and tells every subscriber", () => {
 
     preference.setEnabled(true);
 
-    assert.equal(preference.enabled, true);
+    assert.equal(preference.isEnabled, true);
     assert.deepEqual(seen, ["first:true", "second:true"]);
 });
 

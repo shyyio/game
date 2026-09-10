@@ -29,14 +29,14 @@ function configIn(dir, extra = {}) {
 test("a fresh world boots on the built-in loadout, saves on close, and loads back with its seed", async (t) => {
     const dir = tempDir(t);
     const first = await World.boot(configIn(dir, {seed: 7}));
-    assert.equal(first.loaded, false);
+    assert.equal(first.isLoaded, false);
     assert.equal(first.game.seed, 7);
     assert.deepEqual(JSON.parse(first.modListJson).mods.map(mod => mod.name), MOD_DIRS);
     assert.deepEqual(first.lockfile.mods, []);
     await first.close();
 
     const second = await World.boot(configIn(dir));
-    assert.equal(second.loaded, true);
+    assert.equal(second.isLoaded, true);
     assert.equal(second.game.seed, 7);
     await second.close();
 });
@@ -52,12 +52,12 @@ test("a discarded world saves nothing, and with its files deleted the next boot 
     const config = configIn(dir, {seed: 7});
     await (await World.boot(config)).close();
     const world = await World.boot(config);
-    assert.equal(world.loaded, true);
+    assert.equal(world.isLoaded, true);
     await world.discard();
     World.deleteFiles(config);
 
     const fresh = await World.boot(configIn(dir, {seed: 9}));
-    assert.equal(fresh.loaded, false);
+    assert.equal(fresh.isLoaded, false);
     assert.equal(fresh.game.seed, 9);
     await fresh.close();
 });

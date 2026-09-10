@@ -54,16 +54,16 @@ export class NoteGhostLayer extends AbstractDrawLayer {
      * The tile the note tool hovers, null while it hovers none.
      * @param {number|null} tileX
      * @param {number|null} tileY
-     * @param {boolean} blocked whether a note may not be left there
+     * @param {boolean} isBlocked whether a note may not be left there
      * @returns {void}
      */
-    setHoveredTile(tileX, tileY, blocked) {
+    setHoveredTile(tileX, tileY, isBlocked) {
         if (tileX === null) {
             this._hoveredTile = null;
         } else {
             this._hoveredTile = tileKeyAt(tileX, tileY);
         }
-        this._isBlocked = blocked;
+        this._isBlocked = isBlocked;
     }
 
     /**

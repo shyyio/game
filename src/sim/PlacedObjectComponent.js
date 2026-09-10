@@ -14,6 +14,6 @@ export class PlacedObjectComponent extends AbstractComponent {
             // A friend building in your chunk is recorded as themselves.
             // Economics read getClaimOwnerByEid instead, which follows the ground.
             new FieldDefinition("placedBy", "i32", PLAYER_REF_NONE),
-        ], {sparse: true});
+        ], {isSparse: true});
     }
 }

@@ -43,39 +43,39 @@ function themedTexts() {
     // A text input's box is its own near-opaque fill over the inset it sits in.
     const inputBox = composited(TextInput.BOX_FILL, TextInput.BOX_FILL_ALPHA, inset);
     return [
-        {where: "UIPanel title", fill: Theme.PANEL_TITLE_TEXT, background: frame, fontSize: 18, bold: true},
-        {where: "ConfirmDialogLayer title", fill: Theme.PANEL_TINT_TEXT, background: inset, fontSize: 18, bold: true},
-        {where: "ConfirmDialogLayer message", fill: Theme.PANEL_TINT_TEXT, background: inset, fontSize: 15, bold: false},
-        {where: "NoticeLayer text", fill: Theme.PANEL_TINT_TEXT, background: inset, fontSize: 15, bold: false},
-        {where: "StatusMessageLayer text", fill: Theme.PANEL_TINT_TEXT, background: inset, fontSize: 15, bold: false},
-        {where: "AbstractEdgeBarLayer text", fill: Theme.PANEL_TINT_TEXT, background: inset, fontSize: 20, bold: false},
-        {where: "PanelText header", fill: Theme.PANEL_TINT_TEXT, background: inset, fontSize: 15, bold: true},
-        {where: "PanelText body", fill: Theme.PANEL_TINT_TEXT, background: inset, fontSize: 15, bold: false},
-        {where: "PanelText muted", fill: Theme.PANEL_TINT_TEXT, alpha: 0.7, background: inset, fontSize: 15, bold: false},
-        {where: "PanelText caption", fill: Theme.PANEL_TINT_TEXT, alpha: 0.7, background: inset, fontSize: 12, bold: false},
-        {where: "ProductionLogPanelLayer category header (complete)", fill: Theme.SUCCESS_TEXT, background: inset, fontSize: 15, bold: true},
-        {where: "ProductionLogPanelLayer category caption (complete)", fill: Theme.SUCCESS_TEXT, background: inset, fontSize: 12, bold: false},
-        {where: "ToolbarLayer slot label", fill: Theme.PANEL_TINT_TEXT, background: slot, fontSize: 15, bold: false},
-        {where: "ToolbarLayer shortcut badge", fill: Theme.PANEL_TINT_TEXT, alpha: 0.6, background: slot, fontSize: 45, bold: false},
+        {where: "UIPanel title", fill: Theme.PANEL_TITLE_TEXT, background: frame, fontSize: 18, isBold: true},
+        {where: "ConfirmDialogLayer title", fill: Theme.PANEL_TINT_TEXT, background: inset, fontSize: 18, isBold: true},
+        {where: "ConfirmDialogLayer message", fill: Theme.PANEL_TINT_TEXT, background: inset, fontSize: 15, isBold: false},
+        {where: "NoticeLayer text", fill: Theme.PANEL_TINT_TEXT, background: inset, fontSize: 15, isBold: false},
+        {where: "StatusMessageLayer text", fill: Theme.PANEL_TINT_TEXT, background: inset, fontSize: 15, isBold: false},
+        {where: "AbstractEdgeBarLayer text", fill: Theme.PANEL_TINT_TEXT, background: inset, fontSize: 20, isBold: false},
+        {where: "PanelText header", fill: Theme.PANEL_TINT_TEXT, background: inset, fontSize: 15, isBold: true},
+        {where: "PanelText body", fill: Theme.PANEL_TINT_TEXT, background: inset, fontSize: 15, isBold: false},
+        {where: "PanelText muted", fill: Theme.PANEL_TINT_TEXT, alpha: 0.7, background: inset, fontSize: 15, isBold: false},
+        {where: "PanelText caption", fill: Theme.PANEL_TINT_TEXT, alpha: 0.7, background: inset, fontSize: 12, isBold: false},
+        {where: "ProductionLogPanelLayer category header (complete)", fill: Theme.SUCCESS_TEXT, background: inset, fontSize: 15, isBold: true},
+        {where: "ProductionLogPanelLayer category caption (complete)", fill: Theme.SUCCESS_TEXT, background: inset, fontSize: 12, isBold: false},
+        {where: "ToolbarLayer slot label", fill: Theme.PANEL_TINT_TEXT, background: slot, fontSize: 15, isBold: false},
+        {where: "ToolbarLayer shortcut badge", fill: Theme.PANEL_TINT_TEXT, alpha: 0.6, background: slot, fontSize: 45, isBold: false},
         // textOn picks each label from its tint. A disabled button fades whole and is AA-exempt,
         // so only the enabled tints are checked.
-        {where: "panelButton label (accent)", fill: Theme.textOn(Theme.ACTIVE_ACCENT), background: buttonActive, fontSize: 15, bold: true},
-        {where: "toggle segment label (inactive)", fill: Theme.textOn(Theme.PANEL_BORDER), background: buttonInactive, fontSize: 15, bold: true},
-        {where: "RotateButtonsLayer icon", fill: Theme.PANEL_TEXT, background: circleButton, fontSize: 28, bold: true},
+        {where: "panelButton label (accent)", fill: Theme.textOn(Theme.ACTIVE_ACCENT), background: buttonActive, fontSize: 15, isBold: true},
+        {where: "toggle segment label (inactive)", fill: Theme.textOn(Theme.PANEL_BORDER), background: buttonInactive, fontSize: 15, isBold: true},
+        {where: "RotateButtonsLayer icon", fill: Theme.PANEL_TEXT, background: circleButton, fontSize: 28, isBold: true},
         // The label is centered over the whole bar, so it sits on filled blocks or bare bar, by progress.
-        {where: "InspectProgressBar label (filled)", fill: Theme.PROGRESS_TEXT_COLOR, background: progressBar, fontSize: 15, bold: true},
-        {where: "InspectProgressBar label (empty)", fill: Theme.PROGRESS_TEXT_COLOR, background: slot, fontSize: 15, bold: true},
-        {where: "InspectContent worker row (staffed)", fill: Theme.WORKER_OK_TEXT, background: slot, fontSize: 15, bold: true},
-        {where: "InspectContent worker row (missing)", fill: Theme.WORKER_MISSING_TEXT, background: slot, fontSize: 15, bold: true},
+        {where: "InspectProgressBar label (filled)", fill: Theme.PROGRESS_TEXT_COLOR, background: progressBar, fontSize: 15, isBold: true},
+        {where: "InspectProgressBar label (empty)", fill: Theme.PROGRESS_TEXT_COLOR, background: slot, fontSize: 15, isBold: true},
+        {where: "InspectContent worker row (staffed)", fill: Theme.WORKER_OK_TEXT, background: slot, fontSize: 15, isBold: true},
+        {where: "InspectContent worker row (missing)", fill: Theme.WORKER_MISSING_TEXT, background: slot, fontSize: 15, isBold: true},
         // A text input's own near-opaque white box, whatever panel surface it sits on.
-        {where: "TextInput value", fill: TextInput.TEXT_COLOR, background: inputBox, fontSize: TextInput.FONT_SIZE, bold: false},
-        {where: "TextInput placeholder", fill: TextInput.PLACEHOLDER_COLOR, background: inputBox, fontSize: TextInput.FONT_SIZE, bold: false},
+        {where: "TextInput value", fill: TextInput.TEXT_COLOR, background: inputBox, fontSize: TextInput.FONT_SIZE, isBold: false},
+        {where: "TextInput placeholder", fill: TextInput.PLACEHOLDER_COLOR, background: inputBox, fontSize: TextInput.FONT_SIZE, isBold: false},
         // The slot and note tooltips are flat filled boxes, not tinted 9-slices.
-        {where: "SlotTooltip name", fill: Theme.PANEL_TINT_TEXT, background: Theme.PANEL_TINT, fontSize: 15, bold: false},
-        {where: "HoverTooltip text", fill: Theme.PANEL_TINT_TEXT, background: Theme.PANEL_TINT, fontSize: 15, bold: false},
-        {where: "InspectTooltipLayer text", fill: Theme.PANEL_TINT_TEXT, background: Theme.PANEL_TINT, fontSize: 15, bold: false},
-        {where: "NoteTooltipLayer text", fill: Theme.PANEL_TINT_TEXT, background: Theme.PANEL_TINT, fontSize: 15, bold: false},
-        {where: "NoteTooltipLayer author", fill: Theme.PANEL_BORDER, background: Theme.PANEL_TINT, fontSize: 15, bold: false},
+        {where: "SlotTooltip name", fill: Theme.PANEL_TINT_TEXT, background: Theme.PANEL_TINT, fontSize: 15, isBold: false},
+        {where: "HoverTooltip text", fill: Theme.PANEL_TINT_TEXT, background: Theme.PANEL_TINT, fontSize: 15, isBold: false},
+        {where: "InspectTooltipLayer text", fill: Theme.PANEL_TINT_TEXT, background: Theme.PANEL_TINT, fontSize: 15, isBold: false},
+        {where: "NoteTooltipLayer text", fill: Theme.PANEL_TINT_TEXT, background: Theme.PANEL_TINT, fontSize: 15, isBold: false},
+        {where: "NoteTooltipLayer author", fill: Theme.PANEL_BORDER, background: Theme.PANEL_TINT, fontSize: 15, isBold: false},
     ];
 }
 
@@ -127,7 +127,7 @@ for (const {themeId, level} of THEME_LEVELS) {
         const failures = [];
         for (const entry of themedTexts()) {
             const ratio = effectiveRatio(entry);
-            const required = requiredRatio(entry.fontSize, entry.bold, level);
+            const required = requiredRatio(entry.fontSize, entry.isBold, level);
             if (ratio < required) {
                 failures.push(
                     `${entry.where}: #${entry.fill.toString(16).padStart(6, "0")} on `

@@ -7,17 +7,17 @@ export class SetGateOpenMessage extends AbstractMessage {
 
     static wireFields = {
         objectRef: "int64",
-        open: "int32",
+        isOpen: "bool",
     };
 
     /**
      * @param {number} objectRef
-     * @param {number} open - 1 open, 0 closed
+     * @param {boolean} isOpen
      */
-    constructor(objectRef, open) {
+    constructor(objectRef, isOpen) {
         super();
         this.objectRef = objectRef;
-        this.open = open;
+        this.isOpen = isOpen;
     }
 
     /**

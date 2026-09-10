@@ -20,6 +20,6 @@ export class GeneratorComponent extends AbstractComponent {
             new FieldDefinition("output2", "item", EMPTY),
             new FieldDefinition("lastOutput2", "item", EMPTY),
             new FieldDefinition("processingTicks2"),
-        ], {sparse: true});
+        ], {isSparse: true});
     }
 }

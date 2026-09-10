@@ -123,37 +123,37 @@ export class GateBehavior extends AbstractBehavior {
      * Buffers a toggle; the next tick applies it.
      * @param {GameEngine} engine
      * @param {number} eid
-     * @param {boolean} open
+     * @param {boolean} isOpen
      * @returns {void}
      */
-    requestOpen(engine, eid, open) {
+    requestOpen(engine, eid, isOpen) {
         const gates = engine.components.getComponentByName("Gate");
-        gates.store.pendingOpen[gates.getRowByEid(eid)] = open ? 1 : 0;
+        gates.store.pendingOpen[gates.getRowByEid(eid)] = isOpen ? 1 : 0;
     }
 
     /**
      * Sets a gate's open state, keeping fluid mode's input port claim in step.
      * @param {GameEngine} engine
      * @param {number} eid
-     * @param {boolean} open
+     * @param {boolean} isOpen
      * @returns {boolean} whether the state changed
      */
-    setOpen(engine, eid, open) {
-        return GateBehavior._applyOpen(engine, eid, open);
+    setOpen(engine, eid, isOpen) {
+        return GateBehavior._applyOpen(engine, eid, isOpen);
     }
 
     /**
      * @private
      * @param {GameEngine} engine
      * @param {number} eid
-     * @param {boolean} open
+     * @param {boolean} isOpen
      * @returns {boolean} whether the state changed
      */
-    static _applyOpen(engine, eid, open) {
+    static _applyOpen(engine, eid, isOpen) {
         const gates = engine.components.getComponentByName("Gate");
         const gate = gates.store;
         const row = gates.getRowByEid(eid);
-        const flag = open ? 1 : 0;
+        const flag = isOpen ? 1 : 0;
         if (gate.open[row] === flag) {
             return false;
         }
@@ -288,17 +288,17 @@ export class GateBehavior extends AbstractBehavior {
      * @private
      * @param {GameEngine} engine
      * @param {number} eid
-     * @param {boolean} fluid
+     * @param {boolean} isFluid
      * @returns {void}
      */
-    static _setMode(engine, eid, fluid) {
+    static _setMode(engine, eid, isFluid) {
         const gates = engine.components.getComponentByName("Gate");
         const gate = gates.store;
         const row = gates.getRowByEid(eid);
         engine.sync.markDirty(gates, eid);
         engine.ports.setItem(gate.inputPort[row], EMPTY);
         engine.ports.setItem(gate.outputPort[row], EMPTY);
-        if (fluid) {
+        if (isFluid) {
             engine.ports.setItem(gate.internalPort[row], EMPTY);
             gate.internalPort[row] = NO_EID;
             engine.portItems.removeOutputPort(gate.outputPort[row]);

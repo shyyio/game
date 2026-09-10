@@ -50,7 +50,7 @@ export {
     PortDefinition,   // one input/output/internal port on an object (position + facing)
     RecipeDefinition, // one recipe: a consumed input set mapping to an output item
     RecipeByproduct,  // a recipe's chance-driven secondary output
-    PlacementRule,    // how an object type may be placed (overwrite/advance/placeOn/solid)
+    PlacementRule,    // how an object type may be placed (overwrite/advance/placeOn/isSolid)
     CONVEYS_ITEM,     // transport kinds for ObjectType.conveys adjacency rules
     CONVEYS_FLUID,
 } from "@/common/ObjectType.js";

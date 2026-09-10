@@ -360,7 +360,7 @@ export class Game {
      */
     _dispatchSetPlayerSetting(session, key, value) {
         const entry = this.modRegistry.getPlayerSettingEntryByKeyOrNull(key);
-        if (entry === null || !entry.clientWritable) {
+        if (entry === null || !entry.isClientWritable) {
             return;
         }
         if (value < 0 || value >= entry.optionCount) {

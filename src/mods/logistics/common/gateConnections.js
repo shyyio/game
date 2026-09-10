@@ -8,10 +8,10 @@ import {Direction, CONVEYS_ITEM, CONVEYS_FLUID} from "@spup/sdk";
  * @param {ObjectType} type
  * @param {Direction} direction - the transport's facing
  * @param {Direction} gateDirection
- * @param {boolean} behind - behind feeds the input port; front receives from the output port
+ * @param {boolean} isBehind - behind feeds the input port; front receives from the output port
  * @returns {boolean}
  */
-export function canTransportsCouple(type, direction, gateDirection, behind) {
+export function canTransportsCouple(type, direction, gateDirection, isBehind) {
     if (type.conveys === CONVEYS_FLUID) {
         return true;
     }
@@ -20,7 +20,7 @@ export function canTransportsCouple(type, direction, gateDirection, behind) {
     }
     // A buried end exposes nothing, so a tunnel span never couples.
     let ports;
-    if (behind) {
+    if (isBehind) {
         ports = type.getSurfacePortsByKind("outputPorts");
     } else {
         ports = type.getSurfacePortsByKind("inputPorts");
@@ -46,12 +46,12 @@ export function canTransportsCouple(type, direction, gateDirection, behind) {
 export function gateConnections(occupantAt, x, y, direction) {
     const dx = Direction.dx(direction);
     const dy = Direction.dy(direction);
-    const kindAt = (tx, ty, behind) => {
+    const kindAt = (tx, ty, isBehind) => {
         const occupant = occupantAt(tx, ty);
         if (occupant === null) {
             return null;
         }
-        if (!canTransportsCouple(occupant.type, occupant.direction, direction, behind)) {
+        if (!canTransportsCouple(occupant.type, occupant.direction, direction, isBehind)) {
             return null;
         }
         return occupant.type.conveys;
@@ -86,16 +86,16 @@ export function isPlacementBlockedByGate(occupantAt, isGate, type, x, y, directi
         const gateDirection = occupant.direction;
         const dx = Direction.dx(gateDirection);
         const dy = Direction.dy(gateDirection);
-        const behind = gx - dx === x && gy - dy === y;
-        const front = gx + dx === x && gy + dy === y;
-        if (!behind && !front) {
+        const isBehind = gx - dx === x && gy - dy === y;
+        const isFront = gx + dx === x && gy + dy === y;
+        if (!isBehind && !isFront) {
             continue;
         }
-        if (!canTransportsCouple(type, direction, gateDirection, behind)) {
+        if (!canTransportsCouple(type, direction, gateDirection, isBehind)) {
             continue;
         }
         const connections = gateConnections(occupantAt, gx, gy, gateDirection);
-        const otherKind = behind ? connections.front : connections.behind;
+        const otherKind = isBehind ? connections.front : connections.behind;
         if (otherKind !== null && otherKind !== type.conveys) {
             return true;
         }

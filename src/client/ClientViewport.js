@@ -35,7 +35,7 @@ export class ClientViewport extends Viewport {
         if (this._glideFinish !== undefined && this._glideFinish !== null) {
             this._glideFinish(false);
         }
-        if (ReducedMotion.enabled) {
+        if (ReducedMotion.isEnabled) {
             if (scale !== null) {
                 this.setZoom(scale, true);
                 this.emit("zoomed", {viewport: this, type: "animate"});
@@ -79,7 +79,7 @@ export class ClientViewport extends Viewport {
      */
     freezePan() {
         this.plugins.pause("drag");
-        if (Mobile.enabled) {
+        if (Mobile.isEnabled) {
             this.plugins.pause("pinch");
         }
     }
@@ -89,7 +89,7 @@ export class ClientViewport extends Viewport {
      */
     unfreezePan() {
         this.plugins.resume("drag");
-        if (Mobile.enabled) {
+        if (Mobile.isEnabled) {
             this.plugins.resume("pinch");
         }
     }

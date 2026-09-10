@@ -9,6 +9,6 @@ export class LogicTerminalComponent extends AbstractComponent {
     constructor() {
         super("LogicTerminal", [
             new FieldDefinition("tier", "i32", LOGIC_TIER_BASE),
-        ], {sparse: true});
+        ], {isSparse: true});
     }
 }

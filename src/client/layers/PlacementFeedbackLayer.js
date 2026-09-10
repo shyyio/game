@@ -37,7 +37,7 @@ export class PlacementFeedbackLayer extends AbstractDrawLayer {
         this._highlight = [];
         // Whether to draw the green clear target off center-lock (the cursor-follow ghost floats, so
         // the target marks where it actually lands).
-        this._showTarget = false;
+        this._shouldShowTarget = false;
         this._centerLock = false;
     }
 
@@ -50,7 +50,7 @@ export class PlacementFeedbackLayer extends AbstractDrawLayer {
      * Stays visible in map mode: placement feedback reads at any zoom.
      * @param {boolean} value
      */
-    set mapMode(value) {}
+    set isMapMode(value) {}
 
     /**
      * Shows the current placement's geometry feedback, replacing any previous.
@@ -58,11 +58,11 @@ export class PlacementFeedbackLayer extends AbstractDrawLayer {
      *     - blocked (red), overwrite (blue), clear (green target); showTarget draws the green target
      *       even off center-lock (for a cursor-follow ghost)
      */
-    show({blocked=[], overwrite=[], clear=[], showTarget=false}) {
+    show({blocked=[], overwrite=[], clear=[], shouldShowTarget=false}) {
         this._blockedTiles = blocked;
         this._overwrite = overwrite;
         this._clear = clear;
-        this._showTarget = showTarget;
+        this._shouldShowTarget = shouldShowTarget;
         this._draw();
     }
 
@@ -70,17 +70,17 @@ export class PlacementFeedbackLayer extends AbstractDrawLayer {
      * Shows one tile's feedback: red where blocked, blue where it overwrites, green otherwise.
      * @param {{tileX: number, tileY: number, blocked: boolean, overwrite: boolean}} feedback
      */
-    showTile({tileX, tileY, blocked, overwrite}) {
+    showTile({tileX, tileY, isBlocked, isOverwrite}) {
         const tile = [{x: tileX, y: tileY}];
-        if (blocked) {
-            this.show({blocked: tile, showTarget: true});
+        if (isBlocked) {
+            this.show({blocked: tile, shouldShowTarget: true});
             return;
         }
-        if (overwrite) {
-            this.show({overwrite: tile, showTarget: true});
+        if (isOverwrite) {
+            this.show({overwrite: tile, shouldShowTarget: true});
             return;
         }
-        this.show({clear: tile, showTarget: true});
+        this.show({clear: tile, shouldShowTarget: true});
     }
 
     setCenterLock(enabled) {
@@ -121,7 +121,7 @@ export class PlacementFeedbackLayer extends AbstractDrawLayer {
         this._marker(this._overwrite, OVERWRITE_TILE_COLOR);
         // The green target means "it lands here", so suppress it entirely when any cell is blocked
         // (placement is rejected); overwrite cells are still a valid placement, so green stays.
-        if ((this._centerLock || this._showTarget) && this._blockedTiles.length === 0) {
+        if ((this._centerLock || this._shouldShowTarget) && this._blockedTiles.length === 0) {
             this._target(this._clear);
         }
     }

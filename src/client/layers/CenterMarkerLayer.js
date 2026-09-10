@@ -31,14 +31,14 @@ export class CenterMarkerLayer extends Container {
     }
 
     /**
-     * @param {boolean} active
+     * @param {boolean} isActive
      * @returns {void}
      */
-    setActive(active) {
-        if (active) {
+    setActive(isActive) {
+        if (isActive) {
             this._center();
         }
-        this.visible = active;
+        this.visible = isActive;
     }
 
     /**

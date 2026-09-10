@@ -35,7 +35,7 @@ const {settingsCategories, settingValues, bindSettingsMenu} = useSettingsMenu();
 Mobile.setEnabled(DeviceSettings.getBoolean(DEVICE_SETTING_MOBILE, Mobile.isDevicePreferred()));
 // Before the dialog can open, so its first open honors the preference.
 ReducedMotion.setEnabled(DeviceSettings.getBoolean(DEVICE_SETTING_REDUCED_MOTION, ReducedMotion.isDevicePreferred()));
-const reducedMotion = ref(ReducedMotion.enabled);
+const reducedMotion = ref(ReducedMotion.isEnabled);
 const stopMotionSync = ReducedMotion.onChange(on => reducedMotion.value = on);
 
 // A false transition drops the dialog's slide; the scrim fade goes with the root class.

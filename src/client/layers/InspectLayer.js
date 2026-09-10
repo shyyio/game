@@ -20,7 +20,7 @@ export class InspectLayer extends AbstractDrawLayer {
      * Stays visible in map mode: the hover highlight reads at any zoom.
      * @param {boolean} value
      */
-    set mapMode(value) {}
+    set isMapMode(value) {}
 
     /**
      * Replaces the current highlights (empty clears).
@@ -45,11 +45,11 @@ export class InspectLayer extends AbstractDrawLayer {
     /**
      * Hides or reveals the highlights; a bracketed item outranks them. Rides `renderable`, since
      * the view-mode machinery owns `visible`.
-     * @param {boolean} suppressed
+     * @param {boolean} isSuppressed
      * @returns {void}
      */
-    setSuppressed(suppressed) {
-        this.renderable = !suppressed;
+    setSuppressed(isSuppressed) {
+        this.renderable = !isSuppressed;
     }
 
     clear() {

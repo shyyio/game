@@ -1,5 +1,5 @@
 // Local play's own mod list. A local game is its own server, so it gets what an operator gets: an
-// ordered, hash-pinned list, in the same format as a server's pinned mods.
+// ordered, hash-isPinned list, in the same format as a server's isPinned mods.
 //
 // The model and its store only; loading the packages it names is @/client/LocalModLoader.js, which
 // is what pulls the client SDK in.
@@ -23,7 +23,7 @@ import {modName} from "@/mods/modNames.js";
 
 // Every mod here comes from the registry: one being developed against a checkout is loaded from
 // dev-mods/, not fetched.
-const MOD_KEYS = ["name", "title", "url", "version", "integrity", "pinned"];
+const MOD_KEYS = ["name", "title", "url", "version", "integrity", "isPinned"];
 
 const LOADOUT_KEYS = ["mods"];
 
@@ -44,7 +44,7 @@ export class LocalMod {
      * @param {string} url the package's base URL, ending in "/"
      * @param {string} version
      * @param {Map<string, string>} integrity package file -> "sha256-..."
-     * @param {boolean} pinned whether this exact version was chosen, rather than tracking the newest
+     * @param {boolean} isPinned whether this exact version was chosen, rather than tracking the newest
      */
     constructor(
         name,
@@ -52,14 +52,14 @@ export class LocalMod {
         url,
         version,
         integrity,
-        pinned,
+        isPinned,
     ) {
         this.name = name;
         this.title = title;
         this.url = url;
         this.version = version;
         this.integrity = integrity;
-        this.pinned = pinned;
+        this.isPinned = isPinned;
     }
 
     /**
@@ -67,7 +67,7 @@ export class LocalMod {
      * @returns {boolean}
      */
     get tracksLatest() {
-        return !this.pinned;
+        return !this.isPinned;
     }
 
     /**
@@ -87,7 +87,7 @@ export class LocalMod {
             url: this.url,
             version: this.version,
             integrity: Object.fromEntries(this.integrity),
-            pinned: this.pinned,
+            isPinned: this.isPinned,
         };
     }
 
@@ -110,21 +110,21 @@ export class LocalMod {
         if (typeof json.url !== "string" || !json.url.endsWith("/")) {
             throw new Error(`A local loadout entry's url must end in "/": ${JSON.stringify(json.url)}`);
         }
-        if (typeof json.pinned !== "boolean") {
+        if (typeof json.isPinned !== "boolean") {
             throw new Error(`Mod "${json.name}" does not say whether its version is pinned`);
         }
         const integrity = parseIntegrity(json.integrity, json.name);
-        return new LocalMod(json.name, json.title, json.url, json.version, integrity, json.pinned);
+        return new LocalMod(json.name, json.title, json.url, json.version, integrity, json.isPinned);
     }
 
     /**
      * The entry a registry listing's version describes.
      * @param {object} listing a listed mod, as the registry index publishes it
      * @param {object} version one of that mod's published versions
-     * @param {boolean} pinned
+     * @param {boolean} isPinned
      * @returns {LocalMod}
      */
-    static fromListing(listing, version, pinned) {
+    static fromListing(listing, version, isPinned) {
         if (version.artifacts === null || typeof version.artifacts !== "object" || version.artifacts === undefined) {
             throw new Error(`The registry publishes no file hashes for ${listing.name} ${version.version}`);
         }
@@ -134,7 +134,7 @@ export class LocalMod {
             url: version.url,
             version: version.version,
             integrity: version.artifacts,
-            pinned: pinned,
+            isPinned: isPinned,
         });
     }
 }

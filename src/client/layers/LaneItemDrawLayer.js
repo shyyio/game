@@ -332,10 +332,10 @@ export class LaneItemDrawLayer extends AbstractDrawLayer {
         const cell = slots.cells[index];
         const behavior = cell.data.type.behavior;
         const entering = Direction.rotate(lane.cellParentEdges[index], cell.data.direction);
-        let hidden = behavior.inLevel < LANE_LEVEL_SURFACE;
+        let isHidden = behavior.inLevel < LANE_LEVEL_SURFACE;
         if (!halfTile) {
             // A center is under cover only while the cell is buried at both ends.
-            hidden = hidden && behavior.outLevel < LANE_LEVEL_SURFACE;
+            isHidden = isHidden && behavior.outLevel < LANE_LEVEL_SURFACE;
         }
         this._itemLayer.moveItem({
             key,
@@ -345,7 +345,7 @@ export class LaneItemDrawLayer extends AbstractDrawLayer {
             sourceDirection: Direction.invert(entering),
             type: itemTypeId,
             snap,
-            hidden,
+            isHidden,
         });
     }
 }

@@ -239,7 +239,7 @@ test("a toggle applies at the next tick, batches the change, and syncs to late j
     const objectRef = engine.placed.getObjectRefByEid(eid);
 
     player.events.length = 0;
-    game.dispatchMessage(new SetGateOpenMessage(objectRef, 0), player);
+    game.dispatchMessage(new SetGateOpenMessage(objectRef, false), player);
     assert.equal(def.store.open[def.getRowByEid(eid)], 1, "the toggle is buffered, not instantaneous");
     game.runTick();
     assert.equal(def.store.open[def.getRowByEid(eid)], 0, "the tick applied the buffered toggle");
@@ -250,7 +250,7 @@ test("a toggle applies at the next tick, batches the change, and syncs to late j
 
     // A redundant set applies with no delta, so no batch goes out.
     player.events.length = 0;
-    game.dispatchMessage(new SetGateOpenMessage(objectRef, 0), player);
+    game.dispatchMessage(new SetGateOpenMessage(objectRef, false), player);
     game.runTick();
     assert.equal(player.events.find(event => event instanceof ObjectFieldsBatchEvent), undefined);
 
@@ -280,7 +280,7 @@ test("a toggle without build rights is refused with a corrective event", async (
     const intruder = new CapturingSession(2);
     game.connect(intruder);
     intruder.events.length = 0;
-    game.dispatchMessage(new SetGateOpenMessage(objectRef, 0), intruder);
+    game.dispatchMessage(new SetGateOpenMessage(objectRef, false), intruder);
     game.runTick();
     assert.equal(def.store.open[def.getRowByEid(eid)], 1, "the foreign toggle was refused");
     const corrective = intruder.events.find(event => event instanceof ObjectFieldsEvent);
@@ -300,7 +300,7 @@ test("gate state survives a save/load", async () => {
     const def = engine.components.getComponentByName("Gate");
     const eid = def.eids[def.count - 1];
     const objectRef = engine.placed.getObjectRefByEid(eid);
-    game.dispatchMessage(new SetGateOpenMessage(objectRef, 0), player);
+    game.dispatchMessage(new SetGateOpenMessage(objectRef, false), player);
     game.runTick();
     await game.save();
 

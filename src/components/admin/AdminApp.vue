@@ -132,7 +132,7 @@ function getLoadoutByConfig(json) {
   }
   return LocalLoadout.fromLockfile(ModLockfile.parse({mods: json.mods}), listings.value);
 }
-const worldLoaded = computed(() => state.value !== null && state.value.world.loaded && !resetting.value);
+const worldLoaded = computed(() => state.value !== null && state.value.world.isLoaded && !resetting.value);
 const lockedSeed = computed(() => {
   if (!worldLoaded.value) {
     return null;
@@ -389,7 +389,7 @@ export default defineComponent({
 
         <div class="admin-section">
           <div class="admin-heading">World</div>
-          <div v-if="state.world.loaded" class="admin-reset">
+          <div v-if="state.world.isLoaded" class="admin-reset">
             <div v-if="resetting" class="admin-note">Saving will delete the saved world and start a new one.</div>
             <div v-else class="admin-note">A saved world keeps its seed.</div>
             <v-btn v-if="resetting" variant="text" size="small" @click="resetting = false">Keep world</v-btn>

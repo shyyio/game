@@ -10,6 +10,7 @@ import {mkdtempSync, rmSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {join, resolve, dirname} from "node:path";
 import {fileURLToPath} from "node:url";
+import {StepError, fail} from "./steps.js";
 import {buildMod, packageName} from "./build-mod.js";
 import {checkPackage} from "./mod-check.js";
 import {GAME_VERSION} from "../src/common/constants.js";

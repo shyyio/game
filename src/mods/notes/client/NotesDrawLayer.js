@@ -42,7 +42,7 @@ export class NotesDrawLayer extends AbstractDrawLayer {
         this.eventMode = "passive";
         this._state = state;
         this._notes = state.writer("notes");
-        this._mapMode = false;
+        this._isMapMode = false;
         // The pin under the pointer, and the tile the note tool hovers; either rings its pin.
         this._pointerTile = null;
         this._toolTile = null;
@@ -88,8 +88,8 @@ export class NotesDrawLayer extends AbstractDrawLayer {
      * click cursor goes, since a tap up there selects chunks instead of opening a note.
      * @param {boolean} value
      */
-    set mapMode(value) {
-        this._mapMode = value;
+    set isMapMode(value) {
+        this._isMapMode = value;
         for (const [tile, note] of this._state.mapEntries("notes.byTile")) {
             const pin = this._pins.get(tile);
             this._place(pin, note);
@@ -156,7 +156,7 @@ export class NotesDrawLayer extends AbstractDrawLayer {
      */
     _applyPointerMode(pin) {
         pin.eventMode = "static";
-        if (this._mapMode) {
+        if (this._isMapMode) {
             pin.cursor = "default";
         } else {
             pin.cursor = "pointer";
@@ -172,7 +172,7 @@ export class NotesDrawLayer extends AbstractDrawLayer {
         const tile = pin.tile;
         // Touch synthesizes a hover around the tap, which would open and close the tooltip under
         // the gesture; there, the tap itself drives it.
-        if (tile === null || Mobile.enabled) {
+        if (tile === null || Mobile.isEnabled) {
             return;
         }
         this._pointerTile = tile;
@@ -194,7 +194,7 @@ export class NotesDrawLayer extends AbstractDrawLayer {
      * @returns {void}
      */
     _onPointerOut(pin) {
-        if (this._pointerTile !== pin.tile || Mobile.enabled) {
+        if (this._pointerTile !== pin.tile || Mobile.isEnabled) {
             return;
         }
         this._pointerTile = null;
@@ -268,7 +268,7 @@ export class NotesDrawLayer extends AbstractDrawLayer {
      * @returns {void}
      */
     _place(pin, note) {
-        const anchor = noteAnchor(note, this._mapMode);
+        const anchor = noteAnchor(note, this._isMapMode);
         pin.position.set(anchor.x, anchor.y);
     }
 

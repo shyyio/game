@@ -107,9 +107,9 @@ export class AdminRoutes {
             if (!this._isRequestAuthorized(res, req)) {
                 return;
             }
-            const convert = req.getQuery("convert") === "1";
+            const shouldConvert = req.getQuery("convert") === "1";
             readJson(res, json => {
-                this._saveConfig(res, json, convert).catch(error => {
+                this._saveConfig(res, json, shouldConvert).catch(error => {
                     rejectRequest(res, "500 Internal Server Error", error.message);
                 });
             });
@@ -166,7 +166,7 @@ export class AdminRoutes {
             saved: this._saved.toPublicJSON(),
             running: this._runtime.running.toPublicJSON(),
             overridden: this._overridden,
-            world: {loaded: this._runtime.world.loaded, seed: this._runtime.world.game.seed},
+            world: {isLoaded: this._runtime.world.isLoaded, seed: this._runtime.world.game.seed},
             baseDir: this._runtime.baseDir,
         };
     }
@@ -178,20 +178,20 @@ export class AdminRoutes {
      * @private
      * @param {object} res
      * @param {object} json
-     * @param {boolean} convert
+     * @param {boolean} shouldConvert
      * @returns {Promise<void>}
      */
-    async _saveConfig(res, json, convert) {
+    async _saveConfig(res, json, shouldConvert) {
         const config = this._parseConfig(res, json);
         if (config === null) {
             return;
         }
         const world = this._runtime.world;
-        if (world.loaded && config.seed !== null && config.seed !== world.game.seed) {
+        if (world.isLoaded && config.seed !== null && config.seed !== world.game.seed) {
             rejectRequest(res, "400 Bad Request", `The saved world keeps its seed ${world.game.seed}`);
             return;
         }
-        await this._commit(res, config, () => this._runtime.apply(config, {convert}));
+        await this._commit(res, config, () => this._runtime.apply(config, {convert: shouldConvert}));
     }
 
     /**

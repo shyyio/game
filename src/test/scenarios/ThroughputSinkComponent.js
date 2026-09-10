@@ -10,6 +10,6 @@ export class ThroughputSinkComponent extends AbstractComponent {
             new FieldDefinition("inputPort", "eid", NO_EID),
             new FieldDefinition("consumed"),
             new FieldDefinition("lastConsumed", "i32", EMPTY),
-        ], {sparse: true});
+        ], {isSparse: true});
     }
 }

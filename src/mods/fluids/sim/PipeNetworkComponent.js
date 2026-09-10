@@ -10,6 +10,6 @@ export class PipeNetworkComponent extends AbstractComponent {
         super("PipeNetwork", [
             new FieldDefinition("fluidType", "item", EMPTY),
             new FieldDefinition("amount"),
-        ], {snapshotOnly: true});
+        ], {isSnapshotOnly: true});
     }
 }

@@ -34,13 +34,13 @@ export class NotePanelLayer extends ConnectedPanelLayer {
      * @param {Application} app
      * @param {ClientCache} cache
      * @param {AbstractSession} session
-     * @param {boolean} showAuthor false in solo play, where every note is the reader's own
+     * @param {boolean} shouldShowAuthor false in solo play, where every note is the reader's own
      */
-    constructor(app, cache, session, showAuthor) {
+    constructor(app, cache, session, shouldShowAuthor) {
         super(app);
         this._cache = cache;
         this._session = session;
-        this._showAuthor = showAuthor;
+        this._shouldShowAuthor = shouldShowAuthor;
         this._notes = cache.writer("notes");
         this._players = cache.view("players");
         this.textureCache = null;
@@ -193,7 +193,7 @@ export class NotePanelLayer extends ConnectedPanelLayer {
     _buildBody(stack, target) {
         if (this._input === null) {
             stack.text(target.text);
-            if (this._showAuthor) {
+            if (this._shouldShowAuthor) {
                 stack.text(this._players.getUsernameByPlayerRef(target.authorRef), TextRole.MUTED);
             }
         } else {

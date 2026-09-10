@@ -261,11 +261,11 @@ export class WorkerDrawLayer extends AbstractDrawLayer {
             this._workers.release(machineId);
             return;
         }
-        const fresh = !this._workers.has(machineId);
+        const isFresh = !this._workers.has(machineId);
         const scatter = this._scatterMachines.delete(machineId);
         const worker = this._workers.acquire(machineId);
         worker.setRoute(waypoints);
-        if (fresh) {
+        if (isFresh) {
             if (scatter) {
                 worker.scatter();
             } else {

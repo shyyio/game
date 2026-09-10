@@ -406,7 +406,7 @@ export class ProductionLogPanelLayer extends Container {
         stack.scrollSection(rows, (row) => new PanelRowDescriptor({
             label: `#${row.rank} ${this._players.getUsernameByPlayerRef(row.playerRef)}`,
             rightLabel: formatExactCount(row.score),
-            selected: row.playerRef === ownPlayerRef,
+            isSelected: row.playerRef === ownPlayerRef,
             onRowClick: () => this._push(new LogView(row.playerRef)),
         }), "Nobody ranked yet", {visibleRows: BOARD_VISIBLE_ROWS, centerRow: view.focusRow});
         stack.gap();

@@ -14,6 +14,6 @@ export class SplitterComponent extends AbstractComponent {
             new FieldDefinition("internalPortA", "eid", NO_EID),
             new FieldDefinition("internalPortB", "eid", NO_EID),
             new FieldDefinition("state"),
-        ], {sparse: true});
+        ], {isSparse: true});
     }
 }

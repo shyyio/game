@@ -255,15 +255,15 @@ export class World {
         let found = 0;
         for (let i = 0; i < smallest.count; i += 1) {
             const eid = smallest.dense[i];
-            let matches = true;
+            let isMatch = true;
             for (const id of ids) {
                 const generation = Math.floor(id / BITS_PER_MASK);
                 if ((this._masks[generation][eid] & (1 << (id % BITS_PER_MASK))) === 0) {
-                    matches = false;
+                    isMatch = false;
                     break;
                 }
             }
-            if (matches) {
+            if (isMatch) {
                 result[found] = eid;
                 found += 1;
             }
