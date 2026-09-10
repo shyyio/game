@@ -31,6 +31,21 @@ class PositionComponent extends AbstractComponent {
             new FieldDefinition("direction", "i32", NO_EID),
         ]);
     }
+
+    /**
+     * Places `eid` at (x, y) facing `direction`, attaching the component if it has none.
+     * @param {number} eid
+     * @param {number} x
+     * @param {number} y
+     * @param {number} direction Direction or NO_EID
+     * @returns {void}
+     */
+    setPosition(eid, x, y, direction) {
+        this.attach(eid);
+        this.store.x[eid] = x;
+        this.store.y[eid] = y;
+        this.store.direction[eid] = direction;
+    }
 }
 
 /**
@@ -88,10 +103,7 @@ export class SpatialIndex {
      * @returns {void}
      */
     setPosition(eid, x, y, direction=NO_EID) {
-        this.positions.attach(eid);
-        this.positions.store.x[eid] = x;
-        this.positions.store.y[eid] = y;
-        this.positions.store.direction[eid] = direction;
+        this.positions.setPosition(eid, x, y, direction);
     }
 
     /**

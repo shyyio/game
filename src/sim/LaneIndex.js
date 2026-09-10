@@ -31,6 +31,38 @@ class LaneCellComponent extends AbstractComponent {
             new FieldDefinition("parentEdge", "i32", Direction.UP),
         ], {isSparse: true});
     }
+
+    /**
+     * @param {number} eid - a lane cell
+     * @returns {number} its lane, NO_LANE when it is in none
+     */
+    getLaneRefByEid(eid) {
+        if (eid === NO_EID) {
+            return NO_LANE;
+        }
+        const row = this.getRowByEid(eid);
+        if (row < 0) {
+            return NO_LANE;
+        }
+        const laneEid = this.store.lane[row];
+        if (laneEid === NO_EID) {
+            return NO_LANE;
+        }
+        return laneEid;
+    }
+
+    /**
+     * The edge flow reaches a cell over, in the cell's own frame: UP is its straight back edge.
+     * @param {number} eid - a lane cell
+     * @returns {Direction}
+     */
+    getParentEdgeByEid(eid) {
+        const row = this.getRowByEid(eid);
+        if (row < 0) {
+            throw new Error(`Entity ${eid} is no lane cell`);
+        }
+        return this.store.parentEdge[row];
+    }
 }
 
 /**
@@ -75,6 +107,19 @@ class LaneItemComponent extends AbstractComponent {
             itemEid = this.store.nextItem[this.getRowByEid(itemEid)];
         }
         return itemEids;
+    }
+
+    /**
+     * Destroys every item of a cell's slots, skipping the empty ones.
+     * @param {number[]} itemEids NO_EID for an empty slot
+     * @returns {void}
+     */
+    destroyAll(itemEids) {
+        for (const itemEid of itemEids) {
+            if (itemEid !== NO_EID) {
+                this.destroy(itemEid);
+            }
+        }
     }
 }
 
@@ -240,6 +285,29 @@ class LaneComponent extends AbstractComponent {
         this.store.headGap[row] = slotCount;
         return eid;
     }
+
+    /**
+     * @param {number} laneRef
+     * @returns {number} its column row
+     */
+    getRowByLaneRef(laneRef) {
+        const row = this.getRowByEid(laneRef);
+        if (row < 0) {
+            throw new Error(`No lane ${laneRef}`);
+        }
+        return row;
+    }
+
+    /**
+     * Empties a lane's file bookkeeping; the items themselves are the caller's to move or destroy.
+     * @param {number} row
+     * @returns {void}
+     */
+    resetFile(row) {
+        this.store.firstItem[row] = NO_EID;
+        this.store.lastItem[row] = NO_EID;
+        this.store.itemCount[row] = 0;
+    }
 }
 
 export class LaneIndex extends AbstractSystem {
@@ -280,18 +348,7 @@ export class LaneIndex extends AbstractSystem {
      * @returns {number} its lane, NO_LANE when it is in none
      */
     getLaneRefByCellEid(eid) {
-        if (eid === NO_EID) {
-            return NO_LANE;
-        }
-        const cellRow = this.cells.getRowByEid(eid);
-        if (cellRow < 0) {
-            return NO_LANE;
-        }
-        const laneEid = this.cells.store.lane[cellRow];
-        if (laneEid === NO_EID) {
-            return NO_LANE;
-        }
-        return laneEid;
+        return this.cells.getLaneRefByEid(eid);
     }
 
     /**
@@ -317,7 +374,7 @@ export class LaneIndex extends AbstractSystem {
      */
     getCellEidsByLaneRef(laneRef) {
         const cells = [];
-        let eid = this.lanes.store.headCell[this._getLaneRowByLaneRef(laneRef)];
+        let eid = this.lanes.store.headCell[this.lanes.getRowByLaneRef(laneRef)];
         while (eid !== NO_EID) {
             cells.push(eid);
             eid = this.cells.store.childCell[this.cells.getRowByEid(eid)];
@@ -330,7 +387,7 @@ export class LaneIndex extends AbstractSystem {
      * @returns {number} slots
      */
     getSlotCountByLaneRef(laneRef) {
-        return this.lanes.store.slotCount[this._getLaneRowByLaneRef(laneRef)];
+        return this.lanes.store.slotCount[this.lanes.getRowByLaneRef(laneRef)];
     }
 
     /**
@@ -338,7 +395,7 @@ export class LaneIndex extends AbstractSystem {
      * @returns {number} port eid
      */
     getInputPortEidByLaneRef(laneRef) {
-        return this.lanes.store.inputPort[this._getLaneRowByLaneRef(laneRef)];
+        return this.lanes.store.inputPort[this.lanes.getRowByLaneRef(laneRef)];
     }
 
     /**
@@ -346,7 +403,7 @@ export class LaneIndex extends AbstractSystem {
      * @returns {number} port eid
      */
     getOutputPortEidByLaneRef(laneRef) {
-        return this.lanes.store.outputPort[this._getLaneRowByLaneRef(laneRef)];
+        return this.lanes.store.outputPort[this.lanes.getRowByLaneRef(laneRef)];
     }
 
     /**
@@ -355,23 +412,18 @@ export class LaneIndex extends AbstractSystem {
      */
     getItemsByLaneRef(laneRef) {
         const store = this.items.store;
-        return this.items.getFileByFirstItemEid(this.lanes.store.firstItem[this._getLaneRowByLaneRef(laneRef)]).map(itemEid => {
+        return this.items.getFileByFirstItemEid(this.lanes.store.firstItem[this.lanes.getRowByLaneRef(laneRef)]).map(itemEid => {
             const itemRow = this.items.getRowByEid(itemEid);
             return {itemRef: store.itemRef[itemRow], itemTypeId: store.itemTypeId[itemRow], gap: store.gap[itemRow]};
         });
     }
 
     /**
-     * The edge flow reaches a cell over, in the cell's own frame: UP is its straight back edge.
      * @param {number} eid - a lane cell
      * @returns {Direction}
      */
     getParentEdgeByCellEid(eid) {
-        const cellRow = this.cells.getRowByEid(eid);
-        if (cellRow < 0) {
-            throw new Error(`Entity ${eid} is no lane cell`);
-        }
-        return this.cells.store.parentEdge[cellRow];
+        return this.cells.getParentEdgeByEid(eid);
     }
 
     /**
@@ -388,20 +440,7 @@ export class LaneIndex extends AbstractSystem {
      * @returns {number}
      */
     getItemCountByLaneRef(laneRef) {
-        return this.lanes.store.itemCount[this._getLaneRowByLaneRef(laneRef)];
-    }
-
-    /**
-     * @private
-     * @param {number} laneRef
-     * @returns {number} its column laneRow
-     */
-    _getLaneRowByLaneRef(laneRef) {
-        const laneRow = this.lanes.getRowByEid(laneRef);
-        if (laneRow < 0) {
-            throw new Error(`No lane ${laneRef}`);
-        }
-        return laneRow;
+        return this.lanes.store.itemCount[this.lanes.getRowByLaneRef(laneRef)];
     }
 
     /**
@@ -704,7 +743,10 @@ export class LaneIndex extends AbstractSystem {
         // The resets go out now: a rebuilt lane may take a destroyed one's eid, and the client
         // forgets a lane on its reset.
         this._flushBatches();
-        this._destroyCellSlotItems(itemSlotsByCellEid.get(dropped));
+        const droppedItems = itemSlotsByCellEid.get(dropped);
+        if (droppedItems !== undefined) {
+            this.items.destroyAll(droppedItems);
+        }
         itemSlotsByCellEid.delete(dropped);
 
         const ordered = Array.from(cells).sort((a, b) => a - b);
@@ -719,7 +761,7 @@ export class LaneIndex extends AbstractSystem {
             this._pushItemsFromCellSlots(laneEid, itemSlotsByCellEid);
         }
         for (const items of itemSlotsByCellEid.values()) {
-            this._destroyCellSlotItems(items);
+            this.items.destroyAll(items);
         }
         for (const laneEid of built) {
             this._emitLaneCreated(laneEid);
@@ -822,7 +864,7 @@ export class LaneIndex extends AbstractSystem {
      * @returns {void}
      */
     _destroyLane(laneEid) {
-        const laneRow = this._getLaneRowByLaneRef(laneEid);
+        const laneRow = this.lanes.getRowByLaneRef(laneEid);
         const lanes = this.lanes.store;
         for (const cell of this.getCellEidsByLaneRef(laneEid)) {
             const cellRow = this.cells.getRowByEid(cell);
@@ -850,7 +892,7 @@ export class LaneIndex extends AbstractSystem {
      * @returns {void}
      */
     _popItemsIntoCellSlots(laneEid, itemSlotsByCellEid) {
-        const laneRow = this._getLaneRowByLaneRef(laneEid);
+        const laneRow = this.lanes.getRowByLaneRef(laneEid);
         const cells = this.getCellEidsByLaneRef(laneEid);
         const slots = cells.map(cell => this._getBehaviorByCellEid(cell).slotsPerTile);
         let total = 0;
@@ -868,9 +910,7 @@ export class LaneIndex extends AbstractSystem {
             store.lane[itemRow] = NO_EID;
             store.nextItem[itemRow] = NO_EID;
         }
-        this.lanes.store.firstItem[laneRow] = NO_EID;
-        this.lanes.store.lastItem[laneRow] = NO_EID;
-        this.lanes.store.itemCount[laneRow] = 0;
+        this.lanes.resetFile(laneRow);
     }
 
     /**
@@ -913,7 +953,7 @@ export class LaneIndex extends AbstractSystem {
         for (let i = 1; i < cells.length; i += 1) {
             this._createItemFromInteriorPort(itemSlotsByCellEid, cells, slots, i);
         }
-        const laneRow = this._getLaneRowByLaneRef(laneEid);
+        const laneRow = this.lanes.getRowByLaneRef(laneEid);
         const lanes = this.lanes.store;
         let total = 0;
         for (const count of slots) {
@@ -981,7 +1021,7 @@ export class LaneIndex extends AbstractSystem {
      * @returns {number} slots the file occupies, items and the gaps ahead of them
      */
     _getUsedSlotsByLaneEid(laneEid) {
-        const laneRow = this._getLaneRowByLaneRef(laneEid);
+        const laneRow = this.lanes.getRowByLaneRef(laneEid);
         const store = this.items.store;
         let used = 0;
         for (const itemEid of this.items.getFileByFirstItemEid(this.lanes.store.firstItem[laneRow])) {
@@ -999,7 +1039,7 @@ export class LaneIndex extends AbstractSystem {
      * @returns {void}
      */
     _pushItem(laneEid, itemEid, gap) {
-        const laneRow = this._getLaneRowByLaneRef(laneEid);
+        const laneRow = this.lanes.getRowByLaneRef(laneEid);
         const lanes = this.lanes.store;
         const itemRow = this.items.getRowByEid(itemEid);
         this.items.store.lane[itemRow] = laneEid;
@@ -1236,7 +1276,7 @@ export class LaneIndex extends AbstractSystem {
      * @returns {void}
      */
     _emitLaneCreated(laneEid) {
-        const laneRow = this._getLaneRowByLaneRef(laneEid);
+        const laneRow = this.lanes.getRowByLaneRef(laneEid);
         const headCellEid = this.lanes.store.headCell[laneRow];
         const position = this.engine.Position;
         if (!this.engine.isTileSubscribed(position.x[headCellEid], position.y[headCellEid])) {
@@ -1258,7 +1298,7 @@ export class LaneIndex extends AbstractSystem {
      * @returns {void}
      */
     _addLaneItemSyncs(laneEid) {
-        const laneRow = this._getLaneRowByLaneRef(laneEid);
+        const laneRow = this.lanes.getRowByLaneRef(laneEid);
         const batch = this._getBatchByLaneRow(laneRow);
         for (const item of this.getItemsByLaneRef(laneEid)) {
             batch.addSync(laneEid, item.itemRef, item.gap, item.itemTypeId);
@@ -1279,7 +1319,7 @@ export class LaneIndex extends AbstractSystem {
         let geometry = null;
         let items = null;
         for (const laneEid of lanes) {
-            const laneRow = this._getLaneRowByLaneRef(laneEid);
+            const laneRow = this.lanes.getRowByLaneRef(laneEid);
             const headCellEid = this.lanes.store.headCell[laneRow];
             if (geometry === null) {
                 geometry = new LaneSyncBatchEvent(position.x[headCellEid], position.y[headCellEid]);
@@ -1330,25 +1370,9 @@ export class LaneIndex extends AbstractSystem {
             this._pushItemsFromCellSlots(laneEid, itemSlotsByCellEid);
         }
         for (const items of itemSlotsByCellEid.values()) {
-            this._destroyCellSlotItems(items);
+            this.items.destroyAll(items);
         }
         this._batches.clear();
-    }
-
-    /**
-     * @private
-     * @param {number[]|undefined} items
-     * @returns {void}
-     */
-    _destroyCellSlotItems(items) {
-        if (items === undefined) {
-            return;
-        }
-        for (const eid of items) {
-            if (eid !== NO_EID) {
-                this.items.destroy(eid);
-            }
-        }
     }
 
     /**

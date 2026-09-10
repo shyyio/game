@@ -21,6 +21,21 @@ class PlacedObjectComponent extends AbstractComponent {
             new FieldDefinition("placedBy", "i32", PLAYER_REF_NONE),
         ], {isSparse: true});
     }
+
+    /**
+     * @param {number} objectTypeId
+     * @returns {number[]} the eids of that type
+     */
+    getEidsByTypeId(objectTypeId) {
+        const column = this.store.objectTypeId;
+        const matches = [];
+        for (let row = 0; row < this.count; row += 1) {
+            if (column[row] === objectTypeId) {
+                matches.push(this.eids[row]);
+            }
+        }
+        return matches;
+    }
 }
 
 const EMPTY_EIDS = new Set();
@@ -150,15 +165,7 @@ export class PlacedObjects extends AbstractSystem {
      * @returns {number[]}
      */
     getEidsByTypeId(objectTypeId) {
-        const column = this.objects.store.objectTypeId;
-        const eids = this.objects.eids;
-        const matches = [];
-        for (let row = 0; row < this.objects.count; row += 1) {
-            if (column[row] === objectTypeId) {
-                matches.push(eids[row]);
-            }
-        }
-        return matches;
+        return this.objects.getEidsByTypeId(objectTypeId);
     }
 
     /**
