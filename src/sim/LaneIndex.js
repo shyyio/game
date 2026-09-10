@@ -403,8 +403,6 @@ export class LaneIndex extends AbstractSystem {
         return this._getParentLinkByCellEid(eid).parent;
     }
 
-    // ---- edits ----
-
     /**
      * Adopts a freshly placed cell and rebuilds the lanes its links change.
      * @param {number} eid
@@ -866,8 +864,6 @@ export class LaneIndex extends AbstractSystem {
         lanes.lastItem[laneRow] = itemEid;
         lanes.itemCount[laneRow] += 1;
     }
-
-    // ---- the step ----
 
     /**
      * The pop past the tail and the push at the head.

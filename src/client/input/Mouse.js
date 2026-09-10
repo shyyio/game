@@ -178,8 +178,6 @@ class Mouse {
         this._resetCallbacks();
     }
 
-    // ---- Callback registration ----
-
     /**
      * Left-click (or touch tap) on a tile with no dragging.
      * @param {function(tileX: number, tileY: number)} callback
@@ -271,8 +269,6 @@ class Mouse {
         this._dragAxis = null;
     }
 
-    // ---- Getters ----
-
     get tileX() {
         return Math.floor(this.currentX / TILE_SIZE);
     }
@@ -322,8 +318,6 @@ class Mouse {
             tileY: Math.floor(world.y / TILE_SIZE),
         };
     }
-
-    // ---- Internal handlers ----
 
     _handlePointerDown(event) {
         if (event.button === 2) {

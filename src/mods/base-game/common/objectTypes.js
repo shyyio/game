@@ -42,7 +42,6 @@ import {
     BLENDER_WORKER_COST,
 } from "./constants.js";
 
-// ---- Resource bodies ----
 // Simple 1x1 non-solid tile; shared Extractor sits on top.
 
 function resourceBody(name, label, resourceType, toolId) {
@@ -73,7 +72,6 @@ export const RESOURCE_TYPES = [
     QuartzDepositResourceType,
 ];
 
-// ---- Primary extraction ----
 // Shared Extractor type: the "Primary Extraction" agent, reused for every resource.
 
 export const ExtractorType = new ObjectType({
@@ -98,7 +96,6 @@ export const ExtractorType = new ObjectType({
     }),
 });
 
-// ---- Machines ----
 // Ports face bottom (inputs) or top (outputs), never a side. Single port at column x=0 on 1x1;
 // second port widens footprint to "1x2" at column x=1.
 
@@ -259,7 +256,6 @@ export const FillType = machine("Fill", "Fill", {
     recipes: [new RecipeDefinition([ITEM_TYPE_EMPTY_SYRINGE, ITEM_TYPE_OVERLOAD_MIX], ITEM_TYPE_STIMPACK)],
 });
 
-// ---- Air Filter ----
 // No input: passive generator (filters ambient air). Oxygen main output, Water a slow trickle.
 
 export const AirFilterType = new ObjectType({

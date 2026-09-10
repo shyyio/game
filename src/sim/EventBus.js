@@ -23,8 +23,6 @@ export class EventBus {
         this._nextId = 1;
     }
 
-    // ---- Sessions ----
-
     /**
      * Allocates a session ref, registers the session, and gives it an empty viewport / inspect set.
      * @param {AbstractSession} session
@@ -55,8 +53,6 @@ export class EventBus {
         this._inspects.delete(sessionRef);
         this._sessions.delete(sessionRef);
     }
-
-    // ---- Delivery ----
 
     /**
      * Fans an event to every session subscribed to its topic.
@@ -169,8 +165,6 @@ export class EventBus {
         }
     }
 
-    // ---- Viewport topics ----
-
     /**
      * Replaces a session's viewport with `chunks`, subscribing/unsubscribing chunk topics and returning
      * the delta so the caller syncs only the change.
@@ -200,8 +194,6 @@ export class EventBus {
         this._viewports.set(sessionRef, requested);
         return {added, removed};
     }
-
-    // ---- Inspect topics ----
 
     /**
      * Replaces a session's inspected-object set with `objectRefs`, subscribing/unsubscribing object
@@ -262,8 +254,6 @@ export class EventBus {
         }
         this._objectSubscribers.delete(objectRef);
     }
-
-    // ---- Subscriptions ----
 
     /**
      * @private

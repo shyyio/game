@@ -98,7 +98,6 @@ function runPoll(world) {
     for (let tick = 0; tick < WARMUP + MEASURE; tick += 1) {
         const measuring = tick >= WARMUP;
 
-        // --- submit: every producer holding an item ---
         let count = 0;
         for (let producer = 0; producer < PRODUCERS; producer += 1) {
             if (item[source[producer]] === EMPTY) {
@@ -113,7 +112,6 @@ function runPoll(world) {
             intentTotal += count;
         }
 
-        // --- resolve ---
         let destCount = 0;
         let sourceCount = 0;
         let queueCount = 0;
@@ -161,7 +159,6 @@ function runPoll(world) {
             }
         }
 
-        // --- commit, downstream first so a chain shifts as one ---
         for (let index = resolvedCount - 1; index >= 0; index -= 1) {
             const row = resolvedRows[index];
             item[intentDest[row]] = item[intentSource[row]];
@@ -227,7 +224,6 @@ function runStanding(world) {
     for (let tick = 0; tick < WARMUP + MEASURE; tick += 1) {
         const measuring = tick >= WARMUP;
 
-        // --- pass over the active producers only ---
         let queueCount = 0;
         let resolvedCount = 0;
         let nextCount = 0;
@@ -262,7 +258,6 @@ function runStanding(world) {
             intentTotal += submitted;
         }
 
-        // --- drain walk: a freed port wakes whatever was parked on it, so the chain shifts as one ---
         for (let head = 0; head < queueCount; head += 1) {
             const port = queue[head];
             let waiter = waiterHead[port];
@@ -290,7 +285,6 @@ function runStanding(world) {
             }
         }
 
-        // --- commit, downstream first ---
         for (let index = resolvedCount - 1; index >= 0; index -= 1) {
             const producer = resolved[index];
             item[dest[producer]] = item[source[producer]];

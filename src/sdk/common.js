@@ -32,13 +32,11 @@
 // which re-exports everything here. Everything a mod is meant to use should be
 // reachable from these two files and nowhere else.
 
-// ---- SDK version ----
 // The version of this SDK surface, declared by every packaged mod (mod.json's `sdkVersion`) and
 // checked before a bundle is evaluated. Bump on any breaking change to either SDK file — a removed
 // or renamed export, or a changed signature/semantics of one; pure additions keep the number.
 export {SDK_VERSION} from "@/common/ModManifest.js";
 
-// ---- Mod framework ----
 // A mod is a ModPackage: a pure-data declaration (object types, wire classes) plus its texture
 // atlases, an optional sim part, and an optional client part, registered into a ModRegistry and
 // frozen once.
@@ -57,7 +55,6 @@ export {
     CONVEYS_FLUID,
 } from "@/common/ObjectType.js";
 
-// ---- Behaviors ----
 // Component+system bundles a declaration plugs into an ObjectType's `behavior` slot; the engine's
 // PlacedObjects host derives the whole entity lifecycle from them. The base class and the empty
 // StaticBehavior sit in common/ beside ObjectType; the ones below it reach into the engine.
@@ -88,7 +85,6 @@ export {EMPTY, NO_EID} from "@/sim/sentinels.js";
 // Thrown by a must-override hook a subclass left unimplemented.
 export {NotImplementedError} from "@/common/error.js";
 
-// ---- Engine events ----
 // Chunk subscribe/unsubscribe events, so a mod's client side can react to chunks
 // entering/leaving a session's viewport.
 // TickEndEvent lands on every session every tick, carrying the world clock — a mod reads the tick
@@ -99,7 +95,6 @@ export {
     TickEndEvent,
 } from "@/common/CoreEvents.js";
 
-// ---- Messages ----
 // Base class for messages a session sends to the game (player intents). Subclass
 // it, declare a static `wireFields` map, and optionally override `validate`.
 export {AbstractMessage} from "@/common/AbstractMessage.js";
@@ -122,7 +117,6 @@ export {SetViewportMessage} from "@/common/CoreMessages.js";
 export {ClaimChunkMessage} from "@/common/ClaimMessages.js";
 export {AddFriendMessage, RemoveFriendMessage, SetPlayerSettingMessage} from "@/common/PlayerMessages.js";
 
-// ---- Events ----
 // Base classes for events a mod emits to connected clients (rendering, effects).
 // Subclasses must declare a static `wireFields` map. Extend `AbstractChunkRoutedEvent`
 // for an event tied to a tile (adds x, y and a derived `chunk`); extend `AbstractEvent`
@@ -152,7 +146,6 @@ export {PlayerSettingsUpdateEvent} from "@/common/PlayerSettingsEvents.js";
 // Worker assignment deltas/sync the engine's WorkerNetworks emits (NO_HOUSING = unmanned).
 export {WorkerAssignmentEvent, WorkerAssignmentSyncEvent, WorkerAssignmentBatchEvent, NO_HOUSING} from "@/common/WorkerEvents.js";
 
-// ---- World geometry ----
 // `Direction` is the cardinal-direction enum (with rotate/dx/dy helpers).
 // `CHUNK_SIZE` is the width/height of a chunk in tiles.
 export {
@@ -164,31 +157,26 @@ export {
 // The unowned/anonymous player ref: no session owns the action.
 export {PLAYER_REF_NONE} from "@/common/constants.js";
 
-// ---- Logic network ----
 // Machine on/off, readable and writable through AbstractBehavior.logicRead/logicWrite;
 // LOGIC_KEY_PROCESSING reads whether a craft is in flight and is never writable.
 export {LOGIC_KEY_ENABLED, LOGIC_KEY_PROCESSING} from "@/common/constants.js";
 // UI metadata a declaration's logicKeys map carries per key (name + optional on/off states).
 export {LogicKeyEntry, LogicKeyState} from "@/common/LogicKeys.js";
 
-// ---- Player settings ----
 // Per-key player-setting config a declaration contributes (playerSettingEntries); only
 // clientWritable keys accept a SetPlayerSettingMessage, holding an integer in
 // [0, optionCount). Toggle values: 0/absent = on.
 export {PlayerSettingEntry} from "@/common/PlayerSettingEntry.js";
 export {SETTING_ON, SETTING_OFF} from "@/common/constants.js";
 
-// ---- Market ----
 // Item type -> tradable-catalog listing a declaration contributes (marketListings); npcPrice null
 // means player-market-only (no fixed NPC price).
 export {MarketListingEntry} from "@/common/MarketListingEntry.js";
 
-// ---- Metrics ----
 // GLOBAL-scope query opt-in a declaration contributes (metricsGlobalQueries); rowFilter trims a
 // public answer's rows (e.g. one side of each trade).
 export {MetricsGlobalQueryEntry} from "@/common/MetricsGlobalQueryEntry.js";
 
-// ---- Items ----
 // Item type a declaration contributes inside an ItemCategory (items): a player-visible name
 // plus a texture name and a pixi multiply tint, so shared shapes stay visually distinct per item
 // type. The frozen ModRegistry merges them into its ItemRegistry (modRegistry.items).
@@ -207,7 +195,6 @@ export {formatExactCount} from "@/common/util.js";
 // can compute where an object's ports/geometry land from its ObjectType.
 export {rotate} from "@/common/util.js";
 
-// ---- World noise ----
 // Mods declare NoiseChannels (declaration.noiseChannels); `game.noise` on the sim and `client.noise`
 // on the client sample them by channelId, both seeded by GameSettingsKey.SEED so terrain derives
 // identically on either side.
@@ -220,7 +207,6 @@ export {Biome, NoiseRange, TerrainDetail} from "@/common/Biome.js";
 export {Terrain, TerrainBake, TileBiome} from "@/common/Terrain.js";
 export {GameSettingsKey} from "@/common/constants.js";
 
-// ---- Chunk keys ----
 // A chunk is identified by an integer ordinal (its index within the region);
 // `chunkKeyAt(tileX, tileY)` computes that key in JS.
 export {chunkKeyAt, chunkOrigin} from "@/common/util.js";
@@ -240,11 +226,9 @@ export {getOrCreate} from "@/common/util.js";
 // Drops a member from a Map<*, Set>, deleting the key once its set empties.
 export {removeFromGroup} from "@/common/util.js";
 
-// ---- Wire ----
 // Encodes/decodes the registry's wire classes; a mod's spec round-trips its own events through it.
 export {WireRegistry} from "@/common/wire.js";
 
-// ---- Textures ----
 // One texture atlas (image + frame data) a mod package ships; built by the mod's loader, not by
 // its declaration.
 export {TextureAtlas} from "@/common/TextureAtlas.js";

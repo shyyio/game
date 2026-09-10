@@ -27,7 +27,6 @@ export function joinedFluidType(candidatesAt) {
     return fluidType;
 }
 
-// ---- Fluid types ----
 // Mod-owned numbers, same convention as item types; a network adopts whatever number lands in
 // its ports.
 export const FLUID_TYPE_WATER = 230;

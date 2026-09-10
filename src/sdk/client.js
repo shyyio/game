@@ -9,11 +9,9 @@
 // Everything from the engine-agnostic SDK is available here too.
 export * from "@/sdk/common.js";
 
-// ---- Mod framework ----
 // The optional client part of a ModPackage: draw layers, tools, and input hooks.
 export {AbstractClientMod} from "@/client/AbstractClientMod.js";
 
-// ---- Rendering ----
 // Base class for a Pixi layer that reacts to game events.
 export {AbstractDrawLayer} from "@/client/layers/AbstractDrawLayer.js";
 // `AbstractChunkedDrawLayer` adds per-chunk grouping: ChunkNode roots mounted by viewport,
@@ -38,7 +36,6 @@ export {ConnectionDrawLayer} from "@/client/layers/ConnectionDrawLayer.js";
 // The derived-default placement-preview ghost (single sprite + center-lock); paired with ObjectTool.
 export {ObjectGhostLayer} from "@/client/layers/ObjectGhostLayer.js";
 
-// ---- HUD panel look-and-feel ----
 // Same framed-panel toolkit the core Friends/Inspect panels use, for a mod-contributed HUD panel.
 export {UIPanel, ManagedPanel, PANEL_SCREEN_MARGIN} from "@/client/hud/UIPanel.js";
 export {buildPanelButton, buildIconButton, buildToggleRow} from "@/client/hud/panelButton.js";
@@ -77,7 +74,6 @@ export {ConnectedPanelLayer} from "@/client/hud/ConnectedPanelLayer.js";
 // Masked, scrollable viewport with a draggable thumb, for a scroll region outside PanelStack.scrollSection.
 export {ScrollView} from "@/client/hud/ScrollView.js";
 
-// ---- Settings menu ----
 // Declarative settings-menu controls, returned from a client mod's settingsCategories hook.
 export {AbstractSettingControl} from "@/client/hud/AbstractSettingControl.js";
 export {AbstractPlayerSettingControl} from "@/client/hud/AbstractPlayerSettingControl.js";
@@ -88,7 +84,6 @@ export {DeviceSettingToggle} from "@/client/hud/DeviceSettingToggle.js";
 export {DeviceSettingSlider} from "@/client/hud/DeviceSettingSlider.js";
 export {default as DeviceSettings} from "@/client/state/DeviceSettings.js";
 
-// ---- Input ----
 // Base class for a placement/interaction tool shown in the toolbar.
 export {AbstractTool} from "@/client/input/AbstractTool.js";
 // The derived-default tap-to-place tool (with center-lock); knobs come from the type's PlacementRule.
@@ -102,14 +97,12 @@ export {startHeartbeat, startDelay} from "@/client/timers.js";
 // Singleton tracking window focus + tab visibility as one `focused` boolean.
 export {default as WindowFocus} from "@/client/WindowFocus.js";
 
-// ---- Feedback ----
 // Haptic (rumble) feedback for touch devices; a no-op where unavailable.
 export {default as Haptics} from "@/client/Haptics.js";
 
 // One inspect-hover highlight (an object outlined at a tile), returned in arrays from a mod's onInspect.
 export {InspectHighlight} from "@/client/layers/InspectHighlight.js";
 
-// ---- Client world state ----
 // The shared plain-data state tree (`client.cache`); namespaces register schema/writer/view via
 // `client.cache.register(name, schema, writer, view)`, reached via cache.writer(name)/cache.view(name).
 export {ClientCache, AbstractCacheWriter, AbstractCacheView, schemaScalar, schemaMap, schemaSet} from "@/client/state/ClientCache.js";
@@ -130,7 +123,6 @@ export {OverworldView} from "@/client/state/OverworldState.js";
 export {ObjectsView, CacheEntry} from "@/client/state/ObjectsState.js";
 
 
-// ---- Pixel-space geometry ----
 // `TILE_SIZE` is a tile's size in pixels; the snap helpers round pixel coordinates to tile/chunk boundaries.
 export {TILE_SIZE, snapToTile, snapToChunk} from "@/client/constants.js";
 // Whether the client is in mobile (touch) mode, for a mod branching on the gesture vocabulary.
@@ -148,7 +140,6 @@ export {isSameChunkSet} from "@/client/constants.js";
 // Groups a chunk's sprites and pooled map geometry under one mountable root.
 export {ChunkNode} from "@/client/layers/ChunkNode.js";
 
-// ---- Drawing helpers ----
 // Convenience wrappers for drawing onto a Pixi Graphics object.
 export {drawLine, drawRect, drawCircle} from "@/client/layers/pixiUtils.js";
 
@@ -169,7 +160,6 @@ export {
     TARGET_TILE_BORDER_WIDTH,
 } from "@/client/Theme.js";
 
-// ---- Animation ----
 // Shared mod-8 animation clock: frames named "<base>/0".."<base>/7"; currentAnimationFrame() keeps all mods in lockstep.
 export {currentAnimationFrame} from "@/client/layers/animation.js";
 
@@ -181,6 +171,5 @@ export {KeyedDisplayPool} from "@/client/layers/KeyedDisplayPool.js";
 // Draws a group of animated tiles as one mesh, advancing frames via a single uniform write.
 export {AnimatedTile, AnimatedTileMesh, AnimatedTileShader, FrameTable} from "@/client/layers/AnimatedTileMesh.js";
 
-// ---- Pixi types ----
 // Passed through so mods share the engine's single Pixi instance (multiple copies break rendering).
 export {Graphics, Rectangle, Sprite, Text, Texture, Container} from "pixi.js";

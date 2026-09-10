@@ -103,8 +103,6 @@ export function walkTunnel(index, mouth) {
     return {tiles, pair: null};
 }
 
-// ---- Underground belt helpers ----
-
 /**
  * Whether a belt type is a tunnel entrance or exit.
  * @param {number} type

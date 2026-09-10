@@ -5,7 +5,6 @@ import {contrastRatio} from "@/client/contrast.js";
 // Central color palette for all client-side (pixi) rendering. Mods keep their own
 // domain palettes; this holds shared HUD/panel colors and engine render colors.
 
-// ---- Themes ----
 // A theme names one full set of the colors below. Ids are the dropdown's option indices: only append.
 export const THEME_DEFAULT = 0;
 export const THEME_HIGH_CONTRAST = 1;
@@ -60,18 +59,15 @@ const HIGH_CONTRAST_PALETTE = {
 
 const PALETTES = [DEFAULT_PALETTE, HIGH_CONTRAST_PALETTE];
 
-// ---- HUD panel background (rotate buttons, status message) ----
 export let PANEL_FILL = DEFAULT_PALETTE.PANEL_FILL;
 export let PANEL_FILL_ALPHA = DEFAULT_PALETTE.PANEL_FILL_ALPHA;
 export let PANEL_BORDER = DEFAULT_PALETTE.PANEL_BORDER;
 export let PANEL_TEXT = DEFAULT_PALETTE.PANEL_TEXT; // text and icons over the dark translucent fill
 export let PANEL_HOVER_FILL = DEFAULT_PALETTE.PANEL_HOVER_FILL;
 
-// ---- Accents ----
 export let ACTIVE_ACCENT = DEFAULT_PALETTE.ACTIVE_ACCENT; // pressed/active control highlight
 export let LABEL_EMPHASIS = DEFAULT_PALETTE.LABEL_EMPHASIS;
 
-// ---- Inspect & toolbar panels (ui frame background) ----
 export let PANEL_TINT = DEFAULT_PALETTE.PANEL_TINT; // tint over the ui frame
 export let SCROLLBAR_TRACK_TINT = DEFAULT_PALETTE.SCROLLBAR_TRACK_TINT;
 export let PANEL_TINT_TEXT = DEFAULT_PALETTE.PANEL_TINT_TEXT; // body text over a PANEL_TINT panel
@@ -179,13 +175,11 @@ export function textOn(background) {
     return PANEL_TINT_TEXT;
 }
 
-// ---- Placement-preview ghost palette (used by every tool's ghost layer) ----
 export const GHOST_TINT = 0xFFFFFF;
 export const GHOST_ALPHA = 0.9; // ghosts are always semi-transparent
 export const GHOST_BLOCKED_TINT = 0xF23030; // placement blocked (red)
 export const GHOST_BLOCKED_ALPHA = 0.8;
 
-// ---- Per-tile placement feedback ----
 export const BLOCKED_TILE_COLOR = 0xF23030; // red
 export const OVERWRITE_TILE_COLOR = 0x3098F2; // blue
 
@@ -198,11 +192,9 @@ export const TARGET_TILE_BORDER_WIDTH = 3;
 // Map-mode tint for generic objects.
 export const MAP_TILE_COLOR = 0x888888;
 
-// ---- Chunk-claim borders (map/overworld mode) ----
 export const CLAIM_FILL_ALPHA = 0.2;
 export const CLAIM_BORDER_ALPHA = 0.9;
 
-// ---- Map-mode chunk selection (the chunk panel's target + the cursor square) ----
 export const CHUNK_SELECT_COLOR = 0x5bb5ff;
 export const CHUNK_SELECT_ALPHA = 0.9;
 export const CHUNK_SELECT_FILL_ALPHA = 0.45;

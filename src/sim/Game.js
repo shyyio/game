@@ -172,8 +172,6 @@ export class Game {
         this.gameSettings.set(GameSettingsKey.SEED, seed);
     }
 
-    // ---- Persistence ----
-
     /**
      * The whole world as one snapshot: engine state plus every record table.
      * @returns {object}
@@ -234,8 +232,6 @@ export class Game {
             mod.deserializeRecords(byName);
         }
     }
-
-    // ---- Sessions ----
 
     /**
      * Changes the real-time length of a tick and tells every client, which read it for rates.
@@ -320,8 +316,6 @@ export class Game {
         this.simEngine.invalidateObservers();
     }
 
-    // ---- Messages ----
-
     /**
      * @param {AbstractMessage} message
      * @param {AbstractSession} session
@@ -386,8 +380,6 @@ export class Game {
         this.toolOrder.set(session.playerRef, toolIds);
         this.bus.publishTo(session.sessionRef, new PlayerSettingsToolOrderSyncEvent(toolIds));
     }
-
-    // ---- Tick ----
 
     /**
      * Runs one whole tick, then the post-tick drains.

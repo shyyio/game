@@ -5,7 +5,6 @@ import {Direction} from "@spup/sdk";
 // Maximum tiles an underground belt may span.
 export const MAX_UNDERGROUND_LENGTH = 4;
 
-// ---- Belt types ----
 export const BELT_NORMAL = 0;
 export const BELT_TUNNEL_DOWN = 1;
 export const BELT_TUNNEL_UP = 2;
@@ -38,7 +37,6 @@ export const BeltBend = {
     RIGHT: 2,
 };
 
-// ---- Workers ----
 // Workers one Housing contributes to its road network.
 export const HOUSING_WORKER_SUPPLY = 5;
 
@@ -54,7 +52,6 @@ export const DRAW_LAYER_ROAD = 18;
 // Wire catenaries draw above objects and fills.
 export const DRAW_LAYER_WIRES = 30;
 
-// ---- Logic network ----
 // Maximum chebyshev length of a wire.
 export const WIRE_LINK_RANGE = 10;
 
@@ -67,7 +64,6 @@ export const LOGIC_TIER_BASE = 1;
 // The gate's logic key (flat shared keyspace, see LOGIC_KEY_ENABLED in the engine).
 export const LOGIC_KEY_OPEN = 2;
 
-// ---- Rule comparators ----
 export const LOGIC_COMPARATOR_AT_LEAST = 0;
 export const LOGIC_COMPARATOR_AT_MOST = 1;
 export const LOGIC_COMPARATOR_EXACTLY = 2;
@@ -100,7 +96,6 @@ export function isLogicComparatorMatching(comparator, value, target) {
 export const LOGIC_RULE_CAP = 16;
 export const LOGIC_CONDITION_CAP = 4;
 
-// ---- Condition kinds ----
 // DEVICE reads one device's key; STORED sums logicStored across the network for an item type.
 export const LOGIC_CONDITION_KIND_DEVICE = 0;
 export const LOGIC_CONDITION_KIND_STORED = 1;

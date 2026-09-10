@@ -1,6 +1,5 @@
 import {NoiseChannel, Biome, NoiseRange, TerrainDetail} from "@spup/sdk";
 
-// ---- Noise channels ----
 export const HUMIDITY = new NoiseChannel("humidity", 0.002, 2);
 // Broader than humidity, so the two rarely draw the same edge.
 export const TEMPERATURE = new NoiseChannel("temperature", 0.0015, 2);
@@ -12,7 +11,6 @@ export const CORRUPTION = new NoiseChannel("corruption", 0.001, 1);
 export const RICHNESS = new NoiseChannel("richness", 0.003, 2);
 export const NOISE_CHANNELS = [HUMIDITY, TEMPERATURE, DRAINAGE, GEOLOGY, CORRUPTION, RICHNESS];
 
-// ---- Palette: few flat colors, for the blocky look ----
 export const PALETTE_GRASS = 0x7FA16A;
 export const PALETTE_DRY_GRASS = 0x9FAA7A;
 export const PALETTE_MARSH = 0x78977A;
@@ -29,7 +27,6 @@ export const PALETTE_CORRUPT_LAKE_SHORE = 0x6D6A85;
 export const PALETTE_CORRUPT_FOREST = 0x6F617F;
 export const PALETTE_CORRUPT_SALT_FLAT = 0xB2A8B5;
 
-// ---- Ground details (grayscale art takes the biome tint; rocks keep their own gray) ----
 // Off until the art is final; the declarations stay so flipping this brings them back.
 const DETAILS_ENABLED = false;
 const DETAIL_SCALE = 1;
@@ -54,7 +51,6 @@ function details(details) {
 // Water's edge is much tighter than land-to-land blending.
 const LAKE_BLEND_WIDTH = 0.008;
 
-// ---- Biomes, first match wins; grassland is the fallback ----
 // The cascade carries weight: salt flat sits before savanna to steal its dry basins. The
 // drainage gap between lake (< 0.35) and marsh (> 0.62) keeps lake shores varied.
 export const BIOME_LAKE = new Biome("lake", PALETTE_LAKE, [
@@ -97,7 +93,6 @@ export const BIOME_GRASSLAND = new Biome("grassland", PALETTE_GRASS, [], 1, deta
     new TerrainDetail(ROCK_1, 0.003, false, DETAIL_SCALE),
 ]));
 
-// ---- Corrupted variants: the corruption channel's top band recolors every biome ----
 // A corrupted biome keeps its base's rules and role (a corrupted lake is still water); it sits
 // before its base in the cascade so the corruption range decides between the two.
 const CORRUPTION_MIN = 0.85;
