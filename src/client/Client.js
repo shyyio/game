@@ -525,7 +525,7 @@ export class Client {
      * @param {number} tileY
      * @returns {void}
      */
-    handleObjectHold(tileX, tileY) {
+    onObjectHold(tileX, tileY) {
         for (const mod of this.modRegistry.clientMods) {
             if (mod.onObjectHold(tileX, tileY, this)) {
                 return;
@@ -541,7 +541,7 @@ export class Client {
      * @param {number} tileY
      * @returns {void}
      */
-    handleObjectTap(tileX, tileY) {
+    onObjectTap(tileX, tileY) {
         for (const mod of this.modRegistry.clientMods) {
             if (mod.onObjectTap(tileX, tileY, this)) {
                 return;
@@ -566,7 +566,7 @@ export class Client {
      * @param {number|null} tileY
      * @returns {void}
      */
-    handleInspect(tileX, tileY) {
+    onInspect(tileX, tileY) {
         const derived = [];
         if (tileX !== null) {
             for (const bundle of this.bundles) {

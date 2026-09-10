@@ -188,7 +188,7 @@ export class RemoteSession extends AbstractSession {
             }
             this.client.events.dispatch(decoded, bytes.length);
         };
-        ws.onclose = event => this._handleClose(event.code);
+        ws.onclose = event => this._onClose(event.code);
         this._ws = ws;
     }
 
@@ -197,7 +197,7 @@ export class RemoteSession extends AbstractSession {
      * @param {number} code
      * @returns {void}
      */
-    _handleClose(code) {
+    _onClose(code) {
         this._ws = null;
         if (DEV) {
             console.log(`[session] disconnected (code ${code})`);

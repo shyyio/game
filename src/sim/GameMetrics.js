@@ -120,17 +120,17 @@ export class GameMetrics {
      * @param {AbstractMessage} message
      * @returns {boolean}
      */
-    handleMessage(session, message) {
+    dispatchMessage(session, message) {
         if (message instanceof MetricsRollupRequestMessage) {
-            this._handleRollupRequest(session, message);
+            this._dispatchMetricsRollupRequest(session, message);
             return true;
         }
         if (message instanceof MetricsSubscribeMessage) {
-            this._handleSubscribe(session, message);
+            this._dispatchMetricsSubscribe(session, message);
             return true;
         }
         if (message instanceof MetricsUnsubscribeMessage) {
-            this._handleUnsubscribe(session, message);
+            this._dispatchMetricsUnsubscribe(session, message);
             return true;
         }
         return false;
@@ -230,7 +230,7 @@ export class GameMetrics {
      * @returns {void}
      * @private
      */
-    _handleRollupRequest(session, message) {
+    _dispatchMetricsRollupRequest(session, message) {
         this._publishMetricsRollup(
             [session.sessionRef], message.metricsType, message.scope, this._getPlayerRefByScope(message.scope, session.sessionRef),
             message.fromTick, message.toTick, message.tier,
@@ -244,7 +244,7 @@ export class GameMetrics {
      * @returns {void}
      * @private
      */
-    _handleSubscribe(session, message) {
+    _dispatchMetricsSubscribe(session, message) {
         let subs = this._subscriptions.get(session.sessionRef);
         if (subs === undefined) {
             subs = new Map();
@@ -275,7 +275,7 @@ export class GameMetrics {
      * @returns {void}
      * @private
      */
-    _handleUnsubscribe(session, message) {
+    _dispatchMetricsUnsubscribe(session, message) {
         const subs = this._subscriptions.get(session.sessionRef);
         if (subs === undefined) {
             return;

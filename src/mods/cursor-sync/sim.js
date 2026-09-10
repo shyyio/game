@@ -43,7 +43,7 @@ export class CursorSyncSimMod extends AbstractSimMod {
      */
     onSessionMessage(message, session, game) {
         if (message instanceof CursorMoveMessage) {
-            this._handleCursorMove(message, session, game);
+            this._dispatchCursorMove(message, session, game);
             return true;
         }
         if (message instanceof CursorHideMessage) {
@@ -108,7 +108,7 @@ export class CursorSyncSimMod extends AbstractSimMod {
      * @param {Game} game
      * @private
      */
-    _handleCursorMove(message, session, game) {
+    _dispatchCursorMove(message, session, game) {
         // Client-side gating trusted but re-checked: a non-sharing player's cursor never fans out.
         const shareMode = this._getAudienceByPlayerRef(session.playerRef, CURSOR_SETTING_SHARE, game);
         if (shareMode === CURSOR_AUDIENCE_NONE) {

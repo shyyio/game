@@ -127,7 +127,7 @@ export async function createPixiApp() {
     let overlay = createShadowOverlay(gameWidth(), gameHeight());
     app.stage.addChild(overlay);
 
-    function handleResize() {
+    function onResize() {
         viewport.resize(gameWidth(), gameHeight(), gameWidth(), gameHeight());
 
         app.stage.removeChild(overlay);
@@ -137,14 +137,14 @@ export async function createPixiApp() {
     }
 
     const onWindowResize = () => {
-        handleResize();
+        onResize();
     };
     window.addEventListener("resize", onWindowResize);
     // Window resize fires before fullscreen dimensions are real; the visual-viewport resize
     // re-runs the sizing afterward.
     const onVisualViewportResize = () => {
         app.resize();
-        handleResize();
+        onResize();
     };
     if (window.visualViewport) {
         window.visualViewport.addEventListener("resize", onVisualViewportResize);

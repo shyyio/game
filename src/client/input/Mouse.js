@@ -157,10 +157,10 @@ class Mouse {
 
         app.canvas.addEventListener("contextmenu", e => e.preventDefault());
 
-        this._viewport.on("pointerdown", event => this._handlePointerDown(event));
-        this._viewport.on("pointerup",   event => this._handlePointerUp(event));
+        this._viewport.on("pointerdown", event => this._onPointerDown(event));
+        this._viewport.on("pointerup",   event => this._onPointerUp(event));
         // A release over a HUD element (or off the canvas) must still end the gesture.
-        this._viewport.on("pointerupoutside", event => this._handlePointerUp(event));
+        this._viewport.on("pointerupoutside", event => this._onPointerUp(event));
 
         this._app.ticker.add(() => this._updateCurrentMousePos());
     }
@@ -324,7 +324,7 @@ class Mouse {
         };
     }
 
-    _handlePointerDown(event) {
+    _onPointerDown(event) {
         if (event.button === 2) {
             // A right-click is the desktop equivalent of a touch long-press, so it
             // fires the same context gesture.
@@ -389,7 +389,7 @@ class Mouse {
         }, LONG_PRESS_MS);
     }
 
-    _handlePointerUp(event) {
+    _onPointerUp(event) {
         if (this._clickStartX == null) {
             return;
         }
@@ -489,7 +489,7 @@ class Mouse {
             // The cursor is locked to center, so finger movement pans the viewport
             // (left to the pan plugin) and never paints. The release still becomes a
             // tap only if the finger barely moved (the screen-distance check in
-            // _handlePointerUp), so a pan doesn't place.
+            // _onPointerUp), so a pan doesn't place.
             return;
         }
 

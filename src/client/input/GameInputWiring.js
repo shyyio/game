@@ -9,19 +9,19 @@ import {InputHandler} from "@/client/input/InputHandler.js";
 export function createInputHandler(client) {
     const inputHandler = new InputHandler(client.hud.toolbarLayer);
     inputHandler.onObjectTap((tileX, tileY) => {
-        client.handleObjectTap(tileX, tileY);
+        client.onObjectTap(tileX, tileY);
     });
     inputHandler.onObjectHold((tileX, tileY) => {
-        client.handleObjectHold(tileX, tileY);
+        client.onObjectHold(tileX, tileY);
     });
     inputHandler.onInspect((tileX, tileY) => {
-        client.handleInspect(tileX, tileY);
+        client.onInspect(tileX, tileY);
     });
     inputHandler.onMapHover((tileX, tileY) => {
-        client.chunkMode.handleHover(tileX, tileY);
+        client.chunkMode.onHover(tileX, tileY);
     });
     inputHandler.onMapTap((tileX, tileY, shiftKey) => {
-        client.chunkMode.handleSelect(tileX, tileY, shiftKey);
+        client.chunkMode.onSelect(tileX, tileY, shiftKey);
     });
     inputHandler.init();
 

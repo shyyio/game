@@ -89,8 +89,8 @@ export class SettleFlow {
      * @param {number|null} tileY
      * @returns {void}
      */
-    handleHover(tileX, tileY) {
-        this._cursor.handleHover(tileX, tileY);
+    onHover(tileX, tileY) {
+        this._cursor.onHover(tileX, tileY);
     }
 
     /**
@@ -99,8 +99,8 @@ export class SettleFlow {
      * @param {boolean} claimShortcut - Shift held: also claim the chunk if claimable
      * @returns {void}
      */
-    handleSelect(tileX, tileY, claimShortcut) {
-        this._cursor.handleSelect(tileX, tileY, claimShortcut);
+    onSelect(tileX, tileY, claimShortcut) {
+        this._cursor.onSelect(tileX, tileY, claimShortcut);
     }
 
     /**

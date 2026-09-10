@@ -147,8 +147,8 @@ export class Game {
             [AddFriendMessage, (session, message) => this.playerDirectory.addFriend(session, message.playerRef)],
             [AddFriendByCodeMessage, (session, message) => this.playerDirectory.addFriendByCode(session, message.code)],
             [RemoveFriendMessage, (session, message) => this.playerDirectory.removeFriend(session, message.playerRef)],
-            [SetPlayerSettingMessage, (session, message) => this._handleSetPlayerSetting(session, message.key, message.value)],
-            [SetPlayerSettingsToolOrderMessage, (session, message) => this._handleSetToolOrder(session, message.toolIds)],
+            [SetPlayerSettingMessage, (session, message) => this._dispatchSetPlayerSetting(session, message.key, message.value)],
+            [SetPlayerSettingsToolOrderMessage, (session, message) => this._dispatchSetPlayerSettingsToolOrder(session, message.toolIds)],
         ]);
     }
 
@@ -332,7 +332,7 @@ export class Game {
             return;
         }
 
-        if (this.metrics.handleMessage(session, message)) {
+        if (this.metrics.dispatchMessage(session, message)) {
             return;
         }
 
@@ -358,7 +358,7 @@ export class Game {
      * @param {number} value
      * @private
      */
-    _handleSetPlayerSetting(session, key, value) {
+    _dispatchSetPlayerSetting(session, key, value) {
         const entry = this.modRegistry.findPlayerSettingEntryByKey(key);
         if (entry === undefined || !entry.clientWritable) {
             return;
@@ -379,7 +379,7 @@ export class Game {
      * @param {number[]} toolIds
      * @private
      */
-    _handleSetToolOrder(session, toolIds) {
+    _dispatchSetPlayerSettingsToolOrder(session, toolIds) {
         this.toolOrder.setToolOrder(session.playerRef, toolIds);
         this.bus.publishTo(session.sessionRef, new PlayerSettingsToolOrderSyncEvent(toolIds));
     }

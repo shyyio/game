@@ -32,7 +32,7 @@ export class ChunkCursor {
      * @param {number|null} tileY
      * @returns {void}
      */
-    handleHover(tileX, tileY) {
+    onHover(tileX, tileY) {
         if (tileX === null) {
             this.clear();
             return;
@@ -53,7 +53,7 @@ export class ChunkCursor {
      * @param {boolean} [claimShortcut]
      * @returns {void}
      */
-    handleSelect(tileX, tileY, claimShortcut = false) {
+    onSelect(tileX, tileY, claimShortcut = false) {
         const chunkKey = this.findChunkKeyAt(tileX, tileY);
         this.select(chunkKey);
         if (claimShortcut && chunkKey !== null) {

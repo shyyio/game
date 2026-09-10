@@ -73,15 +73,15 @@ export class LogisticsSimMod extends AbstractSimMod {
      */
     onSessionMessage(message, session, game) {
         if (message instanceof SetGateOpenMessage) {
-            this._handleSetGateOpen(message, session, game);
+            this._dispatchSetGateOpen(message, session, game);
             return true;
         }
         if (message instanceof WireLinkMessage) {
-            this._handleWireLink(message, session, game);
+            this._dispatchWireLink(message, session, game);
             return true;
         }
         if (message instanceof WireUnlinkMessage) {
-            this._handleWireUnlink(message, session, game);
+            this._dispatchWireUnlink(message, session, game);
             return true;
         }
         if (message instanceof LogicSnapshotRequestMessage) {
@@ -102,7 +102,7 @@ export class LogisticsSimMod extends AbstractSimMod {
      * @param {Game} game
      * @private
      */
-    _handleSetGateOpen(message, session, game) {
+    _dispatchSetGateOpen(message, session, game) {
         const engine = game.simEngine;
         const eid = engine.placed.findEidByObjectRef(message.objectRef);
         if (eid === undefined) {
@@ -166,7 +166,7 @@ export class LogisticsSimMod extends AbstractSimMod {
      * @param {Game} game
      * @private
      */
-    _handleWireLink(message, session, game) {
+    _dispatchWireLink(message, session, game) {
         const endpoints = this._resolveWireEndpoints(message, session, game);
         if (endpoints === null) {
             return;
@@ -254,7 +254,7 @@ export class LogisticsSimMod extends AbstractSimMod {
      * @param {Game} game
      * @private
      */
-    _handleWireUnlink(message, session, game) {
+    _dispatchWireUnlink(message, session, game) {
         const endpoints = this._resolveWireEndpoints(message, session, game);
         if (endpoints === null) {
             return;

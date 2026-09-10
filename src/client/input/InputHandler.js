@@ -109,7 +109,7 @@ export class InputHandler {
         });
 
         Mouse.onLongPress((tileX, tileY, screenX, screenY) => {
-            this._handleContextGesture(tileX, tileY, screenX, screenY);
+            this._onContextGesture(tileX, tileY, screenX, screenY);
         });
 
         this._onKey("r", () => {
@@ -324,7 +324,7 @@ export class InputHandler {
      * bespoke content while tool-less, otherwise deselects the active tool.
      * @private
      */
-    _handleContextGesture(tileX, tileY, screenX, screenY) {
+    _onContextGesture(tileX, tileY, screenX, screenY) {
         if (this._mapMode) {
             return;
         }

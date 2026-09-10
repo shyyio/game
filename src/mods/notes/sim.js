@@ -45,15 +45,15 @@ export class NotesSimMod extends AbstractSimMod {
      */
     onSessionMessage(message, session, game) {
         if (message instanceof NotePlaceMessage) {
-            this._handlePlace(message, session, game);
+            this._dispatchNotePlace(message, session, game);
             return true;
         }
         if (message instanceof NoteEditMessage) {
-            this._handleEdit(message, session, game);
+            this._dispatchNoteEdit(message, session, game);
             return true;
         }
         if (message instanceof NoteDeleteMessage) {
-            this._handleDelete(message, session, game);
+            this._dispatchNoteDelete(message, session, game);
             return true;
         }
         return false;
@@ -82,7 +82,7 @@ export class NotesSimMod extends AbstractSimMod {
      * @param {Game} game
      * @private
      */
-    _handlePlace(message, session, game) {
+    _dispatchNotePlace(message, session, game) {
         const chunkKey = chunkKeyAt(message.tileX, message.tileY);
         // Mod messages bypass the core placement gate, so notes check it themselves.
         if (!game.simEngine.canBuildIn(session.playerRef, chunkKey)) {
@@ -112,7 +112,7 @@ export class NotesSimMod extends AbstractSimMod {
      * @param {Game} game
      * @private
      */
-    _handleEdit(message, session, game) {
+    _dispatchNoteEdit(message, session, game) {
         const note = this._store.findNoteAt(message.tileX, message.tileY);
         if (note === null || note.authorRef !== session.playerRef) {
             return;
@@ -128,7 +128,7 @@ export class NotesSimMod extends AbstractSimMod {
      * @param {Game} game
      * @private
      */
-    _handleDelete(message, session, game) {
+    _dispatchNoteDelete(message, session, game) {
         const note = this._store.findNoteAt(message.tileX, message.tileY);
         if (note === null) {
             return;

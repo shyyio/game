@@ -44,8 +44,8 @@ export class MobileTouchInput {
             this._heldHudTouches.clear();
             Mouse.cancelInteraction();
         };
-        this._onPointerDown = (e) => this._handlePointerDown(e);
-        this._onPointerUp = (e) => {
+        this._pointerDownListener = (e) => this._onPointerDown(e);
+        this._pointerUpListener = (e) => {
             if (e.pointerType === "touch") {
                 this._heldHudTouches.delete(e.pointerId);
                 this._viewport.input.up(e);
@@ -64,9 +64,9 @@ export class MobileTouchInput {
         // once a second finger shows pinch intent; a lone HUD touch is held back so it never
         // pans the world underneath.
         this._stage.eventMode = "static";
-        this._stage.addEventListener("pointerdown", this._onPointerDown, {capture: true});
+        this._stage.addEventListener("pointerdown", this._pointerDownListener, {capture: true});
         for (const type of ["pointerup", "pointercancel"]) {
-            this._stage.addEventListener(type, this._onPointerUp, {capture: true});
+            this._stage.addEventListener(type, this._pointerUpListener, {capture: true});
         }
     }
 
@@ -76,9 +76,9 @@ export class MobileTouchInput {
      */
     uninstall() {
         document.removeEventListener("fullscreenchange", this._onFullscreenChange);
-        this._stage.removeEventListener("pointerdown", this._onPointerDown, {capture: true});
+        this._stage.removeEventListener("pointerdown", this._pointerDownListener, {capture: true});
         for (const type of ["pointerup", "pointercancel"]) {
-            this._stage.removeEventListener(type, this._onPointerUp, {capture: true});
+            this._stage.removeEventListener(type, this._pointerUpListener, {capture: true});
         }
         this._heldHudTouches.clear();
     }
@@ -88,7 +88,7 @@ export class MobileTouchInput {
      * @param {FederatedPointerEvent} e
      * @returns {void}
      */
-    _handlePointerDown(e) {
+    _onPointerDown(e) {
         if (e.pointerType !== "touch") {
             return;
         }

@@ -158,7 +158,7 @@ export class ClaimSelectionMode {
      * @param {number|null} tileY
      * @returns {void}
      */
-    handleHover(tileX, tileY) {
+    onHover(tileX, tileY) {
         if (tileX === null) {
             this._cursor.clear();
             return;
@@ -166,7 +166,7 @@ export class ClaimSelectionMode {
         if (!this.active) {
             return;
         }
-        this._cursor.handleHover(tileX, tileY);
+        this._cursor.onHover(tileX, tileY);
     }
 
     /**
@@ -175,11 +175,11 @@ export class ClaimSelectionMode {
      * @param {boolean} claimShortcut - Shift held: also claim the chunk if claimable
      * @returns {void}
      */
-    handleSelect(tileX, tileY, claimShortcut) {
+    onSelect(tileX, tileY, claimShortcut) {
         if (!this.active) {
             return;
         }
-        this._cursor.handleSelect(tileX, tileY, claimShortcut);
+        this._cursor.onSelect(tileX, tileY, claimShortcut);
     }
 
     /**
