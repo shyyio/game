@@ -157,12 +157,20 @@ test("Round-trips the player messages", () => {
 test("Round-trips the player events", () => {
     const reg = registry();
     roundTrip(reg, new WelcomeEvent(7, 9, "0001-2A3B"), WelcomeEvent);
+    const welcome = reg.decode(reg.encode(new WelcomeEvent(7, 9, "0001-2A3B")));
+    assert.strictEqual(welcome.ownPlayerRef, 7);
+    assert.strictEqual(welcome.ownMaxChunks, 9);
+    assert.strictEqual(welcome.ownFriendCode, "0001-2A3B");
     roundTrip(reg, new PlayerNamesEvent([1, 2], ["alice", "bob"]), PlayerNamesEvent);
     roundTrip(reg, new PlayerNamesEvent([], []), PlayerNamesEvent);
     roundTrip(reg, new FriendListEvent([], []), FriendListEvent);
     roundTrip(reg, new FriendListEvent([3, 4, 5], [6, 7]), FriendListEvent);
     roundTrip(reg, new AddFriendByCodeResultEvent("0001-2A3B", true), AddFriendByCodeResultEvent);
     roundTrip(reg, new AddFriendByCodeResultEvent("nobody", false), AddFriendByCodeResultEvent);
+    const found = reg.decode(reg.encode(new AddFriendByCodeResultEvent("0001-2A3B", true)));
+    assert.strictEqual(found.isFound, true);
+    const missing = reg.decode(reg.encode(new AddFriendByCodeResultEvent("nobody", false)));
+    assert.strictEqual(missing.isFound, false);
 });
 
 test("Round-trips the claim messages and events", () => {

@@ -7,21 +7,21 @@ import {AbstractEvent} from "@/common/AbstractEvent.js";
 export class WelcomeEvent extends AbstractEvent {
 
     static wireFields = {
-        playerRef: "int64",
-        maxChunks: "int32",
-        friendCode: "string",
+        ownPlayerRef: "int64",
+        ownMaxChunks: "int32",
+        ownFriendCode: "string",
     };
 
     /**
-     * @param {number} playerRef
-     * @param {number} maxChunks
-     * @param {string} friendCode
+     * @param {number} ownPlayerRef
+     * @param {number} ownMaxChunks
+     * @param {string} ownFriendCode
      */
-    constructor(playerRef, maxChunks, friendCode) {
+    constructor(ownPlayerRef, ownMaxChunks, ownFriendCode) {
         super();
-        this.playerRef = playerRef;
-        this.maxChunks = maxChunks;
-        this.friendCode = friendCode;
+        this.ownPlayerRef = ownPlayerRef;
+        this.ownMaxChunks = ownMaxChunks;
+        this.ownFriendCode = ownFriendCode;
     }
 }
 
@@ -79,16 +79,16 @@ export class AddFriendByCodeResultEvent extends AbstractEvent {
 
     static wireFields = {
         code: "string",
-        found: "int32",
+        isFound: "bool",
     };
 
     /**
      * @param {string} code
-     * @param {boolean} found
+     * @param {boolean} isFound
      */
-    constructor(code, found) {
+    constructor(code, isFound) {
         super();
         this.code = code;
-        this.found = found ? 1 : 0;
+        this.isFound = isFound;
     }
 }

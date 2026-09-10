@@ -86,7 +86,7 @@ export class FriendsPanelLayer extends Container {
      * @returns {void}
      */
     onEvent(event) {
-        if (event instanceof AddFriendByCodeResultEvent && event.found === 0) {
+        if (event instanceof AddFriendByCodeResultEvent && !event.isFound) {
             this._onError(`No player with code "${event.code}"`);
         }
         if (event instanceof WelcomeEvent) {

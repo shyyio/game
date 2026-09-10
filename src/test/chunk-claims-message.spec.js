@@ -46,8 +46,8 @@ test("connect syncs identity, the own name, own claims, and friends", async () =
     game.connect(alice);
 
     const welcome = alice.events.find(event => event instanceof WelcomeEvent);
-    assert.equal(welcome.playerRef, ALICE);
-    assert.ok(welcome.maxChunks > 0);
+    assert.equal(welcome.ownPlayerRef, ALICE);
+    assert.ok(welcome.ownMaxChunks > 0);
     const names = alice.events.find(event => event instanceof PlayerNamesEvent);
     assert.deepEqual(names.playerRefs, [ALICE], "only the own name arrives on connect");
     assert.ok(alice.events.some(event => event instanceof OwnClaimsSyncEvent));
@@ -233,7 +233,7 @@ test("add-friend-by-code resolves the code before granting, and answers found", 
     assert.deepEqual(aliceList.friendIds, [BOB]);
     const result = alice.events.find(event => event instanceof AddFriendByCodeResultEvent);
     assert.equal(result.code, bobCode);
-    assert.equal(result.found, 1);
+    assert.equal(result.isFound, true);
 });
 
 test("add-friend-by-code for an unregistered code is silently ignored, and answers not found", async () => {
@@ -247,7 +247,7 @@ test("add-friend-by-code for an unregistered code is silently ignored, and answe
     assert.deepEqual(aliceList.friendIds, [], "the unchanged list still re-sends");
     const result = alice.events.find(event => event instanceof AddFriendByCodeResultEvent);
     assert.equal(result.code, unknownCode);
-    assert.equal(result.found, 0);
+    assert.equal(result.isFound, false);
 });
 
 test("add-friend-by-code on your own code answers not found", async () => {
@@ -256,7 +256,7 @@ test("add-friend-by-code on your own code answers not found", async () => {
     game.dispatchMessage(new AddFriendByCodeMessage(ownCode), alice);
 
     const result = alice.events.find(event => event instanceof AddFriendByCodeResultEvent);
-    assert.equal(result.found, 0);
+    assert.equal(result.isFound, false);
 });
 
 test("deleting in a foreign chunk is rejected and leaves occupancy intact", async () => {

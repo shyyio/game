@@ -39,9 +39,9 @@ export class ChunkClaimsWriter extends AbstractCacheWriter {
      */
     onEvent(event) {
         if (event instanceof WelcomeEvent) {
-            this._state.set("chunkClaims.ownPlayerRef", event.playerRef);
-            this._state.set("chunkClaims.maxChunks", event.maxChunks);
-            this._state.set("chunkClaims.ownFriendCode", event.friendCode);
+            this._state.set("chunkClaims.ownPlayerRef", event.ownPlayerRef);
+            this._state.set("chunkClaims.maxChunks", event.ownMaxChunks);
+            this._state.set("chunkClaims.ownFriendCode", event.ownFriendCode);
             return;
         }
         if (event instanceof FriendListEvent) {

@@ -176,7 +176,7 @@ export class RemoteSession extends AbstractSession {
             this.rxBytes += bytes.length;
             const decoded = this._wire.decode(bytes);
             if (decoded instanceof WelcomeEvent) {
-                this._playerRef = decoded.playerRef;
+                this._playerRef = decoded.ownPlayerRef;
                 if (this._reconnecting) {
                     this._reconnecting = false;
                     this._retryAttempt = 0;

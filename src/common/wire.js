@@ -97,7 +97,7 @@ const CORE_WIRE_CLASSES = [
 
 /**
  * Parses a wireFields spec string into a descriptor.
- *   "int32"            -> scalar
+ *   "int32"            -> scalar ("bool" decodes to a JS boolean)
  *   "int64?"           -> nullable scalar (cosmetic: all scalars are optional)
  *   "string[]"         -> repeated
  *   "map<int32,int32>" -> map
