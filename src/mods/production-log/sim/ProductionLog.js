@@ -99,15 +99,15 @@ export class ProductionLog {
         const rows = [];
         for (const [playerRef, counts] of this._byPlayer) {
             for (const [itemTypeId, count] of counts) {
-                rows.push({player_id: playerRef, item_type: itemTypeId, count: count});
+                rows.push({playerRef: playerRef, itemTypeId: itemTypeId, count: count});
             }
         }
         return [
             {
                 name: ITEM_PRODUCED_TABLE,
                 fields: [
-                    {name: "player_id", kind: "integer"},
-                    {name: "item_type", kind: "item"},
+                    {name: "playerRef", kind: "integer"},
+                    {name: "itemTypeId", kind: "item"},
                     {name: "count", kind: "integer"},
                 ],
                 rows: rows,
@@ -127,10 +127,10 @@ export class ProductionLog {
             return;
         }
         for (const row of table.rows) {
-            if (items.findItemTypeByTypeId(row.item_type) === undefined) {
+            if (items.findItemTypeByTypeId(row.itemTypeId) === undefined) {
                 continue;
             }
-            this.add(row.player_id, row.item_type, row.count);
+            this.add(row.playerRef, row.itemTypeId, row.count);
         }
     }
 }

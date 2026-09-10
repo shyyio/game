@@ -148,7 +148,7 @@ export class NoteTool extends AbstractTool {
      */
     _openExisting(note) {
         let mode = NOTE_EDITOR_MODE_EDIT;
-        if (note.authorId !== this._isClaiming.ownPlayerRef) {
+        if (note.authorRef !== this._isClaiming.ownPlayerRef) {
             if (!this._client.canBuildAt(note.tileX, note.tileY)) {
                 this._client.hud.notify("That note belongs to someone else");
                 return;
@@ -162,7 +162,7 @@ export class NoteTool extends AbstractTool {
             note.offsetMy,
             note.text,
             mode,
-            note.authorId,
+            note.authorRef,
         ));
     }
 

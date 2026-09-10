@@ -251,7 +251,7 @@ export class NotesDrawLayer extends AbstractDrawLayer {
     _onUpsert(tile, note) {
         const pin = this._pins.acquire(tile);
         pin.tile = tile;
-        pin.show(claimColor(note.authorId));
+        pin.show(claimColor(note.authorRef));
         this._place(pin, note);
         this._applyPointerMode(pin);
         // A fresh pin lands unringed, so only its own tile's highlight has to be restored.

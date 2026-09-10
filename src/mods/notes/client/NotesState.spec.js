@@ -16,7 +16,7 @@ test("a set event writes the note, an edit replaces it", () => {
     const note = state.mapGet("notes.byTile", tileKeyAt(3, 4));
     assert.equal(note.text, "first");
     assert.equal(note.offsetMx, 250);
-    assert.equal(note.authorId, 7);
+    assert.equal(note.authorRef, 7);
 
     state.onEvent(new NoteSetEvent(3, 4, 250, 750, 7, "second"));
     assert.equal(state.mapGet("notes.byTile", tileKeyAt(3, 4)).text, "second");

@@ -39,15 +39,15 @@ export class PlayerSettingsToolOrderCache {
         const rows = [];
         for (const [playerRef, toolIds] of this._byPlayer) {
             for (const [position, toolId] of toolIds.entries()) {
-                rows.push({player_id: playerRef, position, tool_id: toolId});
+                rows.push({playerRef: playerRef, position, toolId: toolId});
             }
         }
         return {
             name: PLAYER_SETTINGS_TOOL_ORDER_TABLE,
             fields: [
-                {name: "player_id", kind: "integer"},
+                {name: "playerRef", kind: "integer"},
                 {name: "position", kind: "integer"},
-                {name: "tool_id", kind: "integer"},
+                {name: "toolId", kind: "integer"},
             ],
             rows,
         };
@@ -64,16 +64,16 @@ export class PlayerSettingsToolOrderCache {
         }
         const rowsByPlayer = new Map();
         for (const row of table.rows) {
-            let rows = rowsByPlayer.get(row.player_id);
+            let rows = rowsByPlayer.get(row.playerRef);
             if (rows === undefined) {
                 rows = [];
-                rowsByPlayer.set(row.player_id, rows);
+                rowsByPlayer.set(row.playerRef, rows);
             }
             rows.push(row);
         }
         for (const [playerRef, rows] of rowsByPlayer) {
             rows.sort((a, b) => a.position - b.position);
-            this._byPlayer.set(playerRef, rows.map(row => row.tool_id));
+            this._byPlayer.set(playerRef, rows.map(row => row.toolId));
         }
     }
 }

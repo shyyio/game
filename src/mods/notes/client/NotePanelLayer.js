@@ -199,7 +199,7 @@ export class NotePanelLayer extends ConnectedPanelLayer {
         if (this._input === null) {
             stack.text(target.text);
             if (this._showAuthor) {
-                stack.text(this._players.getUsernameByPlayerRef(target.authorId), TextRole.MUTED);
+                stack.text(this._players.getUsernameByPlayerRef(target.authorRef), TextRole.MUTED);
             }
         } else {
             stack.row(row => row.pushLeft(this._input));

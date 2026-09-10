@@ -42,7 +42,7 @@ test("a placed note fans out to the chunk's viewers, the author's name first", a
     assert.equal(seen.length, 1);
     assert.equal(seen[0].x, 3);
     assert.equal(seen[0].offsetMx, 250);
-    assert.equal(seen[0].authorId, 1);
+    assert.equal(seen[0].authorRef, 1);
     assert.equal(seen[0].text, "check this");
     const nameIndex = neighbor.events.findIndex(event => event.playerRefs !== undefined && event.playerRefs.includes(1));
     assert.ok(nameIndex !== -1 && nameIndex < neighbor.events.indexOf(seen[0]), "the author's name arrives before the note");

@@ -10,7 +10,7 @@ export class NoteSetEvent extends AbstractChunkRoutedEvent {
         y: "sint32",
         offsetMx: "int32",
         offsetMy: "int32",
-        authorId: "int64",
+        authorRef: "int64",
         text: "string",
     };
 
@@ -19,14 +19,14 @@ export class NoteSetEvent extends AbstractChunkRoutedEvent {
      * @param {number} tileY
      * @param {number} offsetMx sub-tile x offset, milli-tiles
      * @param {number} offsetMy sub-tile y offset, milli-tiles
-     * @param {number} authorId
+     * @param {number} authorRef
      * @param {string} text
      */
-    constructor(tileX, tileY, offsetMx, offsetMy, authorId, text) {
+    constructor(tileX, tileY, offsetMx, offsetMy, authorRef, text) {
         super(tileX, tileY);
         this.offsetMx = offsetMx;
         this.offsetMy = offsetMy;
-        this.authorId = authorId;
+        this.authorRef = authorRef;
         this.text = text;
     }
 }

@@ -8,7 +8,7 @@ export class Note {
      * @param {number} tileY
      * @param {number} offsetMx sub-tile x offset, milli-tiles
      * @param {number} offsetMy sub-tile y offset, milli-tiles
-     * @param {number} authorId
+     * @param {number} authorRef
      * @param {string} text
      */
     constructor(
@@ -16,14 +16,14 @@ export class Note {
         tileY,
         offsetMx,
         offsetMy,
-        authorId,
+        authorRef,
         text,
     ) {
         this.tileX = tileX;
         this.tileY = tileY;
         this.offsetMx = offsetMx;
         this.offsetMy = offsetMy;
-        this.authorId = authorId;
+        this.authorRef = authorRef;
         this.text = text;
     }
 }

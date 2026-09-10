@@ -204,33 +204,33 @@ export class PlayerRegistry {
         const friendRows = [];
         for (const entry of this._byId.values()) {
             playerRows.push({
-                player_id: entry.playerRef,
+                playerRef: entry.playerRef,
                 sub: entry.sub,
                 username: entry.username,
-                max_chunks: entry.maxChunks,
-                friend_code: entry.friendCode,
+                maxChunks: entry.maxChunks,
+                friendCode: entry.friendCode,
             });
             for (const friendId of entry.friends) {
-                friendRows.push({player_id: entry.playerRef, friend_id: friendId});
+                friendRows.push({playerRef: entry.playerRef, friendRef: friendId});
             }
         }
         return [
             {
                 name: PLAYER_TABLE,
                 fields: [
-                    {name: "player_id", kind: "integer"},
+                    {name: "playerRef", kind: "integer"},
                     {name: "sub", kind: "text"},
                     {name: "username", kind: "text"},
-                    {name: "max_chunks", kind: "integer"},
-                    {name: "friend_code", kind: "text"},
+                    {name: "maxChunks", kind: "integer"},
+                    {name: "friendCode", kind: "text"},
                 ],
                 rows: playerRows,
             },
             {
                 name: FRIEND_TABLE,
                 fields: [
-                    {name: "player_id", kind: "integer"},
-                    {name: "friend_id", kind: "integer"},
+                    {name: "playerRef", kind: "integer"},
+                    {name: "friendRef", kind: "integer"},
                 ],
                 rows: friendRows,
             },
@@ -251,13 +251,13 @@ export class PlayerRegistry {
             return;
         }
         for (const row of playerTable.rows) {
-            this._register(new PlayerEntry(row.player_id, row.sub, row.username, row.max_chunks, row.friend_code));
+            this._register(new PlayerEntry(row.playerRef, row.sub, row.username, row.maxChunks, row.friendCode));
         }
         if (friendTable === undefined) {
             return;
         }
         for (const row of friendTable.rows) {
-            this.getPlayerByRef(row.player_id).friends.add(row.friend_id);
+            this.getPlayerByRef(row.playerRef).friends.add(row.friendRef);
         }
     }
 }

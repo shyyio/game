@@ -495,3 +495,42 @@ test("a format-13 save carries its tables under records", async () => {
     restored.loadSnapshot(migrated);
     assert.equal(restored.players.getPlayerByRef(1).username, "alice");
 });
+
+function renameTableRowsBack(snapshot, tableName, from, to) {
+    const table = snapshot.tables.find(entry => entry.name === tableName);
+    for (const field of table.fields) {
+        if (field.name === from) {
+            field.name = to;
+        }
+    }
+    for (const row of table.rows) {
+        row[to] = row[from];
+        delete row[from];
+    }
+}
+
+test("a format-14 save names its table fields in snake_case", async () => {
+    const game = await makeGame();
+    const alice = game.players.getOrCreate("sub-alice", "alice");
+    const session = new CapturingSession(alice.playerRef);
+    game.connect(session);
+    game.dispatchMessage(new ClaimChunkMessage(chunkKeyAt(0, 0)), session);
+    const snapshot = game.serialize();
+    snapshot.saveFormat = 14;
+    renameTableRowsBack(snapshot, "Player", "playerRef", "player_id");
+    renameTableRowsBack(snapshot, "Player", "maxChunks", "max_chunks");
+    renameTableRowsBack(snapshot, "Player", "friendCode", "friend_code");
+    renameTableRowsBack(snapshot, "ChunkClaim", "playerRef", "player_id");
+
+    const migrated = migrateSnapshot(snapshot);
+
+    assert.equal(migrated.saveFormat, SAVE_FORMAT);
+    const player = migrated.tables.find(table => table.name === "Player");
+    assert.deepEqual(player.fields.map(field => field.name), ["playerRef", "sub", "username", "maxChunks", "friendCode"]);
+    assert.equal(player.rows[0].player_id, undefined);
+    assert.equal(player.rows[0].playerRef, alice.playerRef);
+    const restored = await makeGame();
+    restored.loadSnapshot(migrated);
+    assert.equal(restored.players.getPlayerByRef(alice.playerRef).friendCode, alice.friendCode);
+    assert.equal(restored.claims.getOwnerByChunkKey(chunkKeyAt(0, 0)), alice.playerRef);
+});

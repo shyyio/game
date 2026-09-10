@@ -89,7 +89,7 @@ export class NotesSimMod extends AbstractSimMod {
             return;
         }
         const existing = this._store.findNoteAt(message.tileX, message.tileY);
-        if (existing !== null && existing.authorId !== session.playerRef) {
+        if (existing !== null && existing.authorRef !== session.playerRef) {
             return;
         }
         const note = new Note(
@@ -114,7 +114,7 @@ export class NotesSimMod extends AbstractSimMod {
      */
     _handleEdit(message, session, game) {
         const note = this._store.findNoteAt(message.tileX, message.tileY);
-        if (note === null || note.authorId !== session.playerRef) {
+        if (note === null || note.authorRef !== session.playerRef) {
             return;
         }
         note.text = message.text;
@@ -134,7 +134,7 @@ export class NotesSimMod extends AbstractSimMod {
             return;
         }
         const chunkKey = chunkKeyAt(message.tileX, message.tileY);
-        if (note.authorId !== session.playerRef && !game.simEngine.canBuildIn(session.playerRef, chunkKey)) {
+        if (note.authorRef !== session.playerRef && !game.simEngine.canBuildIn(session.playerRef, chunkKey)) {
             return;
         }
         this._store.delete(message.tileX, message.tileY);
@@ -152,7 +152,7 @@ export class NotesSimMod extends AbstractSimMod {
             note.tileY,
             note.offsetMx,
             note.offsetMy,
-            note.authorId,
+            note.authorRef,
             note.text,
         );
     }
@@ -169,7 +169,7 @@ export class NotesSimMod extends AbstractSimMod {
         if (subscribers === undefined) {
             return;
         }
-        const authorIds = [event.authorId];
+        const authorIds = [event.authorRef];
         for (const sessionRef of subscribers) {
             game.playerDirectory.syncUsernames(sessionRef, authorIds);
         }

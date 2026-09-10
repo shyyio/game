@@ -5,8 +5,8 @@ import {Note} from "../common/Note.js";
 import {NotesStore} from "./NotesStore.js";
 import {NOTE_TABLE} from "../common/constants.js";
 
-function note(tileX, tileY, authorId=1, text="hi") {
-    return new Note(tileX, tileY, 250, 750, authorId, text);
+function note(tileX, tileY, authorRef=1, text="hi") {
+    return new Note(tileX, tileY, 250, 750, authorRef, text);
 }
 
 test("a note is stored by tile and replaced in place", () => {
@@ -54,7 +54,7 @@ test("the table round-trips every note", () => {
     const restored = new NotesStore();
     restored.deserializeTables(tables[0]);
     assert.equal(restored.findNoteAt(3, 4).text, "left");
-    assert.equal(restored.findNoteAt(-5, -6).authorId, 2);
+    assert.equal(restored.findNoteAt(-5, -6).authorRef, 2);
     assert.equal(restored.findNoteAt(-5, -6).offsetMx, 250);
     assert.equal(restored.getNotesByChunkKey(chunkKeyAt(-5, -6)).length, 1);
 });

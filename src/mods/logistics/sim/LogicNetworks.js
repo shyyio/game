@@ -218,12 +218,12 @@ export class LogicNetworks extends AbstractSystem {
      * @returns {object[]}
      */
     serializeTables() {
-        const rows = Array.from(this._wires.values()).map(wire => ({a_object_id: wire.a, b_object_id: wire.b}));
+        const rows = Array.from(this._wires.values()).map(wire => ({aObjectRef: wire.a, bObjectRef: wire.b}));
         return [{
             name: LOGIC_WIRE_TABLE,
             fields: [
-                {name: "a_object_id", kind: "integer"},
-                {name: "b_object_id", kind: "integer"},
+                {name: "aObjectRef", kind: "integer"},
+                {name: "bObjectRef", kind: "integer"},
             ],
             rows,
         }];
@@ -238,7 +238,7 @@ export class LogicNetworks extends AbstractSystem {
             return;
         }
         for (const row of table.rows) {
-            this._addWire(wireKey(row.a_object_id, row.b_object_id), {a: row.a_object_id, b: row.b_object_id});
+            this._addWire(wireKey(row.aObjectRef, row.bObjectRef), {a: row.aObjectRef, b: row.bObjectRef});
         }
         this._dirty = true;
     }

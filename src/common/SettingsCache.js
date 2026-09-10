@@ -102,13 +102,13 @@ export class PlayerSettingsCache {
         const rows = [];
         for (const [playerRef, settings] of this._byPlayer) {
             for (const [key, value] of settings.getEntries()) {
-                rows.push({player_id: playerRef, key, value});
+                rows.push({playerRef: playerRef, key, value});
             }
         }
         return {
             name: PLAYER_SETTING_TABLE,
             fields: [
-                {name: "player_id", kind: "integer"},
+                {name: "playerRef", kind: "integer"},
                 {name: "key", kind: "integer"},
                 {name: "value", kind: "integer"},
             ],
@@ -126,7 +126,7 @@ export class PlayerSettingsCache {
             return;
         }
         for (const row of table.rows) {
-            this.setPlayerValue(row.player_id, row.key, row.value);
+            this.setPlayerValue(row.playerRef, row.key, row.value);
         }
     }
 }

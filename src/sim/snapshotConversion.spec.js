@@ -33,11 +33,11 @@ function snapshot() {
             },
         ],
         tables: [
-            {name: "Player", fields: [{name: "player_id", kind: "integer"}], rows: []},
+            {name: "Player", fields: [{name: "playerRef", kind: "integer"}], rows: []},
             {
                 name: "ItemProduced",
-                fields: [{name: "player_id", kind: "integer"}, {name: "item_type", kind: "item"}],
-                rows: [{player_id: 1, item_type: IRON}, {player_id: 1, item_type: GOLD}],
+                fields: [{name: "playerRef", kind: "integer"}, {name: "itemTypeId", kind: "item"}],
+                rows: [{playerRef: 1, itemTypeId: IRON}, {playerRef: 1, itemTypeId: GOLD}],
             },
         ],
     };

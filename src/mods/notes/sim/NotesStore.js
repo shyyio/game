@@ -86,7 +86,7 @@ export class NotesStore extends AbstractSystem {
             return authorIds;
         }
         for (const tile of tiles) {
-            authorIds.add(this._byTile.get(tile).authorId);
+            authorIds.add(this._byTile.get(tile).authorRef);
         }
         return authorIds;
     }
@@ -98,11 +98,11 @@ export class NotesStore extends AbstractSystem {
         const rows = [];
         for (const note of this._byTile.values()) {
             rows.push({
-                tile_x: note.tileX,
-                tile_y: note.tileY,
-                offset_mx: note.offsetMx,
-                offset_my: note.offsetMy,
-                author_id: note.authorId,
+                tileX: note.tileX,
+                tileY: note.tileY,
+                offsetMx: note.offsetMx,
+                offsetMy: note.offsetMy,
+                authorRef: note.authorRef,
                 text: note.text,
             });
         }
@@ -110,11 +110,11 @@ export class NotesStore extends AbstractSystem {
             {
                 name: NOTE_TABLE,
                 fields: [
-                    {name: "tile_x", kind: "integer"},
-                    {name: "tile_y", kind: "integer"},
-                    {name: "offset_mx", kind: "integer"},
-                    {name: "offset_my", kind: "integer"},
-                    {name: "author_id", kind: "integer"},
+                    {name: "tileX", kind: "integer"},
+                    {name: "tileY", kind: "integer"},
+                    {name: "offsetMx", kind: "integer"},
+                    {name: "offsetMy", kind: "integer"},
+                    {name: "authorRef", kind: "integer"},
                     {name: "text", kind: "text"},
                 ],
                 rows: rows,
@@ -134,11 +134,11 @@ export class NotesStore extends AbstractSystem {
         }
         for (const row of table.rows) {
             this.set(new Note(
-                row.tile_x,
-                row.tile_y,
-                row.offset_mx,
-                row.offset_my,
-                row.author_id,
+                row.tileX,
+                row.tileY,
+                row.offsetMx,
+                row.offsetMy,
+                row.authorRef,
                 row.text,
             ));
         }
@@ -150,7 +150,7 @@ export class NotesStore extends AbstractSystem {
             note.tileY,
             note.offsetMx,
             note.offsetMy,
-            note.authorId,
+            note.authorRef,
             note.text,
         ));
     }

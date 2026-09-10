@@ -179,13 +179,13 @@ export class ChunkClaims {
     serializeTables() {
         const rows = [];
         for (const [chunkKey, playerRef] of this._ownerByChunk) {
-            rows.push({chunkKey, player_id: playerRef, permission: this.getPermissionByChunkKey(chunkKey)});
+            rows.push({chunkKey, playerRef: playerRef, permission: this.getPermissionByChunkKey(chunkKey)});
         }
         return {
             name: CHUNK_CLAIM_TABLE,
             fields: [
                 {name: "chunkKey", kind: "integer"},
-                {name: "player_id", kind: "integer"},
+                {name: "playerRef", kind: "integer"},
                 {name: "permission", kind: "integer"},
             ],
             rows,
@@ -203,7 +203,7 @@ export class ChunkClaims {
             return;
         }
         for (const row of table.rows) {
-            this._ownerByChunk.set(row.chunkKey, row.player_id);
+            this._ownerByChunk.set(row.chunkKey, row.playerRef);
             this._permissionByChunk.set(row.chunkKey, row.permission);
         }
     }

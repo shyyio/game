@@ -32,6 +32,6 @@ test("a mod's records survive a save/load: notes come back with their chunk", as
     assert.equal(notes.length, 1);
     assert.equal(notes[0].x, 3);
     assert.equal(notes[0].offsetMy, 750);
-    assert.equal(notes[0].authorId, 1);
+    assert.equal(notes[0].authorRef, 1);
     assert.equal(notes[0].text, "check this");
 });

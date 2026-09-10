@@ -1,7 +1,7 @@
 import {Direction} from "@/common/constants.js";
 
 // The snapshot shape a save carries. Bump on any shape change, with a SAVE_MIGRATIONS entry.
-export const SAVE_FORMAT = 14;
+export const SAVE_FORMAT = 15;
 
 // What a save written before the stamp counts as.
 const UNSTAMPED_FORMAT = 0;
@@ -122,7 +122,48 @@ export const SAVE_MIGRATIONS = new Map([
         const {records, ...rest} = snapshot;
         return {...rest, saveFormat: 14, tables: records === undefined ? [] : records};
     }],
+    // Format 15 names every table field in camelCase.
+    [14, snapshot => ({
+        ...snapshot,
+        saveFormat: 15,
+        tables: TABLE_COLUMN_RENAMES.reduce(
+            (tables, [tableName, from, to]) => renameField(tables, tableName, from, to),
+            snapshot.tables,
+        ),
+    })],
 ]);
+
+// The table columns format 15 names in camelCase, as [table, old name, new name].
+const TABLE_COLUMN_RENAMES = [
+    ["Player", "player_id", "playerRef"],
+    ["Player", "max_chunks", "maxChunks"],
+    ["Player", "friend_code", "friendCode"],
+    ["Friend", "player_id", "playerRef"],
+    ["Friend", "friend_id", "friendRef"],
+    ["ChunkClaim", "player_id", "playerRef"],
+    ["PlayerSetting", "player_id", "playerRef"],
+    ["PlayerSettingsToolOrder", "player_id", "playerRef"],
+    ["PlayerSettingsToolOrder", "tool_id", "toolId"],
+    ["LogicWire", "a_object_id", "aObjectRef"],
+    ["LogicWire", "b_object_id", "bObjectRef"],
+    ["LogicRule", "terminal_object_id", "terminalObjectRef"],
+    ["LogicRule", "rule_index", "ruleIndex"],
+    ["LogicRule", "action_device_id", "actionDeviceId"],
+    ["LogicRule", "action_key", "actionKey"],
+    ["LogicRule", "action_value", "actionValue"],
+    ["LogicRuleCondition", "terminal_object_id", "terminalObjectRef"],
+    ["LogicRuleCondition", "rule_index", "ruleIndex"],
+    ["LogicRuleCondition", "condition_index", "conditionIndex"],
+    ["LogicRuleCondition", "device_id", "deviceId"],
+    ["LogicRuleCondition", "item_type", "itemTypeId"],
+    ["Note", "tile_x", "tileX"],
+    ["Note", "tile_y", "tileY"],
+    ["Note", "offset_mx", "offsetMx"],
+    ["Note", "offset_my", "offsetMy"],
+    ["Note", "author_id", "authorRef"],
+    ["ItemProduced", "player_id", "playerRef"],
+    ["ItemProduced", "item_type", "itemTypeId"],
+];
 
 // The port columns format 13 spells out, as [component, old name, new name].
 const PORT_COLUMN_RENAMES = [

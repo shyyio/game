@@ -27,7 +27,7 @@ export class NoteEditorTarget {
      * @param {number} offsetMy sub-tile y offset, milli-tiles
      * @param {string} text
      * @param {NoteEditorMode} mode
-     * @param {number} authorId PLAYER_REF_NONE while placing a fresh note
+     * @param {number} authorRef PLAYER_REF_NONE while placing a fresh note
      */
     constructor(
         tileX,
@@ -36,7 +36,7 @@ export class NoteEditorTarget {
         offsetMy,
         text,
         mode,
-        authorId,
+        authorRef,
     ) {
         this.tileX = tileX;
         this.tileY = tileY;
@@ -44,7 +44,7 @@ export class NoteEditorTarget {
         this.offsetMy = offsetMy;
         this.text = text;
         this.mode = mode;
-        this.authorId = authorId;
+        this.authorRef = authorRef;
     }
 }
 
@@ -65,7 +65,7 @@ export class NotesWriter extends AbstractCacheWriter {
                 event.y,
                 event.offsetMx,
                 event.offsetMy,
-                event.authorId,
+                event.authorRef,
                 event.text,
             );
             this._state.mapSet("notes.byTile", tileKeyAt(event.x, event.y), note);

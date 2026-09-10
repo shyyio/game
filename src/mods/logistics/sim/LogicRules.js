@@ -109,20 +109,20 @@ export class LogicRules {
         for (const [terminalObjectRef, rules] of this._rulesByTerminal) {
             for (const [ruleIndex, rule] of rules.entries()) {
                 ruleRows.push({
-                    terminal_object_id: terminalObjectRef,
-                    rule_index: ruleIndex,
-                    action_device_id: rule.actionDeviceId,
-                    action_key: rule.actionKey,
-                    action_value: rule.actionValue,
+                    terminalObjectRef: terminalObjectRef,
+                    ruleIndex: ruleIndex,
+                    actionDeviceId: rule.actionDeviceId,
+                    actionKey: rule.actionKey,
+                    actionValue: rule.actionValue,
                 });
                 for (const [conditionIndex, condition] of rule.conditions.entries()) {
                     conditionRows.push({
-                        terminal_object_id: terminalObjectRef,
-                        rule_index: ruleIndex,
-                        condition_index: conditionIndex,
+                        terminalObjectRef: terminalObjectRef,
+                        ruleIndex: ruleIndex,
+                        conditionIndex: conditionIndex,
                         kind: condition.kind,
-                        device_id: condition.deviceId,
-                        item_type: condition.itemTypeId,
+                        deviceId: condition.deviceId,
+                        itemTypeId: condition.itemTypeId,
                         key: condition.key,
                         comparator: condition.comparator,
                         value: condition.value,
@@ -133,22 +133,22 @@ export class LogicRules {
         return [{
             name: LOGIC_RULE_TABLE,
             fields: [
-                {name: "terminal_object_id", kind: "integer"},
-                {name: "rule_index", kind: "integer"},
-                {name: "action_device_id", kind: "integer"},
-                {name: "action_key", kind: "integer"},
-                {name: "action_value", kind: "integer"},
+                {name: "terminalObjectRef", kind: "integer"},
+                {name: "ruleIndex", kind: "integer"},
+                {name: "actionDeviceId", kind: "integer"},
+                {name: "actionKey", kind: "integer"},
+                {name: "actionValue", kind: "integer"},
             ],
             rows: ruleRows,
         }, {
             name: LOGIC_CONDITION_TABLE,
             fields: [
-                {name: "terminal_object_id", kind: "integer"},
-                {name: "rule_index", kind: "integer"},
-                {name: "condition_index", kind: "integer"},
+                {name: "terminalObjectRef", kind: "integer"},
+                {name: "ruleIndex", kind: "integer"},
+                {name: "conditionIndex", kind: "integer"},
                 {name: "kind", kind: "integer"},
-                {name: "device_id", kind: "integer"},
-                {name: "item_type", kind: "item"},
+                {name: "deviceId", kind: "integer"},
+                {name: "itemTypeId", kind: "item"},
                 {name: "key", kind: "integer"},
                 {name: "comparator", kind: "integer"},
                 {name: "value", kind: "integer"},
@@ -168,12 +168,12 @@ export class LogicRules {
             return;
         }
         const sortedRules = Array.from(ruleTable.rows).sort((a, b) =>
-            a.terminal_object_id - b.terminal_object_id || a.rule_index - b.rule_index);
+            a.terminalObjectRef - b.terminalObjectRef || a.ruleIndex - b.ruleIndex);
         for (const row of sortedRules) {
-            const rule = new LogicRule(row.action_device_id, row.action_key, row.action_value, []);
-            const held = this._rulesByTerminal.get(row.terminal_object_id);
+            const rule = new LogicRule(row.actionDeviceId, row.actionKey, row.actionValue, []);
+            const held = this._rulesByTerminal.get(row.terminalObjectRef);
             if (held === undefined) {
-                this._rulesByTerminal.set(row.terminal_object_id, [rule]);
+                this._rulesByTerminal.set(row.terminalObjectRef, [rule]);
             } else {
                 held.push(rule);
             }
@@ -182,18 +182,18 @@ export class LogicRules {
             return;
         }
         const sortedConditions = Array.from(conditionTable.rows).sort((a, b) =>
-            a.terminal_object_id - b.terminal_object_id
-            || a.rule_index - b.rule_index
-            || a.condition_index - b.condition_index);
+            a.terminalObjectRef - b.terminalObjectRef
+            || a.ruleIndex - b.ruleIndex
+            || a.conditionIndex - b.conditionIndex);
         for (const row of sortedConditions) {
-            const rules = this._rulesByTerminal.get(row.terminal_object_id);
-            if (rules === undefined || rules[row.rule_index] === undefined) {
+            const rules = this._rulesByTerminal.get(row.terminalObjectRef);
+            if (rules === undefined || rules[row.ruleIndex] === undefined) {
                 continue;
             }
-            rules[row.rule_index].conditions.push(new LogicCondition(
+            rules[row.ruleIndex].conditions.push(new LogicCondition(
                 row.kind,
-                row.device_id,
-                row.item_type,
+                row.deviceId,
+                row.itemTypeId,
                 row.key,
                 row.comparator,
                 row.value,

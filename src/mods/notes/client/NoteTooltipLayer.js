@@ -102,7 +102,7 @@ export class NoteTooltipLayer extends AbstractTooltipLayer {
         let contentWidth = this._text.width;
         let contentBottom = this._text.height;
         if (this._showAuthor) {
-            this._author.text = this._players.getUsernameByPlayerRef(note.authorId);
+            this._author.text = this._players.getUsernameByPlayerRef(note.authorRef);
             this._author.y = this._text.y + contentBottom + TOOLTIP_PADDING / 2;
             contentWidth = Math.max(contentWidth, this._author.width);
             contentBottom = this._author.y + this._author.height - this._text.y;
