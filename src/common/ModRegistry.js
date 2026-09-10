@@ -1,4 +1,5 @@
 import {CORE_PLAYER_SETTING_ENTRIES} from "@/common/PlayerSettingEntry.js";
+import {FrozenSet} from "@/common/FrozenSet.js";
 import {LOGIC_KEY_ENABLED, LOGIC_KEY_PROCESSING} from "@/common/constants.js";
 import {LogicKeyEntry, LogicKeyState} from "@/common/LogicKeys.js";
 import {ItemRegistry} from "@/common/ItemRegistry.js";
@@ -111,6 +112,11 @@ export class ModRegistry {
         this._collectLogicKeys();
         this._collectMarketListings();
         this._collectMetricsQueries();
+        // Handed out as they are; only the biomes stay mutable, replaced in place by setBiomes.
+        for (const list of [this._objectTypes, this._wireClasses, this._simMods, this._clientMods, this._textureAtlases, this._itemCategories, this._noiseChannels, this._marketListings]) {
+            Object.freeze(list);
+        }
+        this._fluidTypes = new FrozenSet(this._fluidTypes);
     }
 
     /**
@@ -449,7 +455,7 @@ export class ModRegistry {
 
     /**
      * Fluid payload numbers, merged across all mods.
-     * @returns {Set<number>}
+     * @returns {FrozenSet<number>}
      */
     get fluidTypes() {
         this._assertFrozen();

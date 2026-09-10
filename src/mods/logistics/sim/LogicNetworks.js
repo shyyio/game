@@ -58,7 +58,7 @@ export class LogicNetworks extends AbstractSystem {
          * @type {Map<number, Set<string>>}
          */
         this._wiresByEndpoint = new Map();
-        this._networks = [];
+        this._networks = Object.freeze([]);
         this._dirty = false;
     }
 
@@ -210,7 +210,7 @@ export class LogicNetworks extends AbstractSystem {
         this._poles.clear();
         this._wires.clear();
         this._wiresByEndpoint.clear();
-        this._networks = [];
+        this._networks = Object.freeze([]);
         this._dirty = true;
     }
 
@@ -325,12 +325,12 @@ export class LogicNetworks extends AbstractSystem {
             components.push(members);
         }
 
-        this._networks = components.map(members => {
+        this._networks = Object.freeze(components.map(members => {
             const sorted = Array.from(members).sort((a, b) => a - b);
             const poleIds = sorted.filter(objectRef => this._poles.has(objectRef));
             const deviceIds = sorted.filter(objectRef => !this._poles.has(objectRef));
             return new LogicNetwork(sorted[0], poleIds, deviceIds);
-        });
+        }));
     }
 
     onDespawn(eid, objectRef) {

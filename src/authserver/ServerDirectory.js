@@ -33,7 +33,7 @@ export class ServerDirectory {
             console.error(`Server list ${this._path} is not an array, serving the last good one`);
             return this._lastGood;
         }
-        this._lastGood = parsed;
-        return parsed;
+        this._lastGood = Object.freeze(parsed);
+        return this._lastGood;
     }
 }

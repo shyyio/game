@@ -1,3 +1,4 @@
+import {FrozenSet} from "@/common/FrozenSet.js";
 import {SetViewportMessage, OverworldRequestMessage} from "@/common/CoreMessages.js";
 import {
     TILE_SIZE,
@@ -12,7 +13,7 @@ import {OverworldRect} from "@/client/state/OverworldState.js";
 
 // Handed to the layer tick in overworld mode, where no chunks are mounted: building the real
 // visible-chunk set at overworld scale would enumerate thousands of chunks per frame.
-const NO_VISIBLE_CHUNKS = new Set();
+const NO_VISIBLE_CHUNKS = new FrozenSet(new Set());
 
 /**
  * The chunk set the viewport covers: which chunks are subscribed on the server, and the overworld
@@ -43,7 +44,7 @@ export class ChunkSubscription {
 
     /**
      * The chunks the culled draw layers should mount this frame; empty in overworld mode.
-     * @returns {Set<number>}
+     * @returns {FrozenSet<number>}
      */
     visibleChunks() {
         if (this._overworld) {

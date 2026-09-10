@@ -1,5 +1,6 @@
 import {CHUNK_SIZE, REGION_SIZE} from "@/common/constants.js";
 import {chunkKeyAt} from "@/common/util.js";
+import {FrozenSet} from "@/common/FrozenSet.js";
 
 export const TILE_SIZE = 64;
 export const CHUNK_PX = CHUNK_SIZE * TILE_SIZE;
@@ -103,12 +104,12 @@ export class ViewportChunkWindow {
         this._top = null;
         this._right = null;
         this._bottom = null;
-        this._chunks = new Set();
+        this._chunks = new FrozenSet(new Set());
     }
 
     /**
      * @param {ClientViewport} viewport
-     * @returns {Set<number>} the same instance until the rect moves
+     * @returns {FrozenSet<number>} the same instance until the rect moves
      */
     chunks(viewport) {
         const left = snapToChunk(viewport.left / TILE_SIZE) - CHUNK_SIZE;
@@ -123,7 +124,7 @@ export class ViewportChunkWindow {
         this._right = right;
         this._bottom = bottom;
         // A fresh Set, never a mutation: layers hold the instance they last reconciled against.
-        this._chunks = chunksOver(left, top, right, bottom);
+        this._chunks = new FrozenSet(chunksOver(left, top, right, bottom));
         return this._chunks;
     }
 }

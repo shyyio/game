@@ -107,9 +107,9 @@ export class ToolbarLayer extends Container {
         this._app = app;
         this._viewport = viewport;
         this.textureCache = null;
-        this._tools = [];
-        this._coreTools = [];
-        this._modTools = [];
+        this._tools = Object.freeze([]);
+        this._coreTools = Object.freeze([]);
+        this._modTools = Object.freeze([]);
         this._activeTool = null;
         this._onChange = null;
         this._onReorder = null;
@@ -205,9 +205,9 @@ export class ToolbarLayer extends Container {
      * @returns {void}
      */
     setTools(coreTools, modTools) {
-        this._coreTools = coreTools;
-        this._modTools = modTools;
-        this._tools = [...coreTools, ...modTools];
+        this._coreTools = Object.freeze(Array.from(coreTools));
+        this._modTools = Object.freeze(Array.from(modTools));
+        this._tools = Object.freeze([...coreTools, ...modTools]);
         // Not closed here: a reorder commits by calling this same method, and should leave the
         // drawer exactly as the user left it mid-drag.
         this._rebuild();
