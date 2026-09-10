@@ -37,13 +37,13 @@ import {EMPTY, NO_EID} from "@/sim/sentinels.js";
  * The simulation engine Game drives: the port-transfer core over typed-array component
  * storage, the position/port indexes, (de)serialization, and the mod host — each loaded sim mod
  * registers its ECS content (components, systems, message handlers, chunk-sync contributors) via
- * {@link AbstractSimMod#setup}. Generic — it knows no specific content, so it imports nothing from
+ * {@link AbstractSimMod#init}. Generic — it knows no specific content, so it imports nothing from
  * `mods/`.
  */
 export class GameEngine {
 
     /**
-     * @param {ModRegistry} [modRegistry] - mods whose setup registers content on init
+     * @param {ModRegistry} [modRegistry] - mods whose init registers content
      */
     constructor(modRegistry=null) {
         this.modRegistry = modRegistry;
@@ -342,7 +342,7 @@ export class GameEngine {
             this.overworldBake = new OverworldBake(this, this.placed);
             this.workers = new WorkerNetworks(this, this.placed);
             for (const mod of this.modRegistry.simMods) {
-                mod.setup(this);
+                mod.init(this);
             }
         }
     }

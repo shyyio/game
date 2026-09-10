@@ -22,7 +22,7 @@ export class NotesSimMod extends AbstractSimMod {
      * @param {GameEngine} engine
      * @returns {void}
      */
-    setup(engine) {
+    init(engine) {
         engine.registerSystem(this._store);
     }
 

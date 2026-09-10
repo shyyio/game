@@ -28,7 +28,7 @@ export class NotesClientMod extends AbstractClientMod {
      * @param {Client} client
      * @returns {void}
      */
-    setup(client) {
+    init(client) {
         client.cache.register("notes", NOTES_SCHEMA, new NotesWriter(client.cache));
         this._writer = client.cache.writer("notes");
         this._layer = new NotesDrawLayer(client.cache);

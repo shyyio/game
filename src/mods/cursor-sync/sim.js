@@ -33,7 +33,7 @@ export class CursorSyncSimMod extends AbstractSimMod {
      * @param {GameEngine} engine
      * @returns {void}
      */
-    setup(engine) {}
+    init(engine) {}
 
     /**
      * @param {AbstractMessage} message

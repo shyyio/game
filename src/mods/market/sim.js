@@ -24,7 +24,7 @@ export class MarketSimMod extends AbstractSimMod {
      * @param {GameEngine} engine
      * @returns {void}
      */
-    setup(engine) {}
+    init(engine) {}
 
     /**
      * Grants a first-time player their starting balance. An unset key means never granted and never

@@ -24,7 +24,7 @@ export class MarketClientMod extends AbstractClientMod {
      * @param {Client} client
      * @returns {void}
      */
-    setup(client) {
+    init(client) {
         client.cache.register("market", MARKET_SCHEMA, new MarketWriter(client.cache, client.session));
         this._configLayer = new TradingTerminalConfigLayer(client.app, client.cache, client.session, client.modRegistry.items);
         client.cache.subscribe("playerSettings.values", (key, value) => {

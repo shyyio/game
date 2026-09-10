@@ -33,7 +33,7 @@ export class ProductionLogSimMod extends AbstractSimMod {
      * @param {GameEngine} engine
      * @returns {void}
      */
-    setup(engine) {
+    init(engine) {
         this._items = engine.modRegistry.items;
         engine.itemProduced.add((playerRef, itemTypeId, amount) => this._record(playerRef, itemTypeId, amount));
     }

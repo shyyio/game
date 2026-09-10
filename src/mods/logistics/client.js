@@ -33,9 +33,9 @@ export class LogisticsClientMod extends AbstractClientMod {
         this._beltLayer = new BeltDrawLayer();
         // Reveals buried tunnel belts under a hovered mouth.
         this._overlayLayer = new BeltOverlayDrawLayer();
-        // Catenary overlay for the logic network, fed in setup.
+        // Catenary overlay for the logic network, fed in init.
         this._wireLayer = new WireDrawLayer();
-        // Screen-space terminal panel, built in setup.
+        // Screen-space terminal panel, built in init.
         this._terminalConfigLayer = null;
     }
 
@@ -62,7 +62,7 @@ export class LogisticsClientMod extends AbstractClientMod {
      * @param {Client} client
      * @returns {void}
      */
-    setup(client) {
+    init(client) {
         client.cache.register("logistics", LOGISTICS_SCHEMA, new LogisticsWriter(client.cache, client.session));
         this._terminalConfigLayer = new LogicTerminalConfigLayer(client.app, client.cache, client.modRegistry);
         this._wireLayer.bindObjects(client.objects);

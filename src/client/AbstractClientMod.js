@@ -11,7 +11,7 @@ export class AbstractClientMod {
      * @param {Client} client
      * @returns {void}
      */
-    setup(client) {
+    init(client) {
 
     }
 

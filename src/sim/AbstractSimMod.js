@@ -12,7 +12,7 @@ export class AbstractSimMod {
      * @param {GameEngine} engine
      * @returns {void}
      */
-    setup(engine) {
+    init(engine) {
         throw new NotImplementedError();
     }
 

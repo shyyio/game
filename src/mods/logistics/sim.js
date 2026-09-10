@@ -39,7 +39,7 @@ export class LogisticsSimMod extends AbstractSimMod {
      * @param {GameEngine} engine
      * @returns {void}
      */
-    setup(engine) {
+    init(engine) {
         this._engine = engine;
     }
 

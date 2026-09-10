@@ -21,7 +21,7 @@ export class ProductionLogClientMod extends AbstractClientMod {
      * @param {Client} client
      * @returns {void}
      */
-    setup(client) {
+    init(client) {
         client.cache.register("productionLog", PRODUCTION_LOG_SCHEMA, new ProductionLogWriter(client.cache, client.session));
         this._button = new ProductionLogButtonLayer(client.app);
         // Over the panel the hovered cell sits in, unlike a tooltip beside a world point.

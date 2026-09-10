@@ -104,7 +104,7 @@ export class Client {
         // The shared plain-data state tree: every namespace registers schema + writer + view,
         // every event fans out to every writer, and readers subscribe by path or query the views.
         // The objects writer registers first so object state lands before any reader; mods
-        // register their namespaces in setup. The objects view doubles as the shared cross-mod
+        // register their namespaces in init. The objects view doubles as the shared cross-mod
         // spatial index (`client.objects`), queried by tools/layers for tile lookups, placement
         // collision, and connection rendering.
         this.cache = new ClientCache();
@@ -224,7 +224,7 @@ export class Client {
             this.drawLayerRegistry.add(bundle.ghostLayer);
         }
         for (const mod of this.modRegistry.clientMods) {
-            mod.setup(this);
+            mod.init(this);
         }
         // Built once, same as _coreTools: a toolbar rebuild (reorder, resync) must never orphan a
         // bespoke mod tool's identity by reallocating it.

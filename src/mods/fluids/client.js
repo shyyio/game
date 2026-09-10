@@ -25,7 +25,7 @@ export class FluidsClientMod extends AbstractClientMod {
         return [this._fluidLayer, this._debugLayer];
     }
 
-    setup(client) {
+    init(client) {
         client.objects.onRemove(entry => {
             if (isPipeType(entry.data.type)) {
                 this._onPipeRemoved(entry.id);

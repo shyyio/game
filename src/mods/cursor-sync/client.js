@@ -16,7 +16,7 @@ export class CursorSyncClientMod extends AbstractClientMod {
      * @param {Client} client
      * @returns {void}
      */
-    setup(client) {
+    init(client) {
         client.cache.register("remoteCursors", REMOTE_CURSORS_SCHEMA, new RemoteCursorsWriter(client.cache));
         this._layer = new RemoteCursorsDrawLayer(client.cache);
         this._publisher = new CursorPublisher(client.session, Mouse, client.cache, WindowFocus);
