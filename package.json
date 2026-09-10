@@ -13,6 +13,7 @@
     "build:mod": "node --import ./src/nodeservice/loader.js tools/build-mod.js",
     "check:mod": "node --import ./src/nodeservice/loader.js tools/mod-check.js",
     "check:mods": "node --import ./src/nodeservice/loader.js tools/check-base-mods.js",
+    "check:style": "node tools/style-scan.js",
     "deploy": "node --import ./src/nodeservice/loader.js tools/deploy.js",
     "build:server": "vite build --config vite.server.config.js",
     "build:admin": "vite build --config vite.admin.config.js",
