@@ -1,4 +1,4 @@
-import {AbstractComponent, EMPTY, NO_EID} from "@spup/sdk";
+import {AbstractComponent, FieldDefinition, EMPTY, NO_EID} from "@spup/sdk";
 
 // No toggle buffered.
 export const PENDING_NONE = -1;
@@ -10,19 +10,19 @@ export class GateComponent extends AbstractComponent {
 
     constructor() {
         super("Gate", [
-            {name: "inputPort", kind: "eid", defaultValue: NO_EID},
-            {name: "outputPort", kind: "eid", defaultValue: NO_EID},
+            new FieldDefinition("inputPort", "eid", NO_EID),
+            new FieldDefinition("outputPort", "eid", NO_EID),
             // Item mode's internal port; NO_EID in fluid mode.
-            {name: "internalPort", kind: "eid", defaultValue: NO_EID},
-            {name: "open", defaultValue: 1},
+            new FieldDefinition("internalPort", "eid", NO_EID),
+            new FieldDefinition("open", "i32", 1),
             // Current mode, adopted from coupled transports (see _review).
-            {name: "fluid"},
+            new FieldDefinition("fluid"),
             // Fluid mode's one-unit buffer, EMPTY when empty.
-            {name: "buffered", kind: "item", defaultValue: EMPTY},
+            new FieldDefinition("buffered", "item", EMPTY),
             // The last fluid buffered, so a client placing a pipe knows what the gate carries.
-            {name: "lastOutput", kind: "item", defaultValue: EMPTY},
+            new FieldDefinition("lastOutput", "item", EMPTY),
             // Toggle request applied at the next tick; PENDING_NONE when idle.
-            {name: "pendingOpen", defaultValue: PENDING_NONE},
+            new FieldDefinition("pendingOpen", "i32", PENDING_NONE),
         ], {sparse: true});
     }
 }

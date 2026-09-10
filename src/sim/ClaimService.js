@@ -5,46 +5,17 @@ import {
     OwnClaimsSyncEvent, ChunkClaimUpdateEvent, ClaimResultEvent, ClaimResult, ChunkPermission,
 } from "@/common/ClaimEvents.js";
 import {PLAYER_REF_NONE} from "@/common/constants.js";
-import {ChunkOwnership} from "@/sim/ChunkOwnership.js";
 
 /**
- * The chunk claim requests a session can make: claim, unclaim, and permission changes, plus the
- * build rights the engine's placement gate reads off them.
+ * The chunk claim requests a session can make: claim, unclaim, and permission changes.
  */
-export class ClaimAdmin extends ChunkOwnership {
+export class ClaimService {
 
     /**
      * @param {Game} game
      */
     constructor(game) {
-        super();
         this.game = game;
-    }
-
-    /**
-     * Whether a player may modify a chunk: the owner always may; unclaimed is off limits;
-     * everyone else is gated by the chunk's permission. Mirrored client-side by
-     * ChunkClaimsView.canBuildIn; keep both in sync.
-     * @param {number} playerRef
-     * @param {number} chunkKey
-     * @returns {boolean}
-     */
-    canBuildIn(playerRef, chunkKey) {
-        const owner = this.game.claims.getOwnerByChunkKey(chunkKey);
-        if (owner === PLAYER_REF_NONE) {
-            return false;
-        }
-        if (owner === playerRef) {
-            return true;
-        }
-        if (this.game.claims.getPermissionByChunkKey(chunkKey) === ChunkPermission.PERMISSION_ONLY_ME) {
-            return false;
-        }
-        return this.game.players.isFriend(owner, playerRef);
-    }
-
-    getOwnerByChunkKey(chunkKey) {
-        return this.game.claims.getOwnerByChunkKey(chunkKey);
     }
 
     /**

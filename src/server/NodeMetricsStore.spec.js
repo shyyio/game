@@ -6,7 +6,7 @@ import {join} from "node:path";
 import {NodeMetricsStore} from "@/server/NodeMetricsStore.js";
 import {ClientMetricsStore} from "@/client/state/ClientMetricsStore.js";
 import {METRICS_RETENTION_TICKS} from "@/common/AbstractMetricsStore.js";
-import {MetricsFact, MetricsRollupRow} from "@/common/MetricsFact.js";
+import {MetricsEntry, MetricsRollupRow} from "@/common/MetricsEntry.js";
 import {METRICS_COARSE_TIERS, METRICS_FOLD_TIER, TIER_LADDER} from "@/common/MetricsTiers.js";
 
 const TYPE = 2;
@@ -31,11 +31,11 @@ function tempStorePath() {
 
 test("queryRollup buckets by tick, not by wall-clock, and sums amount per (bucket, category, tag)", async () => {
     const store = new NodeMetricsStore(":memory:");
-    const facts = [];
+    const entries = [];
     for (let tick = 0; tick < 25; tick += 1) {
-        facts.push(new MetricsFact(TYPE, tick, PLAYER, 42, 1, 0));
+        entries.push(new MetricsEntry(TYPE, tick, PLAYER, 42, 1, 0));
     }
-    await store.insertFacts(facts);
+    await store.insertEntries(entries);
 
     const rollup = await store.queryRollup(TYPE, PLAYER, 0, 24, 10);
 
@@ -48,10 +48,10 @@ test("queryRollup buckets by tick, not by wall-clock, and sums amount per (bucke
 
 test("queryRollup keeps category and tag as separate groups within the same bucket", async () => {
     const store = new NodeMetricsStore(":memory:");
-    await store.insertFacts([
-        new MetricsFact(TYPE, 0, PLAYER, 1, 100, 0), // sell
-        new MetricsFact(TYPE, 1, PLAYER, 1, 200, 1), // buy, same bucket+a, different side
-        new MetricsFact(TYPE, 2, PLAYER, 2, 50, 0), // different itemTypeId
+    await store.insertEntries([
+        new MetricsEntry(TYPE, 0, PLAYER, 1, 100, 0), // sell
+        new MetricsEntry(TYPE, 1, PLAYER, 1, 200, 1), // buy, same bucket+a, different side
+        new MetricsEntry(TYPE, 2, PLAYER, 2, 50, 0), // different itemTypeId
     ]);
 
     const rollup = await store.queryRollup(TYPE, PLAYER, 0, 9, 10);
@@ -65,9 +65,9 @@ test("queryRollup keeps category and tag as separate groups within the same buck
 
 test("queryRollup with playerRef null is unscoped across every player", async () => {
     const store = new NodeMetricsStore(":memory:");
-    await store.insertFacts([
-        new MetricsFact(TYPE, 0, PLAYER, 1, 10, 0),
-        new MetricsFact(TYPE, 0, OTHER_PLAYER, 1, 20, 0),
+    await store.insertEntries([
+        new MetricsEntry(TYPE, 0, PLAYER, 1, 10, 0),
+        new MetricsEntry(TYPE, 0, OTHER_PLAYER, 1, 20, 0),
     ]);
 
     const rollup = await store.queryRollup(TYPE, null, 0, 9, 10);
@@ -75,19 +75,19 @@ test("queryRollup with playerRef null is unscoped across every player", async ()
     assert.deepEqual(rollup, [new MetricsRollupRow(0, 1, 0, 2, 30)]);
 });
 
-test("a baked tier answers the same rollup the raw facts would, across folded and un-folded ticks", async () => {
+test("a baked tier answers the same rollup the raw entries would, across folded and un-folded ticks", async () => {
     const store = new NodeMetricsStore(":memory:");
-    const facts = [];
+    const entries = [];
     for (let tick = 0; tick < METRICS_FOLD_TIER * 2 + 30; tick += 1) {
-        facts.push(new MetricsFact(TYPE, tick, PLAYER, tick % 3, tick, 0));
-        facts.push(new MetricsFact(TYPE, tick, OTHER_PLAYER, tick % 3, 2 * tick, 1));
+        entries.push(new MetricsEntry(TYPE, tick, PLAYER, tick % 3, tick, 0));
+        entries.push(new MetricsEntry(TYPE, tick, OTHER_PLAYER, tick % 3, 2 * tick, 1));
     }
-    await store.insertFacts(facts);
+    await store.insertEntries(entries);
     // Only the first two windows fold; the remaining 30 ticks stay in the un-baked tail.
     await store.advanceTo(METRICS_FOLD_TIER * 2 + 30);
-    // The plain-array store aggregates the same facts, as the reference the baked path must match.
+    // The plain-array store aggregates the same entries, as the reference the baked path must match.
     const reference = new ClientMetricsStore();
-    await reference.insertFacts(facts);
+    await reference.insertEntries(entries);
 
     const toTick = METRICS_FOLD_TIER * 2 + 29;
     for (const playerRef of [null, PLAYER]) {
@@ -100,11 +100,11 @@ test("a baked tier answers the same rollup the raw facts would, across folded an
 test("a coarse tier folds from the same windows without double-counting repeated bakes", async () => {
     const coarse = METRICS_COARSE_TIERS[METRICS_COARSE_TIERS.length - 1];
     const store = new NodeMetricsStore(":memory:");
-    const facts = [];
+    const entries = [];
     for (let tick = 0; tick < coarse + METRICS_FOLD_TIER; tick += 1) {
-        facts.push(new MetricsFact(TYPE, tick, PLAYER, 1, 1, 0));
+        entries.push(new MetricsEntry(TYPE, tick, PLAYER, 1, 1, 0));
     }
-    await store.insertFacts(facts);
+    await store.insertEntries(entries);
     // Fold window by window, so the coarse tier accumulates across many partial updates.
     for (let tick = 0; tick <= coarse + METRICS_FOLD_TIER; tick += METRICS_FOLD_TIER) {
         await store.advanceTo(tick);
@@ -120,9 +120,9 @@ test("a coarse tier folds from the same windows without double-counting repeated
 
 test("a baked query starts at the bucket fromTick falls in, whole rather than clipped", async () => {
     const store = new NodeMetricsStore(":memory:");
-    await store.insertFacts([
-        new MetricsFact(TYPE, 0, PLAYER, 1, 1, 0),
-        new MetricsFact(TYPE, METRICS_FOLD_TIER - 1, PLAYER, 1, 1, 0),
+    await store.insertEntries([
+        new MetricsEntry(TYPE, 0, PLAYER, 1, 1, 0),
+        new MetricsEntry(TYPE, METRICS_FOLD_TIER - 1, PLAYER, 1, 1, 0),
     ]);
     await store.advanceTo(METRICS_FOLD_TIER);
 
@@ -131,14 +131,14 @@ test("a baked query starts at the bucket fromTick falls in, whole rather than cl
     assert.deepEqual(rollup, [new MetricsRollupRow(0, 1, 0, 2, 2)]);
 });
 
-test("reopening a file folds the facts recorded since the last bake, once", async () => {
+test("reopening a file folds the entries recorded since the last bake, once", async () => {
     const path = tempStorePath();
     const store = new NodeMetricsStore(path);
-    const facts = [];
+    const entries = [];
     for (let tick = 0; tick < METRICS_FOLD_TIER * 2; tick += 1) {
-        facts.push(new MetricsFact(TYPE, tick, PLAYER, 1, 1, 0));
+        entries.push(new MetricsEntry(TYPE, tick, PLAYER, 1, 1, 0));
     }
-    await store.insertFacts(facts);
+    await store.insertEntries(entries);
     await store.advanceTo(METRICS_FOLD_TIER);
     await store.close();
 
@@ -155,11 +155,11 @@ test("reopening a file folds the facts recorded since the last bake, once", asyn
 test("buckets from a tier this build doesn't bake are rebuilt instead of folded onto", async () => {
     const path = tempStorePath();
     const store = new NodeMetricsStore(path);
-    const facts = [];
+    const entries = [];
     for (let tick = 0; tick < METRICS_FOLD_TIER; tick += 1) {
-        facts.push(new MetricsFact(TYPE, tick, PLAYER, 1, 1, 0));
+        entries.push(new MetricsEntry(TYPE, tick, PLAYER, 1, 1, 0));
     }
-    await store.insertFacts(facts);
+    await store.insertEntries(entries);
     await store.advanceTo(METRICS_FOLD_TIER);
     // Stands in for a build whose ladder has changed since the file was written.
     const offLadderTier = TIER_LADDER[TIER_LADDER.length - 1] + 1;
@@ -176,19 +176,19 @@ test("buckets from a tier this build doesn't bake are rebuilt instead of folded 
     assert.deepEqual(rollup, [new MetricsRollupRow(0, 1, 0, METRICS_FOLD_TIER, METRICS_FOLD_TIER)]);
 });
 
-test("advanceTo drops facts and buckets more than RETENTION_TICKS behind the latest tick", async () => {
+test("advanceTo drops entries and buckets more than RETENTION_TICKS behind the latest tick", async () => {
     const store = new NodeMetricsStore(":memory:");
     const LATEST = METRICS_RETENTION_TICKS + METRICS_FOLD_TIER;
-    await store.insertFacts([
-        new MetricsFact(TYPE, 0, PLAYER, 1, 1, 0),
-        new MetricsFact(TYPE, LATEST, PLAYER, 1, 1, 0),
+    await store.insertEntries([
+        new MetricsEntry(TYPE, 0, PLAYER, 1, 1, 0),
+        new MetricsEntry(TYPE, LATEST, PLAYER, 1, 1, 0),
     ]);
 
     await store.advanceTo(LATEST + METRICS_FOLD_TIER);
 
-    // The un-baked tier reads facts, the baked one reads buckets; the aged-out tick is gone from both.
-    const facts = await store.queryRollup(TYPE, PLAYER, 0, LATEST, TIER_LADDER[0]);
-    assert.deepEqual(facts.map(row => row.bucketTick), [LATEST]);
+    // The un-baked tier reads entries, the baked one reads buckets; the aged-out tick is gone from both.
+    const entries = await store.queryRollup(TYPE, PLAYER, 0, LATEST, TIER_LADDER[0]);
+    assert.deepEqual(entries.map(row => row.bucketTick), [LATEST]);
     const buckets = await store.queryRollup(TYPE, PLAYER, 0, LATEST, METRICS_FOLD_TIER);
     assert.deepEqual(buckets, [new MetricsRollupRow(LATEST, 1, 0, 1, 1)]);
 });

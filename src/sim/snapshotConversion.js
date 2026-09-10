@@ -1,3 +1,4 @@
+import {EMPTY} from "@/sim/AbstractComponent.js";
 // Carrying a saved world over to another mod loadout. Object objectTypeIds are positional, so a column of
 // kind "type" is remapped by name; item types are declared constants, so a column of kind "item"
 // only needs values no mod declares any more emptied. A table's own "item" columns count
@@ -5,7 +6,6 @@
 // be gone before converting: the caller deletes them through the engine, which is what keeps ports,
 // belts and occupancy consistent.
 
-import {EMPTY} from "@/sim/sentinels.js";
 
 const KIND_TYPE = "type";
 const KIND_ITEM = "item";

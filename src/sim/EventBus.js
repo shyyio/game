@@ -4,7 +4,9 @@
  * @property {number[]} removed
  */
 
-const EMPTY_SUBSCRIBERS = new Set();
+import {FrozenSet} from "@/common/FrozenSet.js";
+
+const EMPTY_SUBSCRIBERS = new FrozenSet(new Set());
 
 /**
  * Topic pub/sub for session event delivery. A session subscribes to the chunks it views and the
@@ -18,15 +20,25 @@ const EMPTY_SUBSCRIBERS = new Set();
 export class EventBus {
 
     constructor() {
-        // sessionRef -> session
+        /**
+         * @type {Map<number, AbstractSession>}
+         */
         this._sessions = new Map();
-        // chunk -> Set<sessionRef>
+        /**
+         * @type {Map<number, FrozenSet<number>>}
+         */
         this._chunkSubscribers = new Map();
-        // objectRef -> Set<sessionRef>
+        /**
+         * @type {Map<number, FrozenSet<number>>}
+         */
         this._objectSubscribers = new Map();
-        // sessionRef -> Set<chunk> (the diff/query source for viewport topics)
+        /**
+         * @type {Map<number, Set<number>>}
+         */
         this._viewports = new Map();
-        // sessionRef -> Set<objectRef> (the diff/query source for inspect topics)
+        /**
+         * @type {Map<number, Set<number>>}
+         */
         this._inspects = new Map();
         this._nextId = 1;
     }
@@ -68,9 +80,8 @@ export class EventBus {
      * @returns {void}
      */
     publish(event) {
-        const subscribers = event.getSubscribersByBus(this);
-        // Copied: a session's own dispatch may resubscribe while we fan out.
-        for (const sessionRef of Array.from(subscribers)) {
+        // A resubscribe during the fan-out replaces the topic's set; this one stays intact.
+        for (const sessionRef of event.getSubscribersByBus(this)) {
             this._sessions.get(sessionRef).publishEvent(event);
         }
     }
@@ -132,7 +143,7 @@ export class EventBus {
     /**
      * The sessions viewing a chunk, or undefined when none.
      * @param {number} chunkKey
-     * @returns {Set<number>} shared and empty when none; never mutated by a caller
+     * @returns {FrozenSet<number>} shared and empty when none
      */
     getSubscribersByChunkKey(chunkKey) {
         const subscribers = this._chunkSubscribers.get(chunkKey);
@@ -145,7 +156,7 @@ export class EventBus {
     /**
      * The sessions inspecting an object, or undefined when none.
      * @param {number} objectRef
-     * @returns {Set<number>} shared and empty when none; never mutated by a caller
+     * @returns {FrozenSet<number>} shared and empty when none
      */
     getSubscribersByObjectRef(objectRef) {
         const subscribers = this._objectSubscribers.get(objectRef);
@@ -269,36 +280,37 @@ export class EventBus {
     }
 
     /**
+     * Topic sets are copied on write, so a set handed out stays as it was.
      * @private
-     * @param {Map<number, Set<number>>} topics
+     * @param {Map<number, FrozenSet<number>>} topics
      * @param {number} key
      * @param {number} sessionRef
      * @returns {void}
      */
     _subscribe(topics, key, sessionRef) {
-        let subscribers = topics.get(key);
-        if (subscribers === undefined) {
-            subscribers = new Set();
-            topics.set(key, subscribers);
-        }
+        const subscribers = new Set(topics.get(key));
         subscribers.add(sessionRef);
+        topics.set(key, new FrozenSet(subscribers));
     }
 
     /**
      * @private
-     * @param {Map<number, Set<number>>} topics
+     * @param {Map<number, FrozenSet<number>>} topics
      * @param {number} key
      * @param {number} sessionRef
      * @returns {void}
      */
     _unsubscribe(topics, key, sessionRef) {
-        const subscribers = topics.get(key);
-        if (subscribers === undefined) {
+        const current = topics.get(key);
+        if (current === undefined) {
             return;
         }
+        const subscribers = new Set(current);
         subscribers.delete(sessionRef);
         if (subscribers.size === 0) {
             topics.delete(key);
+        } else {
+            topics.set(key, new FrozenSet(subscribers));
         }
     }
 }

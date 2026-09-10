@@ -1,11 +1,11 @@
+import {NO_EID} from "@/sim/AbstractComponent.js";
 import {CreateObjectMessage, DeleteObjectMessage} from "@/common/CoreMessages.js";
 import {ObjectInsertEvent, ObjectDeleteEvent, ObjectSyncBatchEvent} from "@/common/ObjectEvents.js";
 import {Direction, PLAYER_REF_NONE} from "@/common/constants.js";
 import {chunkKeyAt, chunkOrigin} from "@/common/util.js";
 import {PlacedObjectComponent} from "@/sim/PlacedObjectComponent.js";
-import {NO_EID} from "@/sim/sentinels.js";
 import {AbstractSystem} from "@/sim/AbstractSystem.js";
-import {METRICS_FACT_TYPE_OBJECT_PLACED, METRICS_FACT_TYPE_OBJECT_DESPAWNED} from "@/common/MetricsFact.js";
+import {METRICS_ENTRY_TYPE_OBJECT_PLACED, METRICS_ENTRY_TYPE_OBJECT_DESPAWNED} from "@/common/MetricsEntry.js";
 
 const EMPTY_EIDS = new Set();
 
@@ -97,7 +97,7 @@ export class PlacedObjects extends AbstractSystem {
      */
     getClaimOwnerByEid(eid) {
         const position = this.engine.Position;
-        return this.engine.ownership.getOwnerByChunkKey(chunkKeyAt(position.x[eid], position.y[eid]));
+        return this.engine.chunkOwners.getOwnerByChunkKey(chunkKeyAt(position.x[eid], position.y[eid]));
     }
 
     /**
@@ -278,7 +278,7 @@ export class PlacedObjects extends AbstractSystem {
         engine.notifySpawn(eid, objectRef);
         const portEids = type.behavior.getRenderedPortEids(engine, eid);
         engine.emitEvent(new ObjectInsertEvent(type.objectTypeId, objectRef, message.x, message.y, message.direction, portEids));
-        engine.emitMetrics(METRICS_FACT_TYPE_OBJECT_PLACED, playerRef, type.objectTypeId, 1);
+        engine.emitMetrics(METRICS_ENTRY_TYPE_OBJECT_PLACED, playerRef, type.objectTypeId, 1);
         return true;
     }
 
@@ -303,7 +303,7 @@ export class PlacedObjects extends AbstractSystem {
         const x = position.x[eid];
         const y = position.y[eid];
         engine.emitEvent(new ObjectDeleteEvent(type.objectTypeId, objectRef, x, y));
-        engine.emitMetrics(METRICS_FACT_TYPE_OBJECT_DESPAWNED, playerRef, type.objectTypeId, 1);
+        engine.emitMetrics(METRICS_ENTRY_TYPE_OBJECT_DESPAWNED, playerRef, type.objectTypeId, 1);
         // Before the destroy, which recycles the eid and may clear its position.
         this._unindexChunk(eid, x, y);
         engine.components.destroyEntity(eid);

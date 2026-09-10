@@ -1,4 +1,4 @@
-import {AbstractComponent, EMPTY, NO_EID} from "@spup/sdk";
+import {AbstractComponent, FieldDefinition, EMPTY, NO_EID} from "@spup/sdk";
 
 /**
  * A tank: its ports, the fluid it holds and how much.
@@ -7,12 +7,12 @@ export class TankComponent extends AbstractComponent {
 
     constructor() {
         super("Tank", [
-            {name: "inputPort", kind: "eid", defaultValue: NO_EID},
-            {name: "outputPort", kind: "eid", defaultValue: NO_EID},
-            {name: "fluidType", kind: "item", defaultValue: EMPTY},
-            {name: "amount"},
+            new FieldDefinition("inputPort", "eid", NO_EID),
+            new FieldDefinition("outputPort", "eid", NO_EID),
+            new FieldDefinition("fluidType", "item", EMPTY),
+            new FieldDefinition("amount"),
             // Denormalized from the behavior so the tick pass stays on the row.
-            {name: "capacity"},
+            new FieldDefinition("capacity"),
         ], {sparse: true});
     }
 }

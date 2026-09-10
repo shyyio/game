@@ -1,6 +1,6 @@
+import {EMPTY} from "@/sim/AbstractComponent.js";
 import {chunkKeyAt} from "@/common/util.js";
 import {PortItemBatchEvent} from "@/common/PortItemEvents.js";
-import {EMPTY} from "@/sim/sentinels.js";
 
 // How a port lost its item this tick, so the diff re-emits a refilled port (the client animates the
 // swap) and flags engine-drained clears consumed (the item glides into the consumer).

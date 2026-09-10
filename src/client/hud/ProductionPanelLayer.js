@@ -5,7 +5,7 @@ import {PanelRowDescriptor} from "@/client/hud/PanelStack.js";
 import {PANEL_TINT, PANEL_TITLE_TEXT} from "@/client/Theme.js";
 import {MetricsLineChart} from "@/client/hud/MetricsLineChart.js";
 import {CHART_METRIC_COUNT, seriesRates} from "@/client/hud/MetricsChartData.js";
-import {metricsRollupKey} from "@/common/MetricsFact.js";
+import {metricsRollupKey} from "@/common/MetricsEntry.js";
 import {GameSettingsKey} from "@/common/constants.js";
 import {DomOverlay} from "@/client/hud/DomOverlay.js";
 
@@ -24,7 +24,7 @@ export class ProductionPanelLayer extends Container {
     /**
      * @param {Application} app
      * @param {ClientCache} state
-     * @param {MetricsFactType} metricsType the chart plots
+     * @param {MetricsEntryType} metricsType the chart plots
      * @param {MetricsQueryScope} scope echoed back through the (un)subscribe callbacks
      * @param {ItemRegistry} items - names the list's rows (a series' category is an item type)
      */

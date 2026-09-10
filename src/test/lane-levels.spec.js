@@ -1,7 +1,7 @@
+import {EMPTY, NO_EID} from "@/sim/AbstractComponent.js";
 import {test} from "node:test";
 import assert from "node:assert/strict";
 import {Direction, CHUNK_SIZE, LAYER_SURFACE} from "@/common/constants.js";
-import {EMPTY, NO_EID} from "@/sim/sentinels.js";
 import {getLaneLevelLayer, LANE_LEVEL_BURIED, LANE_LEVEL_ELEVATED_1} from "@/sim/LaneIndex.js";
 import {ModPackage} from "@/common/ModPackage.js";
 import {makeGameEngine} from "@/test/ecsSim.js";

@@ -1,7 +1,7 @@
+import {NO_EID} from "@/sim/AbstractComponent.js";
 import {World} from "@/sim/World.js";
 import {GAME_VERSION} from "@/common/constants.js";
 import {SAVE_FORMAT} from "@/common/saveMigrations.js";
-import {NO_EID} from "@/sim/sentinels.js";
 
 /**
  * The engine's save format: the whole world written as a table of rows per registered component

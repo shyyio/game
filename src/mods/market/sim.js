@@ -5,7 +5,7 @@ import {ConfigureTradingTerminalMessage, MarketSnapshotRequestMessage} from "./c
 import {MarketSnapshotEvent, MARKET_SNAPSHOT_NONE} from "./common/events.js";
 import {
     MARKET_MODE_NONE, MARKET_MODE_SELL, MARKET_MODE_BUY, MARKET_SETTING_BALANCE,
-    MARKET_STARTING_BALANCE, METRICS_FACT_TYPE_TRADE_EXECUTED, METRICS_TRADE_SIDE_SELL,
+    MARKET_STARTING_BALANCE, METRICS_ENTRY_TYPE_TRADE_EXECUTED, METRICS_TRADE_SIDE_SELL,
     METRICS_TRADE_SIDE_BUY,
 } from "./common/constants.js";
 
@@ -217,7 +217,7 @@ export class MarketSimMod extends AbstractSimMod {
             if (sellerOwner !== PLAYER_REF_NONE) {
                 deltas.set(sellerOwner, (deltas.get(sellerOwner) || 0) + settlement.price);
                 engine.emitMetrics(
-                    METRICS_FACT_TYPE_TRADE_EXECUTED, sellerOwner,
+                    METRICS_ENTRY_TYPE_TRADE_EXECUTED, sellerOwner,
                     settlement.itemTypeId, settlement.price, METRICS_TRADE_SIDE_SELL,
                 );
             }
@@ -226,7 +226,7 @@ export class MarketSimMod extends AbstractSimMod {
                 if (buyerOwner !== PLAYER_REF_NONE) {
                     deltas.set(buyerOwner, (deltas.get(buyerOwner) || 0) - settlement.price);
                     engine.emitMetrics(
-                        METRICS_FACT_TYPE_TRADE_EXECUTED, buyerOwner,
+                        METRICS_ENTRY_TYPE_TRADE_EXECUTED, buyerOwner,
                         settlement.itemTypeId, settlement.price, METRICS_TRADE_SIDE_BUY,
                     );
                 }
@@ -264,7 +264,7 @@ export class MarketSimMod extends AbstractSimMod {
             if (buyerOwner !== PLAYER_REF_NONE) {
                 deltas.set(buyerOwner, (deltas.get(buyerOwner) || 0) - purchase.price);
                 engine.emitMetrics(
-                    METRICS_FACT_TYPE_TRADE_EXECUTED, buyerOwner,
+                    METRICS_ENTRY_TYPE_TRADE_EXECUTED, buyerOwner,
                     purchase.itemTypeId, purchase.price, METRICS_TRADE_SIDE_BUY,
                 );
             }

@@ -1,8 +1,8 @@
+import {EMPTY} from "@/sim/AbstractComponent.js";
 import {test} from "node:test";
 import assert from "node:assert/strict";
 import {Direction, LAYER_SURFACE} from "@/common/constants.js";
 import {CreateObjectMessage, DeleteObjectMessage} from "@/common/CoreMessages.js";
-import {EMPTY} from "@/sim/sentinels.js";
 import {NO_LANE} from "@/sim/LaneIndex.js";
 import {BeltType} from "@/mods/logistics/common/objectTypes.js";
 import {makeGameEngine} from "@/test/ecsSim.js";

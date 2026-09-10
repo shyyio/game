@@ -60,17 +60,15 @@ export class ModManifest {
      * @param {string[]} fields.parts which factories the bundle exports
      * @param {string|null} fields.homepage
      */
-    constructor(
-        {
-            name,
-            version,
-            sdkVersion,
-            title,
-            entry,
-            parts,
-            homepage,
-        },
-    ) {
+    constructor({
+        name,
+        version,
+        sdkVersion,
+        title,
+        entry,
+        parts,
+        homepage,
+    }) {
         this.name = name;
         this.version = version;
         this.sdkVersion = sdkVersion;

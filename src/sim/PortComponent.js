@@ -1,5 +1,4 @@
-import {AbstractComponent} from "@/sim/AbstractComponent.js";
-import {EMPTY} from "@/sim/sentinels.js";
+import {AbstractComponent, FieldDefinition, EMPTY} from "@/sim/AbstractComponent.js";
 
 /**
  * A port: the item it holds, EMPTY when unoccupied. An edge port also carries Position for the
@@ -9,7 +8,7 @@ export class PortComponent extends AbstractComponent {
 
     constructor() {
         super("Port", [
-            {name: "item", kind: "item", defaultValue: EMPTY},
+            new FieldDefinition("item", "item", EMPTY),
         ]);
     }
 }

@@ -44,7 +44,7 @@ export {AbstractModDeclaration} from "@/common/AbstractModDeclaration.js";
 export {ModPackage} from "@/common/ModPackage.js";
 export {ModRegistry} from "@/common/ModRegistry.js";
 export {AbstractSimMod} from "@/sim/AbstractSimMod.js";
-export {AbstractComponent} from "@/sim/AbstractComponent.js";
+export {AbstractComponent, FieldDefinition} from "@/sim/AbstractComponent.js";
 export {
     ObjectType,       // the entity blueprint for a placeable: ports, geometry, behavior, rules
     PortDefinition,   // one input/output/internal port on an object (position + facing)
@@ -81,7 +81,7 @@ export {
 } from "@/sim/LaneIndex.js";
 export {HousingBehavior} from "@/sim/behaviors/HousingBehavior.js";
 export {AbstractSystem} from "@/sim/AbstractSystem.js";
-export {EMPTY, NO_EID} from "@/sim/sentinels.js";
+export {EMPTY, NO_EID} from "@/sim/AbstractComponent.js";
 // Thrown by a must-override hook a subclass left unimplemented.
 export {NotImplementedError} from "@/common/error.js";
 
@@ -205,7 +205,7 @@ export {WorldNoise, tileHash} from "@/common/WorldNoise.js";
 // Mods declare Biomes (declaration.biomes) selected by NoiseRanges over their channels;
 // `game.terrain` / `client.terrain` resolve tile -> biomeId and bake chunks (docs/terrain-rendering.md).
 export {Biome, NoiseRange, TerrainDetail} from "@/common/Biome.js";
-export {Terrain, TerrainBake, TileBiome} from "@/common/Terrain.js";
+export {Terrain, BiomeGrid, TileBiome} from "@/common/Terrain.js";
 export {GameSettingsKey} from "@/common/constants.js";
 
 // A chunk is identified by an integer ordinal (its index within the region);

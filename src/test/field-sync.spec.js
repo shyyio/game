@@ -1,10 +1,10 @@
+import {EMPTY} from "@/sim/AbstractComponent.js";
 import {test} from "node:test";
 import assert from "node:assert/strict";
 import {Direction} from "@/common/constants.js";
 import {CreateObjectMessage, SetViewportMessage} from "@/common/CoreMessages.js";
 import {ClaimChunkMessage} from "@/common/ClaimMessages.js";
 import {chunkKeyAt} from "@/common/util.js";
-import {EMPTY} from "@/sim/sentinels.js";
 import {ObjectFieldsEvent, ObjectFieldsBatchEvent} from "@/common/ObjectEvents.js";
 import {makeGame} from "@/test/ecsSim.js";
 import {CapturingSession} from "@/test/CapturingSession.js";

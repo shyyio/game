@@ -1,6 +1,6 @@
+import {NO_EID} from "@/sim/AbstractComponent.js";
 import {tileKeyAt, tileVariantKey, TILE_VARIANT_LIMIT} from "@/common/util.js";
 import {LAYER_SURFACE} from "@/common/constants.js";
-import {NO_EID} from "@/sim/sentinels.js";
 import {PositionComponent} from "@/sim/PositionComponent.js";
 import {OccupancyComponent} from "@/sim/OccupancyComponent.js";
 

@@ -1,7 +1,7 @@
+import {EMPTY} from "@/sim/AbstractComponent.js";
 import {test} from "node:test";
 import assert from "node:assert/strict";
 import {Direction, LAYER_SURFACE} from "@/common/constants.js";
-import {EMPTY} from "@/sim/sentinels.js";
 import {ModPackage} from "@/common/ModPackage.js";
 import {makeGameEngine, ProbeSystem} from "@/test/ecsSim.js";
 import {CreateObjectMessage} from "@/common/CoreMessages.js";

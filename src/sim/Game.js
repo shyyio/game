@@ -17,7 +17,7 @@ import {PlayerSettingsToolOrderCache, PLAYER_SETTINGS_TOOL_ORDER_TABLE} from "@/
 import {ChunkClaims, CHUNK_CLAIM_TABLE} from "@/sim/ChunkClaims.js";
 import {PlayerRegistry, PLAYER_TABLE, FRIEND_TABLE} from "@/sim/PlayerRegistry.js";
 import {PlayerDirectory} from "@/sim/PlayerDirectory.js";
-import {ClaimAdmin} from "@/sim/ClaimAdmin.js";
+import {ClaimService} from "@/sim/ClaimService.js";
 import {SessionViews} from "@/sim/SessionViews.js";
 import {CHUNK_SIZE, DEFAULT_TICK_MS, GameSettingsKey} from "@/common/constants.js";
 import {GameMetrics} from "@/sim/GameMetrics.js";
@@ -31,7 +31,7 @@ export class Game {
      * @param {ModRegistry} modRegistry
      * @param {GameEngine} [simEngine] - the simulation engine; defaults to a fresh GameEngine
      * @param {AbstractSaveStore} [saveStore] - persists/restores the world; omitted when saving is off
-     * @param {AbstractMetricsStore} [metricsStore] - persists metrics facts; omitted when metrics is off
+     * @param {AbstractMetricsStore} [metricsStore] - persists metrics entries; omitted when metrics is off
      * @param {number} [tickMs] - real-time length of one sim tick, published as GameSettingsKey.TICK_MS
      * @param {number} [seed] - world seed for a fresh world; a loaded save's seed replaces it
      */
@@ -105,7 +105,8 @@ export class Game {
         /**
          * @type {ChunkClaims}
          */
-        this.claims = new ChunkClaims();
+        this.claims = new ChunkClaims(this.players);
+        this.simEngine.setChunkOwners(this.claims);
 
         /**
          * Username disclosure and the friendships that widen it.
@@ -115,10 +116,9 @@ export class Game {
 
         /**
          * The claim, unclaim and permission requests over those claims.
-         * @type {ClaimAdmin}
+         * @type {ClaimService}
          */
-        this.claimAdmin = new ClaimAdmin(this);
-        this.simEngine.setChunkOwnership(this.claimAdmin);
+        this.claimService = new ClaimService(this);
 
         /**
          * The chunks, overworld and inspect menus each session is looking at.
@@ -127,7 +127,7 @@ export class Game {
         this.sessionViews = new SessionViews(this);
 
         /**
-         * The whole metrics surface: fact recording, session lengths, queries, live pushes.
+         * The whole metrics surface: entry recording, session lengths, queries, live pushes.
          * @type {GameMetrics}
          */
         this.metrics = new GameMetrics(metricsStore, modRegistry, this.bus, this.simEngine);
@@ -141,9 +141,9 @@ export class Game {
             [SetViewportMessage, (session, message) => this.sessionViews.setViewport(session, message.chunks)],
             [SetInspectedObjectsMessage, (session, message) => this.sessionViews.setInspects(session, message.objectRefs)],
             [OverworldRequestMessage, (session, message) => this.sessionViews.publishOverworldSnapshot(session, message)],
-            [ClaimChunkMessage, (session, message) => this.claimAdmin.claim(session, message.chunkKey)],
-            [UnclaimChunkMessage, (session, message) => this.claimAdmin.unclaim(session, message.chunkKey, message.clear === 1)],
-            [SetChunkPermissionMessage, (session, message) => this.claimAdmin.setPermission(session, message.chunkKey, message.permission)],
+            [ClaimChunkMessage, (session, message) => this.claimService.claim(session, message.chunkKey)],
+            [UnclaimChunkMessage, (session, message) => this.claimService.unclaim(session, message.chunkKey, message.clear === 1)],
+            [SetChunkPermissionMessage, (session, message) => this.claimService.setPermission(session, message.chunkKey, message.permission)],
             [AddFriendMessage, (session, message) => this.playerDirectory.addFriend(session, message.playerRef)],
             [AddFriendByCodeMessage, (session, message) => this.playerDirectory.addFriendByCode(session, message.code)],
             [RemoveFriendMessage, (session, message) => this.playerDirectory.removeFriend(session, message.playerRef)],
@@ -279,7 +279,7 @@ export class Game {
         const entry = this.players.getPlayerByRef(session.playerRef);
         this.bus.publishTo(session.sessionRef, new WelcomeEvent(entry.playerRef, entry.maxChunks, entry.friendCode));
         this.playerDirectory.syncUsernames(session.sessionRef, [session.playerRef]);
-        this.claimAdmin.syncOwnClaims(session);
+        this.claimService.syncOwnClaims(session);
         this.playerDirectory.syncFriendList(session.sessionRef, session.playerRef);
     }
 
@@ -292,7 +292,7 @@ export class Game {
      * @private
      */
     _syncPlayerSettings(session) {
-        this.bus.publishTo(session.sessionRef, new PlayerSettingsSyncEvent(this.playerSettings.getPlayerSnapshot(session.playerRef)));
+        this.bus.publishTo(session.sessionRef, new PlayerSettingsSyncEvent(this.playerSettings.getSnapshotByPlayerRef(session.playerRef)));
     }
 
     /**
@@ -307,7 +307,7 @@ export class Game {
      * @param {number} sessionRef
      */
     disconnect(sessionRef) {
-        // Before removeSession, so the leave fact still resolves the session's playerRef.
+        // Before removeSession, so the leave entry still resolves the session's playerRef.
         this.metrics.onDisconnect(sessionRef);
 
         this.bus.removeSession(sessionRef);

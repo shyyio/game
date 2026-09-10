@@ -1,7 +1,7 @@
+import {EMPTY} from "@/sim/AbstractComponent.js";
 import {test} from "node:test";
 import assert from "node:assert/strict";
 import {Direction} from "@/common/constants.js";
-import {EMPTY} from "@/sim/sentinels.js";
 import {getLaneLevelLayer, LANE_LEVEL_BURIED} from "@/sim/LaneIndex.js";
 import {BeltType, BeltTunnelDownType, BeltTunnelUpType, BeltUndergroundType} from "@/mods/logistics/common/objectTypes.js";
 import {makeGameEngine} from "@/test/ecsSim.js";

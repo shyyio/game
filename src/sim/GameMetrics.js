@@ -1,7 +1,7 @@
 import {
-    MetricsFact, METRICS_FACT_TYPE_ITEM_PRODUCED, METRICS_FACT_TYPE_PLAYER_JOINED, METRICS_FACT_TYPE_PLAYER_LEFT,
+    MetricsEntry, METRICS_ENTRY_TYPE_ITEM_PRODUCED, METRICS_ENTRY_TYPE_PLAYER_JOINED, METRICS_ENTRY_TYPE_PLAYER_LEFT,
     METRICS_QUERY_SCOPE_GLOBAL, metricsRollupKey,
-} from "@/common/MetricsFact.js";
+} from "@/common/MetricsEntry.js";
 import {MetricsRollupEvent, MetricsRollupBucketEvent, compactRollupRows} from "@/common/MetricsEvents.js";
 import {
     MetricsRollupRequestMessage, MetricsSubscribeMessage, MetricsUnsubscribeMessage,
@@ -13,7 +13,7 @@ import {
 class MetricsSubscription {
 
     /**
-     * @param {MetricsFactType} metricsType
+     * @param {MetricsEntryType} metricsType
      * @param {MetricsQueryScope} scope
      * @param {number} tier
      * @param {number} windowTicks
@@ -29,13 +29,13 @@ class MetricsSubscription {
 }
 
 /**
- * The sim's whole metrics surface: buffers facts for batched persistence, tracks session lengths,
+ * The sim's whole metrics surface: buffers entries for batched persistence, tracks session lengths,
  * and serves the metrics query/subscribe/unsubscribe messages plus the host's periodic push.
  */
 export class GameMetrics {
 
     /**
-     * @param {AbstractMetricsStore} [store] - omitted when metrics is off; emitMetricsFact() then drops facts
+     * @param {AbstractMetricsStore} [store] - omitted when metrics is off; emitMetricsEntry() then drops entries
      * @param {ModRegistry} modRegistry - source of the GLOBAL-query declarations
      * @param {EventBus} bus
      * @param {GameEngine} simEngine - source of the tick clock
@@ -48,10 +48,10 @@ export class GameMetrics {
         this._buffer = [];
 
         simEngine.setMetricsSink(
-            (type, playerRef, category, amount, tag) => this.emitMetricsFact(type, playerRef, category, amount, tag),
+            (type, playerRef, category, amount, tag) => this.emitMetricsEntry(type, playerRef, category, amount, tag),
         );
         simEngine.itemProduced.add(
-            (playerRef, itemTypeId, amount) => this.emitMetricsFact(METRICS_FACT_TYPE_ITEM_PRODUCED, playerRef, itemTypeId, amount),
+            (playerRef, itemTypeId, amount) => this.emitMetricsEntry(METRICS_ENTRY_TYPE_ITEM_PRODUCED, playerRef, itemTypeId, amount),
         );
 
         /**
@@ -70,32 +70,32 @@ export class GameMetrics {
     }
 
     /**
-     * @param {MetricsFactType} type
+     * @param {MetricsEntryType} type
      * @param {number} playerRef PLAYER_REF_NONE when not player-scoped
      * @param {number} [category]
      * @param {number} [amount]
      * @param {number} [tag]
      * @returns {void}
      */
-    emitMetricsFact(type, playerRef, category, amount, tag) {
+    emitMetricsEntry(type, playerRef, category, amount, tag) {
         if (this._store === undefined) {
             return;
         }
-        this._buffer.push(new MetricsFact(type, this._simEngine.clock, playerRef, category, amount, tag));
+        this._buffer.push(new MetricsEntry(type, this._simEngine.clock, playerRef, category, amount, tag));
     }
 
     /**
-     * Records the join fact and the join time the disconnect fact's session length derives from.
+     * Records the join entry and the join time the disconnect entry's session length derives from.
      * @param {AbstractSession} session
      * @returns {void}
      */
     onConnect(session) {
         this._sessionJoinedAt.set(session.sessionRef, Date.now());
-        this.emitMetricsFact(METRICS_FACT_TYPE_PLAYER_JOINED, session.playerRef);
+        this.emitMetricsEntry(METRICS_ENTRY_TYPE_PLAYER_JOINED, session.playerRef);
     }
 
     /**
-     * Records the leave fact (amount = session length, ms) and drops the session's subscriptions;
+     * Records the leave entry (amount = session length, ms) and drops the session's subscriptions;
      * call before the bus forgets the session.
      * @param {number} sessionRef
      * @returns {void}
@@ -110,7 +110,7 @@ export class GameMetrics {
             sessionLengthMs = Date.now() - joinedAt;
         }
         this._sessionJoinedAt.delete(sessionRef);
-        this.emitMetricsFact(METRICS_FACT_TYPE_PLAYER_LEFT, playerRef, undefined, sessionLengthMs);
+        this.emitMetricsEntry(METRICS_ENTRY_TYPE_PLAYER_LEFT, playerRef, undefined, sessionLengthMs);
         this._subscriptions.delete(sessionRef);
     }
 
@@ -137,16 +137,16 @@ export class GameMetrics {
     }
 
     /**
-     * Hands the buffered facts to the store and moves its clock to this tick.
+     * Hands the buffered entries to the store and moves its clock to this tick.
      * @returns {Promise<void>}
      */
     async flush() {
         if (this._store === undefined) {
             return;
         }
-        const facts = this._buffer;
+        const entries = this._buffer;
         this._buffer = [];
-        await this._store.insertFacts(facts);
+        await this._store.insertEntries(entries);
         await this._store.advanceTo(this._simEngine.clock);
     }
 
@@ -301,7 +301,7 @@ export class GameMetrics {
 
     /**
      * Trims a GLOBAL answer to the rows the type's declaration keeps public (e.g. one side of each trade).
-     * @param {MetricsFactType} metricsType
+     * @param {MetricsEntryType} metricsType
      * @param {MetricsQueryScope} scope
      * @param {MetricsRollupRow[]} rows
      * @returns {MetricsRollupRow[]}

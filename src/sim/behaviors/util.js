@@ -1,4 +1,4 @@
-import {EMPTY} from "@/sim/sentinels.js";
+import {EMPTY} from "@/sim/AbstractComponent.js";
 
 /**
  * Declares (or clears) `port`'s fluid source based on whether `item` is a declared fluid payload —

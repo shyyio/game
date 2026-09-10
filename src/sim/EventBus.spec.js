@@ -108,3 +108,16 @@ test("clearObject drops every subscription to that object", () => {
     bus.publish(objectEvent(7));
     assert.deepEqual(session.events, []);
 });
+
+test("subscriber sets are read-only views that survive a resubscribe during iteration", () => {
+    const bus = new EventBus();
+    const a = bus.addSession(new CapturingSession());
+    const b = bus.addSession(new CapturingSession());
+    bus.setViewport(a, [10]);
+    const subscribers = bus.getSubscribersByChunkKey(10);
+    assert.equal(subscribers.add, undefined);
+    bus.setViewport(b, [10]);
+    assert.deepEqual(Array.from(subscribers), [a]);
+    assert.deepEqual(Array.from(bus.getSubscribersByChunkKey(10)), [a, b]);
+    assert.deepEqual(Array.from(bus.getSubscribersByObjectRef(99)), []);
+});

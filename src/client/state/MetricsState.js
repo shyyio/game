@@ -1,4 +1,4 @@
-import {metricsRollupKey} from "@/common/MetricsFact.js";
+import {metricsRollupKey} from "@/common/MetricsEntry.js";
 import {MetricsRollupEvent, MetricsRollupBucketEvent, expandRollupRows} from "@/common/MetricsEvents.js";
 import {AbstractCacheWriter, AbstractCacheView, schemaMap} from "@/client/state/ClientCache.js";
 
@@ -12,7 +12,7 @@ export const METRICS_SCHEMA = {
 export class MetricsRollup {
 
     /**
-     * @param {MetricsFactType} metricsType
+     * @param {MetricsEntryType} metricsType
      * @param {MetricsQueryScope} scope
      * @param {number} tier
      * @param {number} toTick

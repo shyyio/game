@@ -1,8 +1,6 @@
 import {ObjectFieldsEvent, ObjectFieldsBatchEvent} from "@/common/ObjectEvents.js";
 import {chunkKeyAt} from "@/common/util.js";
-
-// Initial length of the per-eid dirty flags and shadow columns; grows by doubling.
-const INITIAL_CAPACITY = 1024;
+import {AbstractComponent} from "@/sim/AbstractComponent.js";
 
 /**
  * The synced fields a behavior registered on one component, the rows marked since the last emit,
@@ -18,8 +16,8 @@ class SyncedSet {
         this.component = component;
         this.fields = fields;
         this.dirty = [];
-        this.isDirty = new Uint8Array(INITIAL_CAPACITY);
-        this.shadow = fields.map(field => new Int32Array(INITIAL_CAPACITY).fill(field.defaultValue));
+        this.isDirty = new Uint8Array(AbstractComponent.INITIAL_CAPACITY);
+        this.shadow = fields.map(field => new Int32Array(AbstractComponent.INITIAL_CAPACITY).fill(field.defaultValue));
     }
 
     /**

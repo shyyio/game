@@ -1,3 +1,4 @@
+import {EMPTY} from "@/sim/AbstractComponent.js";
 import {test} from "node:test";
 import assert from "node:assert/strict";
 import {Direction, LAYER_SURFACE} from "@/common/constants.js";
@@ -8,7 +9,6 @@ import {AbstractBatchEvent} from "@/common/AbstractBatchEvent.js";
 import {ChunkSyncEvent} from "@/common/CoreEvents.js";
 import {ObjectInsertEvent, ObjectSyncEvent, ObjectDeleteEvent} from "@/common/ObjectEvents.js";
 import {LaneItemDeleteEvent} from "@/common/LaneEvents.js";
-import {EMPTY} from "@/sim/sentinels.js";
 import {Game} from "@/sim/Game.js";
 import {GameEngine} from "@/sim/GameEngine.js";
 import {ecsModRegistry} from "@/test/ecsSim.js";

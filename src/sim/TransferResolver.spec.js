@@ -1,8 +1,8 @@
+import {EMPTY} from "@/sim/AbstractComponent.js";
 import {test} from "node:test";
 import assert from "node:assert/strict";
 import {GameEngine} from "@/sim/GameEngine.js";
 import {ProbeSystem} from "@/test/ecsSim.js";
-import {EMPTY} from "@/sim/sentinels.js";
 
 const ITEM = 1;
 

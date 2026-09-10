@@ -1,6 +1,6 @@
+import {EMPTY, NO_EID} from "@/sim/AbstractComponent.js";
 import {edgeKey, portAt} from "@/common/portGeometry.js";
 import {PortComponent} from "@/sim/PortComponent.js";
-import {EMPTY, NO_EID} from "@/sim/sentinels.js";
 
 // The endpoint answer for a port nothing declares; shared and never written.
 const NO_ENDPOINTS = Object.freeze([]);

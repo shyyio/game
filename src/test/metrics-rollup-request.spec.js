@@ -7,9 +7,9 @@ import {NodeMetricsStore} from "@/server/NodeMetricsStore.js";
 import {MetricsRollupRequestMessage} from "@/common/MetricsMessages.js";
 import {MetricsRollupEvent, MetricsRollupBucketEvent} from "@/common/MetricsEvents.js";
 import {
-    METRICS_FACT_TYPE_ITEM_PRODUCED, METRICS_QUERY_SCOPE_OWN, METRICS_QUERY_SCOPE_GLOBAL,
-} from "@/common/MetricsFact.js";
-import {METRICS_FACT_TYPE_TRADE_EXECUTED} from "@/mods/market/common/constants.js";
+    METRICS_ENTRY_TYPE_ITEM_PRODUCED, METRICS_QUERY_SCOPE_OWN, METRICS_QUERY_SCOPE_GLOBAL,
+} from "@/common/MetricsEntry.js";
+import {METRICS_ENTRY_TYPE_TRADE_EXECUTED} from "@/mods/market/common/constants.js";
 import {ecsModRegistry} from "@/test/ecsSim.js";
 import {CapturingSession} from "@/test/CapturingSession.js";
 
@@ -28,12 +28,12 @@ test("OWN scope answers only the requesting session's own player", async () => {
     game.connect(alice);
     game.connect(bob);
 
-    game.metrics.emitMetricsFact(METRICS_FACT_TYPE_ITEM_PRODUCED, 1, 42, 100);
-    game.metrics.emitMetricsFact(METRICS_FACT_TYPE_ITEM_PRODUCED, 2, 42, 999);
+    game.metrics.emitMetricsEntry(METRICS_ENTRY_TYPE_ITEM_PRODUCED, 1, 42, 100);
+    game.metrics.emitMetricsEntry(METRICS_ENTRY_TYPE_ITEM_PRODUCED, 2, 42, 999);
     await game.metrics.flush();
 
     game.dispatchMessage(
-        new MetricsRollupRequestMessage(METRICS_FACT_TYPE_ITEM_PRODUCED, METRICS_QUERY_SCOPE_OWN, 0, 100, 10),
+        new MetricsRollupRequestMessage(METRICS_ENTRY_TYPE_ITEM_PRODUCED, METRICS_QUERY_SCOPE_OWN, 0, 100, 10),
         alice,
     );
     await Promise.resolve();
@@ -41,7 +41,7 @@ test("OWN scope answers only the requesting session's own player", async () => {
     const response = rollupEventOf(alice);
     assert.ok(response !== undefined);
     assert.equal(response.scope, METRICS_QUERY_SCOPE_OWN);
-    assert.equal(response.metricsType, METRICS_FACT_TYPE_ITEM_PRODUCED);
+    assert.equal(response.metricsType, METRICS_ENTRY_TYPE_ITEM_PRODUCED);
     // category/tag are dictionary-encoded: one distinct series listed once, rows reference it by index.
     assert.deepEqual(response.seriesCategory, [42]);
     assert.deepEqual(response.seriesIndex, [0]);
@@ -59,12 +59,12 @@ test("GLOBAL scope is unscoped across every player, for an allowed type", async 
     game.connect(alice);
 
     const SIDE_SELL = 0;
-    game.metrics.emitMetricsFact(METRICS_FACT_TYPE_TRADE_EXECUTED, 1, 7, 100, SIDE_SELL);
-    game.metrics.emitMetricsFact(METRICS_FACT_TYPE_TRADE_EXECUTED, 2, 7, 200, SIDE_SELL);
+    game.metrics.emitMetricsEntry(METRICS_ENTRY_TYPE_TRADE_EXECUTED, 1, 7, 100, SIDE_SELL);
+    game.metrics.emitMetricsEntry(METRICS_ENTRY_TYPE_TRADE_EXECUTED, 2, 7, 200, SIDE_SELL);
     await game.metrics.flush();
 
     game.dispatchMessage(
-        new MetricsRollupRequestMessage(METRICS_FACT_TYPE_TRADE_EXECUTED, METRICS_QUERY_SCOPE_GLOBAL, 0, 100, 10),
+        new MetricsRollupRequestMessage(METRICS_ENTRY_TYPE_TRADE_EXECUTED, METRICS_QUERY_SCOPE_GLOBAL, 0, 100, 10),
         alice,
     );
     await Promise.resolve();
@@ -79,30 +79,30 @@ test("GLOBAL scope is unscoped across every player, for an allowed type", async 
 test("validate() accepts GLOBAL scope only for a declared metrics type", () => {
     const api = {modRegistry: ecsModRegistry()};
     const privateGlobal = new MetricsRollupRequestMessage(
-        METRICS_FACT_TYPE_ITEM_PRODUCED, METRICS_QUERY_SCOPE_GLOBAL, 0, 100, 10,
+        METRICS_ENTRY_TYPE_ITEM_PRODUCED, METRICS_QUERY_SCOPE_GLOBAL, 0, 100, 10,
     );
     assert.equal(privateGlobal.validate(api, null), false);
 
     const declaredGlobal = new MetricsRollupRequestMessage(
-        METRICS_FACT_TYPE_TRADE_EXECUTED, METRICS_QUERY_SCOPE_GLOBAL, 0, 100, 10,
+        METRICS_ENTRY_TYPE_TRADE_EXECUTED, METRICS_QUERY_SCOPE_GLOBAL, 0, 100, 10,
     );
     assert.equal(declaredGlobal.validate(api, null), true);
 });
 
 test("validate() rejects a backwards range and an off-ladder tier", () => {
     assert.equal(
-        new MetricsRollupRequestMessage(METRICS_FACT_TYPE_ITEM_PRODUCED, METRICS_QUERY_SCOPE_OWN, 100, 0, 10)
+        new MetricsRollupRequestMessage(METRICS_ENTRY_TYPE_ITEM_PRODUCED, METRICS_QUERY_SCOPE_OWN, 100, 0, 10)
             .validate(null, null),
         false,
     );
     assert.equal(
-        new MetricsRollupRequestMessage(METRICS_FACT_TYPE_ITEM_PRODUCED, METRICS_QUERY_SCOPE_OWN, 0, 100, 0)
+        new MetricsRollupRequestMessage(METRICS_ENTRY_TYPE_ITEM_PRODUCED, METRICS_QUERY_SCOPE_OWN, 0, 100, 0)
             .validate(null, null),
         false,
     );
-    // A tier no store bakes would be served by scanning raw facts over the whole range.
+    // A tier no store bakes would be served by scanning raw entries over the whole range.
     assert.equal(
-        new MetricsRollupRequestMessage(METRICS_FACT_TYPE_ITEM_PRODUCED, METRICS_QUERY_SCOPE_OWN, 0, 100, 7)
+        new MetricsRollupRequestMessage(METRICS_ENTRY_TYPE_ITEM_PRODUCED, METRICS_QUERY_SCOPE_OWN, 0, 100, 7)
             .validate(null, null),
         false,
     );
@@ -113,13 +113,13 @@ test("MetricsRollupRequestMessage and MetricsRollupEvent round-trip the wire cod
     const {WireRegistry} = await import("@/common/wire.js");
     const wire = new WireRegistry(modRegistry);
 
-    const message = new MetricsRollupRequestMessage(METRICS_FACT_TYPE_TRADE_EXECUTED, METRICS_QUERY_SCOPE_GLOBAL, 0, 100, 10);
+    const message = new MetricsRollupRequestMessage(METRICS_ENTRY_TYPE_TRADE_EXECUTED, METRICS_QUERY_SCOPE_GLOBAL, 0, 100, 10);
     const decodedMessage = wire.decode(wire.encode(message));
     assert.deepEqual(decodedMessage, message);
 
     // 3 rows across 2 buckets, one series (category 7) reused in both — exercises both dictionaries.
     const event = new MetricsRollupEvent(
-        METRICS_FACT_TYPE_TRADE_EXECUTED, METRICS_QUERY_SCOPE_GLOBAL, 10, 100,
+        METRICS_ENTRY_TYPE_TRADE_EXECUTED, METRICS_QUERY_SCOPE_GLOBAL, 10, 100,
         [0, 10], [2, 1], [7, 9], [0, 1], [0, 1, 0], [2, 1, 3], [300, 150, 90],
     );
     const decodedEvent = wire.decode(wire.encode(event));
@@ -132,7 +132,7 @@ test("MetricsRollupBucketEvent round-trips the wire codec, bucketTick a scalar n
     const wire = new WireRegistry(modRegistry);
 
     const event = new MetricsRollupBucketEvent(
-        METRICS_FACT_TYPE_TRADE_EXECUTED, METRICS_QUERY_SCOPE_GLOBAL, 10, 100, 90, [7, 7], [0, 1], [2, 1], [300, 150], 1000,
+        METRICS_ENTRY_TYPE_TRADE_EXECUTED, METRICS_QUERY_SCOPE_GLOBAL, 10, 100, 90, [7, 7], [0, 1], [2, 1], [300, 150], 1000,
     );
     const decodedEvent = wire.decode(wire.encode(event));
     assert.deepEqual(decodedEvent, event);

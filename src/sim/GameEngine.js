@@ -1,3 +1,4 @@
+import {EMPTY, NO_EID} from "@/sim/AbstractComponent.js";
 import {World} from "@/sim/World.js";
 import {chunkKeyAt} from "@/common/util.js";
 import {portAt} from "@/common/portGeometry.js";
@@ -5,7 +6,7 @@ import {PLAYER_REF_NONE} from "@/common/constants.js";
 import {ListenerList} from "@/common/ListenerList.js";
 import {CreateObjectMessage, DeleteObjectMessage} from "@/common/CoreMessages.js";
 import {PlacedObjects} from "@/sim/PlacedObjects.js";
-import {OverworldBake} from "@/sim/OverworldBake.js";
+import {OverworldTileIndex} from "@/sim/OverworldTileIndex.js";
 import {WorkerNetworks} from "@/sim/WorkerNetworks.js";
 import {ComponentRegistry} from "@/sim/ComponentRegistry.js";
 import {SpatialIndex} from "@/sim/SpatialIndex.js";
@@ -16,8 +17,7 @@ import {PortIndex} from "@/sim/PortIndex.js";
 import {LaneIndex} from "@/sim/LaneIndex.js";
 import {SnapshotSerializer} from "@/sim/SnapshotSerializer.js";
 import {AbstractSystem} from "@/sim/AbstractSystem.js";
-import {ChunkOwnership} from "@/sim/ChunkOwnership.js";
-import {EMPTY, NO_EID} from "@/sim/sentinels.js";
+import {ChunkOwnerIndex} from "@/sim/ChunkOwnerIndex.js";
 
 
 /**
@@ -82,9 +82,9 @@ export class GameEngine {
 
         /**
          * The hot-read overworld tile bake over the placed objects; built with the entity host.
-         * @type {OverworldBake|null}
+         * @type {OverworldTileIndex|null}
          */
-        this.overworldBake = null;
+        this.overworldTiles = null;
 
         /**
          * Road-network worker allocation over the placed objects; built with the entity host.
@@ -113,9 +113,9 @@ export class GameEngine {
 
         /**
          * Who owns each chunk and who may build there; the open world until a Game sets its claims.
-         * @type {ChunkOwnership}
+         * @type {ChunkOwnerIndex}
          */
-        this.ownership = new ChunkOwnership();
+        this.chunkOwners = new ChunkOwnerIndex();
 
         /**
          * @type {World|null}
@@ -206,7 +206,7 @@ export class GameEngine {
         // Sink for domain events (placement/path/delete + port-item render deltas). Game broadcasts each
         // synchronously by chunk; tests install an EventCollector. Null until one is installed.
         this._eventSink = null;
-        // Sink for metrics facts, delivered whether or not the chunk has a subscriber.
+        // Sink for metrics entries, delivered whether or not the chunk has a subscriber.
         this._metricsSink = null;
         /**
          * Notified (playerRef, itemTypeId, amount) when a producer's output is delivered.
@@ -247,8 +247,8 @@ export class GameEngine {
     }
 
     /**
-     * Passes a metrics fact to the metrics sink; a no-op if none is installed.
-     * @param {MetricsFactType} type
+     * Passes a metrics entry to the metrics sink; a no-op if none is installed.
+     * @param {MetricsEntryType} type
      * @param {number} playerRef PLAYER_REF_NONE when not player-scoped
      * @param {number} [category]
      * @param {number} [amount]
@@ -262,7 +262,7 @@ export class GameEngine {
     }
 
     /**
-     * Sets the sink each emitted metrics fact is delivered to.
+     * Sets the sink each emitted metrics entry is delivered to.
      * @param {function(number, number, number, number, number): void} sink
      * @returns {void}
      */
@@ -271,14 +271,14 @@ export class GameEngine {
     }
 
     /**
-     * @param {ChunkOwnership} ownership
+     * @param {ChunkOwnerIndex} chunkOwners
      * @returns {void}
      */
-    setChunkOwnership(ownership) {
-        if (!(ownership instanceof ChunkOwnership)) {
-            throw new TypeError("chunk ownership extends ChunkOwnership");
+    setChunkOwners(chunkOwners) {
+        if (!(chunkOwners instanceof ChunkOwnerIndex)) {
+            throw new TypeError("chunk owners extend ChunkOwnerIndex");
         }
-        this.ownership = ownership;
+        this.chunkOwners = chunkOwners;
     }
 
     /**
@@ -292,7 +292,7 @@ export class GameEngine {
         if (playerRef === PLAYER_REF_NONE) {
             return true;
         }
-        return this.ownership.canBuildIn(playerRef, chunkKey);
+        return this.chunkOwners.canBuildIn(playerRef, chunkKey);
     }
 
     /**
@@ -339,7 +339,7 @@ export class GameEngine {
         this.registerSystem(this.lanes);
         if (this.modRegistry !== null) {
             this.placed.installBehaviors();
-            this.overworldBake = new OverworldBake(this, this.placed);
+            this.overworldTiles = new OverworldTileIndex(this, this.placed);
             this.workers = new WorkerNetworks(this, this.placed);
             for (const mod of this.modRegistry.simMods) {
                 mod.init(this);

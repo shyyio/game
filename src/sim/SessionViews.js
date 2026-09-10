@@ -63,7 +63,7 @@ export class SessionViews {
      * @returns {void}
      */
     publishOverworldSnapshot(session, message) {
-        const snapshot = this.game.simEngine.overworldBake.getSnapshotInRect(
+        const snapshot = this.game.simEngine.overworldTiles.getSnapshotInRect(
             message.chunkX,
             message.chunkY,
             message.chunkWidth,

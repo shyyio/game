@@ -10,11 +10,7 @@ export class ItemType {
      * @param {string} texture texture name (e.g. "items/1-gray")
      * @param {number} tint pixi multiply tint, 0xFFFFFF for no tint
      */
-    constructor(
-        name,
-        texture,
-        tint = 0xFFFFFF,
-    ) {
+    constructor(name, texture, tint = 0xFFFFFF) {
         this.name = name;
         this.texture = texture;
         this.tint = tint;

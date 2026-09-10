@@ -1,7 +1,7 @@
+import {EMPTY} from "@/sim/AbstractComponent.js";
 import {test} from "node:test";
 import assert from "node:assert/strict";
 import {conversionLosses, convertSnapshot} from "@/sim/snapshotConversion.js";
-import {EMPTY} from "@/sim/sentinels.js";
 
 const IRON = 100;
 const GOLD = 101;

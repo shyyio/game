@@ -1,5 +1,4 @@
-import {AbstractComponent} from "@/sim/AbstractComponent.js";
-import {EMPTY, NO_EID} from "@/sim/sentinels.js";
+import {AbstractComponent, FieldDefinition, EMPTY, NO_EID} from "@/sim/AbstractComponent.js";
 
 /**
  * A generator: its output port and cycle, plus the secondary cycle a type with a second output port runs.
@@ -8,19 +7,19 @@ export class GeneratorComponent extends AbstractComponent {
 
     constructor() {
         super("Generator", [
-            {name: "outputPort", kind: "eid", defaultValue: NO_EID},
-            {name: "remaining", kind: "f32", defaultValue: EMPTY},
-            {name: "carry", kind: "f32"},
-            {name: "output", kind: "item", defaultValue: EMPTY},
-            {name: "lastOutput", kind: "item", defaultValue: EMPTY},
-            {name: "processingTicks"},
+            new FieldDefinition("outputPort", "eid", NO_EID),
+            new FieldDefinition("remaining", "f32", EMPTY),
+            new FieldDefinition("carry", "f32"),
+            new FieldDefinition("output", "item", EMPTY),
+            new FieldDefinition("lastOutput", "item", EMPTY),
+            new FieldDefinition("processingTicks"),
             // Secondary cycle; unused columns stay at fill for a type with no secondary port.
-            {name: "outputPort2", kind: "eid", defaultValue: NO_EID},
-            {name: "remaining2", kind: "f32", defaultValue: EMPTY},
-            {name: "carry2", kind: "f32"},
-            {name: "output2", kind: "item", defaultValue: EMPTY},
-            {name: "lastOutput2", kind: "item", defaultValue: EMPTY},
-            {name: "processingTicks2"},
+            new FieldDefinition("outputPort2", "eid", NO_EID),
+            new FieldDefinition("remaining2", "f32", EMPTY),
+            new FieldDefinition("carry2", "f32"),
+            new FieldDefinition("output2", "item", EMPTY),
+            new FieldDefinition("lastOutput2", "item", EMPTY),
+            new FieldDefinition("processingTicks2"),
         ], {sparse: true});
     }
 }

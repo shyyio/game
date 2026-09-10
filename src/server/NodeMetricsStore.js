@@ -1,6 +1,6 @@
 import BetterSqlite3 from "better-sqlite3";
 import {AbstractMetricsStore, METRICS_RETENTION_TICKS} from "@/common/AbstractMetricsStore.js";
-import {MetricsRollupRow} from "@/common/MetricsFact.js";
+import {MetricsRollupRow} from "@/common/MetricsEntry.js";
 import {
     bucketTickFor, METRICS_BAKED_TIERS, METRICS_COARSE_TIERS, METRICS_FOLD_TIER,
 } from "@/common/MetricsTiers.js";
@@ -8,7 +8,7 @@ import {
 // Backfill folds at most this many ticks per transaction, to bound the WAL.
 const FOLD_CHUNK_TICKS = 100 * METRICS_FOLD_TIER;
 
-// Bump when a fold's meaning changes; a file baked by another version is rebuilt from its facts.
+// Bump when a fold's meaning changes; a file baked by another version is rebuilt from its entries.
 const BUCKET_FORMAT_VERSION = 1;
 
 /**
@@ -22,8 +22,8 @@ function bucketFloor(column) {
 }
 
 /**
- * Rollup of one type over pre-baked buckets plus the facts recorded since the last fold. An
- * un-baked tier matches no bucket rows, leaving a pure fact query.
+ * Rollup of one type over pre-baked buckets plus the entries recorded since the last fold. An
+ * un-baked tier matches no bucket rows, leaving a pure entry query.
  * @param {string} playerPredicate - WHERE term scoping both halves to one player, or ""
  * @param {string} bucketIndex - INDEXED BY clause for the bucket half, or "" to walk it in key order
  * @returns {string}
@@ -40,7 +40,7 @@ function rollupSql(playerPredicate, bucketIndex) {
             SELECT
                 ${bucketFloor("tick")} AS bucketTick,
                 category, tag, COUNT(*) AS count, SUM(amount) AS sum
-            FROM "MetricsFact" INDEXED BY "idx_MetricsFact_tick"
+            FROM "MetricsEntry" INDEXED BY "idx_MetricsEntry_tick"
             WHERE tick >= @tailFromTick AND tick <= @toTick AND type = @type${playerPredicate}
             GROUP BY bucketTick, category, tag
         )
@@ -51,7 +51,7 @@ function rollupSql(playerPredicate, bucketIndex) {
 
 /**
  * Node {@link AbstractMetricsStore}: SQLite-backed, WAL mode, bounded by METRICS_RETENTION_TICKS.
- * Facts stay raw for the whole retention window so offline analysis can read the file directly;
+ * Entries stay raw for the whole retention window so offline analysis can read the file directly;
  * the buckets keep the chart's wider tiers off those millions of rows.
  */
 export class NodeMetricsStore extends AbstractMetricsStore {
@@ -75,29 +75,29 @@ export class NodeMetricsStore extends AbstractMetricsStore {
         const bounds = this.db.prepare(`
             SELECT
                 (SELECT MAX(bucketTick) FROM "MetricsBucket" WHERE tier = @tier) AS baked,
-                (SELECT MIN(tick) FROM "MetricsFact") AS oldestFact,
-                (SELECT MAX(tick) FROM "MetricsFact") AS latestFact
+                (SELECT MIN(tick) FROM "MetricsEntry") AS oldestEntry,
+                (SELECT MAX(tick) FROM "MetricsEntry") AS latestEntry
         `).get({tier: METRICS_FOLD_TIER});
         /**
          * First tick no bucket covers yet; every fold window before it is complete. With no buckets
-         * it starts at the oldest fact, so backfill doesn't walk empty ticks to reach the history.
+         * it starts at the oldest entry, so backfill doesn't walk empty ticks to reach the history.
          * @type {number}
          * @private
          */
         this._foldedThrough = this._startOfFolding(bounds);
         // Folds what an existing file holds ahead of its buckets, at open.
-        this._foldThrough(bounds.latestFact);
+        this._foldThrough(bounds.latestEntry);
     }
 
     /**
-     * Creates the fact and bucket tables with the indexes served queries walk.
+     * Creates the entry and bucket tables with the indexes served queries walk.
      * @private
      * @returns {void}
      */
     _createSchema() {
         this.db.exec(`
-            CREATE TABLE IF NOT EXISTS "MetricsFact" (
-                metricsFactId INTEGER PRIMARY KEY,
+            CREATE TABLE IF NOT EXISTS "MetricsEntry" (
+                metricsEntryId INTEGER PRIMARY KEY,
                 type INTEGER NOT NULL,
                 tick INTEGER NOT NULL,
                 playerRef INTEGER NOT NULL,
@@ -107,13 +107,13 @@ export class NodeMetricsStore extends AbstractMetricsStore {
             )
         `);
         this.db.exec(`
-            CREATE INDEX IF NOT EXISTS "idx_MetricsFact_tick"
-                ON "MetricsFact" (tick)
+            CREATE INDEX IF NOT EXISTS "idx_MetricsEntry_tick"
+                ON "MetricsEntry" (tick)
         `);
-        // Served queries reach facts by tick only, and offline analysis brings its own tooling.
+        // Served queries reach entries by tick only, and offline analysis brings its own tooling.
         this.db.exec(`
-            DROP INDEX IF EXISTS "idx_MetricsFact_type_tick";
-            DROP INDEX IF EXISTS "idx_MetricsFact_player_type_tick";
+            DROP INDEX IF EXISTS "idx_MetricsEntry_type_tick";
+            DROP INDEX IF EXISTS "idx_MetricsEntry_player_type_tick";
         `);
 
         this.db.exec(`
@@ -148,20 +148,20 @@ export class NodeMetricsStore extends AbstractMetricsStore {
     }
 
     /**
-     * Prepares the fact insert and its batching transaction.
+     * Prepares the entry insert and its batching transaction.
      * @private
      * @returns {void}
      */
     _prepareWrites() {
         this._insert = this.db.prepare(`
-            INSERT INTO "MetricsFact" (type, tick, playerRef, category, amount, tag)
+            INSERT INTO "MetricsEntry" (type, tick, playerRef, category, amount, tag)
             VALUES (@type, @tick, @playerRef, @category, @amount, @tag)
         `);
-        this._insertBatch = this.db.transaction(facts => {
-            for (const fact of facts) {
+        this._insertBatch = this.db.transaction(entries => {
+            for (const entry of entries) {
                 this._insert.run({
-                    type: fact.type, tick: fact.tick, playerRef: fact.playerRef,
-                    category: fact.category, amount: fact.amount, tag: fact.tag,
+                    type: entry.type, tick: entry.tick, playerRef: entry.playerRef,
+                    category: entry.category, amount: entry.amount, tag: entry.tag,
                 });
             }
         });
@@ -186,7 +186,7 @@ export class NodeMetricsStore extends AbstractMetricsStore {
      * @returns {void}
      */
     _prepareFold() {
-        this._foldFacts = this.db.prepare(`
+        this._foldEntries = this.db.prepare(`
             INSERT INTO "MetricsBucket" (tier, type, playerRef, bucketTick, category, tag, count, sum)
             SELECT
                 @tier,
@@ -197,7 +197,7 @@ export class NodeMetricsStore extends AbstractMetricsStore {
                 tag,
                 COUNT(*),
                 SUM(amount)
-            FROM "MetricsFact" INDEXED BY "idx_MetricsFact_tick"
+            FROM "MetricsEntry" INDEXED BY "idx_MetricsEntry_tick"
             WHERE tick >= @fromTick AND tick < @toTick
             GROUP BY type, playerRef, foldBucketTick, category, tag
             ON CONFLICT (tier, type, playerRef, bucketTick, category, tag) DO UPDATE SET
@@ -205,7 +205,7 @@ export class NodeMetricsStore extends AbstractMetricsStore {
                 sum = "MetricsBucket".sum + excluded.sum
         `);
         // Coarse tiers fold from the fold tier's rows for the same window: complete already, and
-        // orders of magnitude fewer than the facts behind them.
+        // orders of magnitude fewer than the entries behind them.
         this._foldCoarseTier = this.db.prepare(`
             INSERT INTO "MetricsBucket" (tier, type, playerRef, bucketTick, category, tag, count, sum)
             SELECT
@@ -225,8 +225,8 @@ export class NodeMetricsStore extends AbstractMetricsStore {
                 sum = "MetricsBucket".sum + excluded.sum
         `);
 
-        this._deleteFactsBefore = this.db.prepare(
-            `DELETE FROM "MetricsFact" INDEXED BY "idx_MetricsFact_tick" WHERE tick < @cutoff`,
+        this._deleteEntriesBefore = this.db.prepare(
+            `DELETE FROM "MetricsEntry" INDEXED BY "idx_MetricsEntry_tick" WHERE tick < @cutoff`,
         );
         this._deleteBucketsBefore = this.db.prepare(`
             DELETE FROM "MetricsBucket" INDEXED BY "idx_MetricsBucket_tier_tick"
@@ -235,14 +235,14 @@ export class NodeMetricsStore extends AbstractMetricsStore {
 
         // Retention rides the fold: both tables age out together, once per fold window.
         this._foldWindow = this.db.transaction((fromTick, toTick, cutoff) => {
-            this._foldFacts.run({tier: METRICS_FOLD_TIER, fromTick, toTick});
+            this._foldEntries.run({tier: METRICS_FOLD_TIER, fromTick, toTick});
             for (const tier of METRICS_COARSE_TIERS) {
                 this._foldCoarseTier.run({
                     tier, sourceTier: METRICS_FOLD_TIER, fromTick, toTick,
                 });
             }
             if (cutoff > 0) {
-                this._deleteFactsBefore.run({cutoff});
+                this._deleteEntriesBefore.run({cutoff});
                 for (const tier of METRICS_BAKED_TIERS) {
                     this._deleteBucketsBefore.run({tier, cutoff});
                 }
@@ -251,14 +251,14 @@ export class NodeMetricsStore extends AbstractMetricsStore {
     }
 
     /**
-     * @param {MetricsFact[]} facts
+     * @param {MetricsEntry[]} entries
      * @returns {Promise<void>}
      */
-    async insertFacts(facts) {
-        if (facts.length === 0) {
+    async insertEntries(entries) {
+        if (entries.length === 0) {
             return;
         }
-        this._insertBatch(facts);
+        this._insertBatch(entries);
     }
 
     /**
@@ -328,7 +328,7 @@ export class NodeMetricsStore extends AbstractMetricsStore {
     }
 
     /**
-     * @param {{baked: number|null, oldestFact: number|null}} bounds
+     * @param {{baked: number|null, oldestEntry: number|null}} bounds
      * @returns {number} tick folding resumes from
      * @private
      */
@@ -336,8 +336,8 @@ export class NodeMetricsStore extends AbstractMetricsStore {
         if (bounds.baked !== null) {
             return bounds.baked + METRICS_FOLD_TIER;
         }
-        if (bounds.oldestFact !== null) {
-            return bucketTickFor(bounds.oldestFact, METRICS_FOLD_TIER);
+        if (bounds.oldestEntry !== null) {
+            return bucketTickFor(bounds.oldestEntry, METRICS_FOLD_TIER);
         }
         return 0;
     }

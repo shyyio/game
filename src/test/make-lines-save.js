@@ -1,4 +1,4 @@
-import {EMPTY} from "@/sim/sentinels.js";
+import {EMPTY} from "@/sim/AbstractComponent.js";
 import {NodeSaveStore} from "@/server/NodeSaveStore.js";
 import {makeGameEngine} from "@/test/ecsSim.js";
 import {buildLine, lineOrigin, lineSinkPort} from "@/test/productionLine.js";

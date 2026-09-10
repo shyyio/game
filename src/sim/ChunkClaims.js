@@ -1,6 +1,7 @@
 import {PLAYER_REF_NONE} from "@/common/constants.js";
 import {ClaimResult, ChunkPermission} from "@/common/ClaimEvents.js";
 import {chunkNeighbors, chunkPosition} from "@/common/util.js";
+import {ChunkOwnerIndex} from "@/sim/ChunkOwnerIndex.js";
 
 export const CHUNK_CLAIM_TABLE = "ChunkClaim";
 
@@ -16,9 +17,14 @@ export const CHUNK_CLAIM_TABLE = "ChunkClaim";
  * every claim after the first must touch an own chunk edge-on, and an unclaim that would split the
  * remainder is rejected.
  */
-export class ChunkClaims {
+export class ChunkClaims extends ChunkOwnerIndex {
 
-    constructor() {
+    /**
+     * @param {PlayerRegistry} players
+     */
+    constructor(players) {
+        super();
+        this._players = players;
         /**
          * @type {Map<number, number>} chunk ordinal -> owning playerRef
          */
@@ -27,6 +33,28 @@ export class ChunkClaims {
          * @type {Map<number, number>} chunk ordinal -> ChunkPermission, own entries only
          */
         this._permissionByChunk = new Map();
+    }
+
+    /**
+     * Whether a player may modify a chunk: the owner always may; unclaimed is off limits;
+     * everyone else is gated by the chunk's permission. Mirrored client-side by
+     * ChunkClaimsView.canBuildIn; keep both in sync.
+     * @param {number} playerRef
+     * @param {number} chunkKey
+     * @returns {boolean}
+     */
+    canBuildIn(playerRef, chunkKey) {
+        const owner = this.getOwnerByChunkKey(chunkKey);
+        if (owner === PLAYER_REF_NONE) {
+            return false;
+        }
+        if (owner === playerRef) {
+            return true;
+        }
+        if (this.getPermissionByChunkKey(chunkKey) === ChunkPermission.PERMISSION_ONLY_ME) {
+            return false;
+        }
+        return this._players.isFriend(owner, playerRef);
     }
 
     /**

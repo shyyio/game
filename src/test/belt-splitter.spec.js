@@ -1,8 +1,8 @@
+import {EMPTY} from "@/sim/AbstractComponent.js";
 import {test} from "node:test";
 import assert from "node:assert/strict";
 import {Direction} from "@/common/constants.js";
 import {CreateObjectMessage} from "@/common/CoreMessages.js";
-import {EMPTY} from "@/sim/sentinels.js";
 import {SplitterType} from "@/mods/logistics/common/objectTypes.js";
 import {makeGameEngine} from "@/test/ecsSim.js";
 import {placeBelt, beltLaneAt} from "@/test/beltFixture.js";

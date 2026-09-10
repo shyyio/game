@@ -22,7 +22,7 @@ export class MetricsRollupEvent extends AbstractEvent {
     };
 
     /**
-     * @param {MetricsFactType} metricsType
+     * @param {MetricsEntryType} metricsType
      * @param {MetricsQueryScope} scope
      * @param {number} tier
      * @param {number} toTick the query's right edge (current tick at query time); anchor "now" to this, not the data
@@ -146,7 +146,7 @@ export class MetricsRollupBucketEvent extends AbstractEvent {
     };
 
     /**
-     * @param {MetricsFactType} metricsType
+     * @param {MetricsEntryType} metricsType
      * @param {MetricsQueryScope} scope
      * @param {number} tier
      * @param {number} toTick same meaning as MetricsRollupEvent's toTick — not bucketTick below

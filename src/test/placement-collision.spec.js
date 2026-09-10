@@ -1,8 +1,8 @@
+import {NO_EID} from "@/sim/AbstractComponent.js";
 import {test} from "node:test";
 import assert from "node:assert/strict";
 import {Direction, LAYER_SURFACE} from "@/common/constants.js";
 import {CreateObjectMessage, DeleteObjectMessage} from "@/common/CoreMessages.js";
-import {NO_EID} from "@/sim/sentinels.js";
 import {BlenderType} from "@/mods/base-game/common/objectTypes.js";
 import {BeltType} from "@/mods/logistics/common/objectTypes.js";
 import {makeGameEngine} from "@/test/ecsSim.js";

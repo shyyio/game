@@ -5,7 +5,7 @@
 export class MetricsGlobalQueryEntry {
 
     /**
-     * @param {MetricsFactType} metricsType
+     * @param {MetricsEntryType} metricsType
      * @param {function(MetricsRollupRow): boolean|null} rowFilter keeps a row in a GLOBAL answer, or null for all rows
      */
     constructor(metricsType, rowFilter) {

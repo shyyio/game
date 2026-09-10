@@ -1,8 +1,14 @@
-// Initial column length for every component; grows by doubling when a slot exceeds it.
-const INITIAL_CAPACITY = 1024;
+// The absent values the typed-array columns carry, all -1 so a column can be zero-filled and still
+// read as absent only where the fill says so; each answers a different question.
+
+// Port.item sentinel for an empty port.
+export const EMPTY = -1;
+
+// Field sentinel for an eid-reference field with no target (a fresh port, an absent seam).
+export const NO_EID = -1;
 
 // Column slot for a row a sparse component does not hold.
-const NO_ROW = -1;
+export const NO_ROW = -1;
 
 /**
  * A component column for a field kind: Float32Array for "f32", Int32Array otherwise ("i32"/"eid").
@@ -16,33 +22,22 @@ function columnFor(kind, capacity, defaultValue) {
     return column.fill(defaultValue);
 }
 
-export class FieldSpec {
+/**
+ * One column of a component. Kind "eid" marks an entity-reference column remapped on deserialize,
+ * "type" an objectTypeId and "item" an item type (both carried over when the loadout changes),
+ * "f32" a float column; defaultValue is what an unwritten slot holds.
+ */
+export class FieldDefinition {
 
     /**
      * @param {string} name
-     * @param {string} kind - "i32", "eid", "type", or "item"
+     * @param {string} kind "i32", "f32", "eid", "type", or "item"
      * @param {number} defaultValue
      */
-    constructor(name, kind, defaultValue) {
+    constructor(name, kind = "i32", defaultValue = 0) {
         this.name = name;
         this.kind = kind;
         this.defaultValue = defaultValue;
-    }
-
-    /**
-     * @param {{name: string, kind?: string, defaultValue?: number}} spec
-     * @returns {FieldSpec}
-     */
-    static parse(spec) {
-        let kind = spec.kind;
-        if (kind === undefined) {
-            kind = "i32";
-        }
-        let defaultValue = spec.defaultValue;
-        if (defaultValue === undefined) {
-            defaultValue = 0;
-        }
-        return new FieldSpec(spec.name, kind, defaultValue);
     }
 }
 
@@ -58,31 +53,30 @@ export class FieldSpec {
  */
 export class AbstractComponent {
 
+    // Initial column length; grows by doubling when a slot exceeds it.
+    static INITIAL_CAPACITY = 1024;
+
     /**
-     * `fieldSpecs` are {name, kind?, defaultValue?} — kind "eid" marks an entity-reference column
-     * remapped on deserialize, "type" an object objectTypeId and "item" an item type (both carried
-     * over when the loadout changes), "f32" a float column (default "i32"); defaultValue is what an
-     * unwritten slot holds (default 0).
      * @param {string} name
-     * @param {{name:string, kind?:string, defaultValue?:number}[]} fieldSpecs
+     * @param {FieldDefinition[]} fields
      * @param {{snapshotOnly?:boolean, sparse?:boolean}} [options] - snapshotOnly components hold
      *     state materialized at save (pipe networks), not kept in sync during play, so the port
      *     sweep ignores their eid fields (the module's live pin hook is authoritative instead);
      *     sparse components index their columns by row instead of by eid
      */
-    constructor(name, fieldSpecs, {snapshotOnly=false, sparse=false}={}) {
+    constructor(name, fields, {snapshotOnly=false, sparse=false}={}) {
         this.name = name;
-        this.fields = fieldSpecs.map(spec => FieldSpec.parse(spec));
+        this.fields = fields;
         this.snapshotOnly = snapshotOnly;
         this.sparse = sparse;
-        this.capacity = INITIAL_CAPACITY;
+        this.capacity = AbstractComponent.INITIAL_CAPACITY;
         /**
          * Column per field, indexed by {@link slot}.
          * @type {Object<string, Int32Array|Float32Array>}
          */
         this.store = {};
         for (const field of this.fields) {
-            this.store[field.name] = columnFor(field.kind, INITIAL_CAPACITY, field.defaultValue);
+            this.store[field.name] = columnFor(field.kind, AbstractComponent.INITIAL_CAPACITY, field.defaultValue);
         }
 
         /**

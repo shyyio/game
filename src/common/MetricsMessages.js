@@ -1,9 +1,9 @@
 import {AbstractMessage} from "@/common/AbstractMessage.js";
-import {METRICS_QUERY_SCOPE_OWN, METRICS_QUERY_SCOPE_GLOBAL} from "@/common/MetricsFact.js";
+import {METRICS_QUERY_SCOPE_OWN, METRICS_QUERY_SCOPE_GLOBAL} from "@/common/MetricsEntry.js";
 import {MAX_BUCKETS_PER_REQUEST, TIER_LADDER} from "@/common/MetricsTiers.js";
 
 /**
- * An off-ladder tier has no pre-baked buckets, and too wide a span at the finest tier scans facts
+ * An off-ladder tier has no pre-baked buckets, and too wide a span at the finest tier scans entries
  * across the whole range, so both are rejected before a store sees them.
  * @param {number} tier
  * @param {number} spanTicks
@@ -19,7 +19,7 @@ function isValidTierSpan(tier, spanTicks) {
  * declared globally queryable.
  * @param {GameAPI} api
  * @param {MetricsQueryScope} scope
- * @param {MetricsFactType} metricsType
+ * @param {MetricsEntryType} metricsType
  * @returns {boolean}
  */
 function isValidScope(api, scope, metricsType) {
@@ -43,7 +43,7 @@ export class MetricsRollupRequestMessage extends AbstractMessage {
     };
 
     /**
-     * @param {MetricsFactType} metricsType
+     * @param {MetricsEntryType} metricsType
      * @param {MetricsQueryScope} scope
      * @param {number} fromTick
      * @param {number} toTick
@@ -85,7 +85,7 @@ export class MetricsSubscribeMessage extends AbstractMessage {
     };
 
     /**
-     * @param {MetricsFactType} metricsType
+     * @param {MetricsEntryType} metricsType
      * @param {MetricsQueryScope} scope
      * @param {number} tier
      * @param {number} windowTicks - how far back from the current tick the sliding window reaches
@@ -122,7 +122,7 @@ export class MetricsUnsubscribeMessage extends AbstractMessage {
     };
 
     /**
-     * @param {MetricsFactType} metricsType
+     * @param {MetricsEntryType} metricsType
      * @param {MetricsQueryScope} scope
      */
     constructor(metricsType, scope) {

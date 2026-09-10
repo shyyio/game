@@ -34,7 +34,7 @@ const Long = protobuf.util.Long;
 const INT64_TYPES = new Set(["int64", "uint64", "sint64", "fixed64", "sfixed64"]);
 
 /**
- * @type {*[]}
+ * @type {Array<typeof AbstractMessage|typeof AbstractEvent>}
  */
 const CORE_WIRE_CLASSES = [
     SetViewportMessage,
@@ -95,19 +95,19 @@ const CORE_WIRE_CLASSES = [
     LaneItemBatchEvent,
 ];
 
-class WireFieldSpec {
+class WireFieldDefinition {
 
     /**
      * @param {string} kind - "scalar", "repeated", "map", or "messages"
      * @param {string} [type]
      * @param {string} [keyType]
-     * @param {boolean} [int64]
+     * @param {boolean} [isInt64]
      */
-    constructor(kind, type, keyType, int64) {
+    constructor(kind, type, keyType, isInt64) {
         this.kind = kind;
         this.type = type;
         this.keyType = keyType;
-        this.int64 = int64;
+        this.isInt64 = isInt64;
     }
 }
 
@@ -121,28 +121,28 @@ class WireFieldSpec {
  *                         as two columns — wire ids and encoded bodies (lets one
  *                         message/event bundle others of any registered class)
  * @param {string} spec
- * @returns {WireFieldSpec}
+ * @returns {WireFieldDefinition}
  */
-function parseSpec(spec) {
+function parseWireFieldDefinition(spec) {
     if (spec === "message[]") {
-        return new WireFieldSpec("messages");
+        return new WireFieldDefinition("messages");
     }
     const mapMatch = spec.match(/^map<\s*(\w+)\s*,\s*(\w+)\s*>$/);
     if (mapMatch) {
-        return new WireFieldSpec("map", mapMatch[2], mapMatch[1], INT64_TYPES.has(mapMatch[2]));
+        return new WireFieldDefinition("map", mapMatch[2], mapMatch[1], INT64_TYPES.has(mapMatch[2]));
     }
     if (spec.endsWith("[]")) {
         const type = spec.slice(0, -2);
-        return new WireFieldSpec("repeated", type, undefined, INT64_TYPES.has(type));
+        return new WireFieldDefinition("repeated", type, undefined, INT64_TYPES.has(type));
     }
     const type = spec.endsWith("?") ? spec.slice(0, -1) : spec;
-    return new WireFieldSpec("scalar", type, undefined, INT64_TYPES.has(type));
+    return new WireFieldDefinition("scalar", type, undefined, INT64_TYPES.has(type));
 }
 
 /**
  * @typedef {Object} WireType
  * @property {protobuf.Type} type
- * @property {Object.<string, WireFieldSpec>} specs by field name
+ * @property {Object.<string, WireFieldDefinition>} definitions by field name
  */
 
 /**
@@ -153,11 +153,11 @@ function parseSpec(spec) {
  */
 function buildType(name, wireFields) {
     const type = new Type(name);
-    const specs = {};
+    const definitions = {};
     let tag = 1;
     for (const [fieldName, spec] of Object.entries(wireFields)) {
-        const parsed = parseSpec(spec);
-        specs[fieldName] = parsed;
+        const parsed = parseWireFieldDefinition(spec);
+        definitions[fieldName] = parsed;
         if (parsed.kind === "map") {
             type.add(new MapField(fieldName, tag, parsed.keyType, parsed.type));
         } else if (parsed.kind === "messages") {
@@ -181,7 +181,7 @@ function buildType(name, wireFields) {
         }
         tag += 1;
     }
-    return {type, specs};
+    return {type, definitions};
 }
 
 /**
@@ -224,9 +224,9 @@ export class WireRegistry {
                 throw new Error(`Class ${cls.name} is registered for the wire but has no static wireFields`);
             }
             const wireId = index + 1;
-            const {type, specs} = buildType(cls.name, cls.wireFields);
+            const {type, definitions} = buildType(cls.name, cls.wireFields);
             this.root.add(type);
-            const codec = {cls, wireId, type, specs};
+            const codec = {cls, wireId, type, definitions};
             this.byClass.set(cls, codec);
             this.byId.set(wireId, codec);
         }
@@ -263,16 +263,16 @@ export class WireRegistry {
         }
 
         const payload = {};
-        for (const [name, spec] of Object.entries(codec.specs)) {
+        for (const [name, definition] of Object.entries(codec.definitions)) {
             const value = obj[name];
-            if (spec.kind === "repeated") {
+            if (definition.kind === "repeated") {
                 const arr = value == null ? [] : value;
-                if (spec.int64) {
-                    payload[name] = arr.map(toLong);
+                if (definition.isInt64) {
+                    payload[name] = arr.map(value => Long.fromNumber(value));
                 } else {
                     payload[name] = arr;
                 }
-            } else if (spec.kind === "messages") {
+            } else if (definition.kind === "messages") {
                 const arr = value == null ? [] : value;
                 const wireIds = [];
                 const bodies = [];
@@ -283,11 +283,11 @@ export class WireRegistry {
                 }
                 payload[`${name}WireIds`] = wireIds;
                 payload[`${name}Payloads`] = bodies;
-            } else if (spec.kind === "map") {
+            } else if (definition.kind === "map") {
                 payload[name] = value == null ? {} : value;
             } else if (value != null) {
-                if (spec.int64) {
-                    payload[name] = toLong(value);
+                if (definition.isInt64) {
+                    payload[name] = Long.fromNumber(value);
                 } else {
                     payload[name] = value;
                 }
@@ -326,14 +326,14 @@ export class WireRegistry {
         const raw = codec.type.toObject(codec.type.decode(body), {longs: Number});
 
         const fields = {};
-        for (const [name, spec] of Object.entries(codec.specs)) {
-            if (spec.kind === "repeated") {
+        for (const [name, definition] of Object.entries(codec.definitions)) {
+            if (definition.kind === "repeated") {
                 fields[name] = raw[name] === undefined ? [] : raw[name];
-            } else if (spec.kind === "messages") {
+            } else if (definition.kind === "messages") {
                 const wireIds = raw[`${name}WireIds`] === undefined ? [] : raw[`${name}WireIds`];
                 const bodies = raw[`${name}Payloads`] === undefined ? [] : raw[`${name}Payloads`];
                 fields[name] = wireIds.map((innerId, index) => this._decodeBody(innerId, bodies[index]));
-            } else if (spec.kind === "map") {
+            } else if (definition.kind === "map") {
                 fields[name] = raw[name] === undefined ? {} : raw[name];
             } else if (name in raw) {
                 fields[name] = raw[name];
@@ -344,12 +344,4 @@ export class WireRegistry {
 
         return Object.assign(Object.create(codec.cls.prototype), fields);
     }
-}
-
-/**
- * @param {number} value
- * @returns {Long}
- */
-function toLong(value) {
-    return Long.fromNumber(value);
 }

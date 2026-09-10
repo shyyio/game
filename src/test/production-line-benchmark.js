@@ -1,3 +1,4 @@
+import {EMPTY} from "@/sim/AbstractComponent.js";
 // Production-line tick benchmark (Node-only).
 //
 // Run through the test loader (the `@/` alias is resolved there):
@@ -19,7 +20,6 @@
 // none resolvable). Report prints intents/resolved per tick either way.
 
 import {makeGameEngine} from "@/test/ecsSim.js";
-import {EMPTY} from "@/sim/sentinels.js";
 import {ExtractorType, BakeType} from "@/mods/base-game/common/objectTypes.js";
 import {buildLine, lineOrigin, lineSinkPort} from "@/test/productionLine.js";
 import {CpuProfiler, printProfileSummary, printHeapUsage} from "@/test/profiler.js";

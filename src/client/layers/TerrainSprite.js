@@ -169,7 +169,7 @@ export class TerrainPalette {
     }
 
     /**
-     * @param {TerrainBake} bake
+     * @param {BiomeGrid} bake
      * @param {function(number): number} shadeAt cell index -> shade variant
      * @param {function(number): number} ditherAt cell index -> dither threshold
      * @returns {Uint8Array} RGBA per cell, same order
@@ -184,7 +184,7 @@ export class TerrainPalette {
      * Paints each cell its shaded biome color, mixed toward its blend biome by its blend level, the
      * level dithered so neighboring cells straddle the band edge rather than stepping together.
      * With blending off the dither instead decides the cell's biome outright, stippling the two.
-     * @param {TerrainBake} bake
+     * @param {BiomeGrid} bake
      * @param {Uint8Array} pixels RGBA per cell, same order
      * @param {number} fromCell
      * @param {number} toCell exclusive
@@ -262,7 +262,7 @@ export class TerrainSprite extends Sprite {
 
     /**
      * @param {TerrainPalette} palette
-     * @param {TerrainBake} bake row-major, square
+     * @param {BiomeGrid} bake row-major, square
      * @param {number} left world px
      * @param {number} top world px
      * @param {number} sidePx world px the bake spans
@@ -291,7 +291,7 @@ export class TerrainSprite extends Sprite {
 
     /**
      * Repaints rows of the bake that changed since construction and re-uploads the texture.
-     * @param {TerrainBake} bake the same bake the sprite was built from
+     * @param {BiomeGrid} bake the same bake the sprite was built from
      * @param {number} fromRow
      * @param {number} rowCount
      * @returns {void}
@@ -306,7 +306,7 @@ export class TerrainSprite extends Sprite {
     /**
      * @param {TerrainPalette} palette
      * @param {number} chunkKey
-     * @param {TerrainBake} bake the chunk's bake (Terrain.bakeChunk)
+     * @param {BiomeGrid} bake the chunk's bake (Terrain.bakeChunk)
      * @param {Terrain} terrain for the shade noise
      * @returns {TerrainSprite} one texel per tile over the chunk, shaded by the shade channel
      */
@@ -320,7 +320,7 @@ export class TerrainSprite extends Sprite {
 
     /**
      * @param {TerrainPalette} palette
-     * @param {TerrainBake} bake the region at overworld resolution (Terrain.overworldBake)
+     * @param {BiomeGrid} bake the region at overworld resolution (Terrain.overworldBake)
      * @returns {TerrainSprite} one texel per overworld cell over the region
      */
     static forOverworld(palette, bake) {

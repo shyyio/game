@@ -1,3 +1,4 @@
+import {EMPTY} from "@/sim/AbstractComponent.js";
 import {test} from "node:test";
 import assert from "node:assert/strict";
 import {Direction} from "@/common/constants.js";
@@ -5,7 +6,6 @@ import {CreateObjectMessage, DeleteObjectMessage} from "@/common/CoreMessages.js
 import {ClaimChunkMessage} from "@/common/ClaimMessages.js";
 import {chunkKeyAt} from "@/common/util.js";
 import {LAYER_SURFACE} from "@/common/constants.js";
-import {EMPTY} from "@/sim/sentinels.js";
 import {NodeSaveStore} from "@/server/NodeSaveStore.js";
 import {SetViewportMessage} from "@/common/CoreMessages.js";
 import {makeGameEngine, makeGame} from "@/test/ecsSim.js";

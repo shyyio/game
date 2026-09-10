@@ -1,6 +1,6 @@
 import {AbstractModDeclaration, PlayerSettingEntry, MetricsGlobalQueryEntry} from "@spup/sdk";
 import {
-    MARKET_SETTING_BALANCE, METRICS_FACT_TYPE_TRADE_EXECUTED, METRICS_TRADE_SIDE_SELL,
+    MARKET_SETTING_BALANCE, METRICS_ENTRY_TYPE_TRADE_EXECUTED, METRICS_TRADE_SIDE_SELL,
 } from "./common/constants.js";
 import {TradingTerminalType} from "./common/objectTypes.js";
 import {ConfigureTradingTerminalMessage, MarketSnapshotRequestMessage} from "./common/messages.js";
@@ -37,7 +37,7 @@ export class MarketDeclaration extends AbstractModDeclaration {
     get metricsGlobalQueries() {
         return [
             // SELL rows only, so the public price series doesn't double-count each trade.
-            new MetricsGlobalQueryEntry(METRICS_FACT_TYPE_TRADE_EXECUTED, row => row.tag === METRICS_TRADE_SIDE_SELL),
+            new MetricsGlobalQueryEntry(METRICS_ENTRY_TYPE_TRADE_EXECUTED, row => row.tag === METRICS_TRADE_SIDE_SELL),
         ];
     }
 }

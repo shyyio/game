@@ -1,7 +1,7 @@
 export const PLAYER_SETTING_TABLE = "PlayerSetting";
 
 /**
- * In-memory key→value game settings. Plain state, independent of the simulation backend.
+ * In-memory key->value game settings. Plain state, independent of the simulation backend.
  */
 export class SettingsCache {
 
@@ -27,7 +27,7 @@ export class SettingsCache {
     }
 
     /**
-     * @returns {Object.<number, number>} a plain key→value snapshot for wire sync
+     * @returns {Object.<number, number>} a plain key->value snapshot for wire sync
      */
     getSnapshot() {
         const out = {};
@@ -38,7 +38,7 @@ export class SettingsCache {
     }
 
     /**
-     * @returns {IterableIterator<[number, number]>} key→value pairs
+     * @returns {IterableIterator<[number, number]>} key->value pairs
      */
     getEntries() {
         return this._values.entries();
@@ -85,9 +85,9 @@ export class PlayerSettingsCache {
 
     /**
      * @param {number} playerRef
-     * @returns {Object.<number, number>} a plain key→value snapshot for wire sync
+     * @returns {Object.<number, number>} a plain key->value snapshot for wire sync
      */
-    getPlayerSnapshot(playerRef) {
+    getSnapshotByPlayerRef(playerRef) {
         const settings = this._byPlayer.get(playerRef);
         if (settings === undefined) {
             return {};

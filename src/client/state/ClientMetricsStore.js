@@ -1,24 +1,24 @@
 import {AbstractMetricsStore, METRICS_RETENTION_TICKS} from "@/common/AbstractMetricsStore.js";
-import {MetricsRollupRow} from "@/common/MetricsFact.js";
+import {MetricsRollupRow} from "@/common/MetricsEntry.js";
 import {bucketTickFor} from "@/common/MetricsTiers.js";
 
 /**
- * Browser {@link AbstractMetricsStore}: facts in a plain array, bounded by METRICS_RETENTION_TICKS.
+ * Browser {@link AbstractMetricsStore}: entries in a plain array, bounded by METRICS_RETENTION_TICKS.
  */
 export class ClientMetricsStore extends AbstractMetricsStore {
 
     constructor() {
         super();
-        this._facts = [];
+        this._entries = [];
     }
 
     /**
-     * @param {MetricsFact[]} facts
+     * @param {MetricsEntry[]} entries
      * @returns {Promise<void>}
      */
-    async insertFacts(facts) {
-        for (const fact of facts) {
-            this._facts.push(fact);
+    async insertEntries(entries) {
+        for (const entry of entries) {
+            this._entries.push(entry);
         }
     }
 
@@ -32,32 +32,32 @@ export class ClientMetricsStore extends AbstractMetricsStore {
      */
     async queryRollup(type, playerRef, fromTick, toTick, tier) {
         const buckets = new Map();
-        for (let i = this._firstIndexAtOrAfter(fromTick); i < this._facts.length; i += 1) {
-            const fact = this._facts[i];
-            if (fact.tick > toTick) {
+        for (let i = this._firstIndexAtOrAfter(fromTick); i < this._entries.length; i += 1) {
+            const entry = this._entries[i];
+            if (entry.tick > toTick) {
                 break;
             }
-            if (fact.type !== type) {
+            if (entry.type !== type) {
                 continue;
             }
-            if (playerRef !== null && fact.playerRef !== playerRef) {
+            if (playerRef !== null && entry.playerRef !== playerRef) {
                 continue;
             }
-            const bucketTick = bucketTickFor(fact.tick, tier);
-            const key = `${bucketTick}:${fact.category}:${fact.tag}`;
-            let entry = buckets.get(key);
-            if (entry === undefined) {
-                entry = new MetricsRollupRow(bucketTick, fact.category, fact.tag, 0, 0);
-                buckets.set(key, entry);
+            const bucketTick = bucketTickFor(entry.tick, tier);
+            const key = `${bucketTick}:${entry.category}:${entry.tag}`;
+            let row = buckets.get(key);
+            if (row === undefined) {
+                row = new MetricsRollupRow(bucketTick, entry.category, entry.tag, 0, 0);
+                buckets.set(key, row);
             }
-            entry.count += 1;
-            entry.sum += fact.amount;
+            row.count += 1;
+            row.sum += entry.amount;
         }
         return Array.from(buckets.values()).sort((x, y) => x.bucketTick - y.bucketTick);
     }
 
     /**
-     * Drops facts past the retention window; nothing here is pre-aggregated.
+     * Drops entries past the retention window; nothing here is pre-aggregated.
      * @param {number} latestTick
      * @returns {Promise<void>}
      */
@@ -67,20 +67,20 @@ export class ClientMetricsStore extends AbstractMetricsStore {
             return;
         }
         // Facts are in non-decreasing tick order, so binary search finds the surviving suffix.
-        this._facts.splice(0, this._firstIndexAtOrAfter(cutoff));
+        this._entries.splice(0, this._firstIndexAtOrAfter(cutoff));
     }
 
     /**
      * @param {number} tick
-     * @returns {number} index of the first fact with tick >= tick (or this._facts.length if none)
+     * @returns {number} index of the first entry with tick >= tick (or this._entries.length if none)
      * @private
      */
     _firstIndexAtOrAfter(tick) {
         let lo = 0;
-        let hi = this._facts.length;
+        let hi = this._entries.length;
         while (lo < hi) {
             const mid = (lo + hi) >> 1;
-            if (this._facts[mid].tick < tick) {
+            if (this._entries[mid].tick < tick) {
                 lo = mid + 1;
             } else {
                 hi = mid;

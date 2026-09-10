@@ -1,17 +1,16 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
 import {GameEngine} from "@/sim/GameEngine.js";
-import {AbstractComponent} from "@/sim/AbstractComponent.js";
+import {AbstractComponent, FieldDefinition, NO_EID} from "@/sim/AbstractComponent.js";
 import {LaneItemComponent} from "@/sim/LaneItemComponent.js";
-import {NO_EID} from "@/sim/sentinels.js";
 
 class WidgetComponent extends AbstractComponent {
 
     constructor() {
         super("Widget", [
-            {name: "parent", kind: "eid", defaultValue: NO_EID},
-            {name: "weight", kind: "f32", defaultValue: 1},
-            {name: "size"},
+            new FieldDefinition("parent", "eid", NO_EID),
+            new FieldDefinition("weight", "f32", 1),
+            new FieldDefinition("size"),
         ], {sparse: true});
     }
 }

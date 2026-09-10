@@ -6,19 +6,19 @@ const RETENTION_DAYS = 30;
 export const METRICS_RETENTION_TICKS = RETENTION_DAYS * 24 * 60 * 60 * 1000 / DEFAULT_TICK_MS;
 
 /**
- * Persists metrics facts and answers rollup queries. Backends store this however suits their
+ * Persists metrics entries and answers rollup queries. Backends store this however suits their
  * platform (SQLite on Node, in-memory on the browser for local play).
  * @abstract
  */
 export class AbstractMetricsStore {
 
     /**
-     * Persists a batch of facts, in order.
+     * Persists a batch of entries, in order.
      * @abstract
-     * @param {MetricsFact[]} facts
+     * @param {MetricsEntry[]} entries
      * @returns {Promise<void>}
      */
-    async insertFacts(facts) {
+    async insertEntries(entries) {
         throw new NotImplementedError();
     }
 
@@ -27,7 +27,7 @@ export class AbstractMetricsStore {
     /**
      * Bucketed (bucket, category, tag) aggregates of one type in a tick range, optionally scoped to one player.
      * @abstract
-     * @param {MetricsFactType} type
+     * @param {MetricsEntryType} type
      * @param {number|null} playerRef null for unscoped (every player)
      * @param {number} fromTick
      * @param {number} toTick

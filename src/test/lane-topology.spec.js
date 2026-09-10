@@ -1,8 +1,8 @@
+import {EMPTY, NO_EID} from "@/sim/AbstractComponent.js";
 import {test} from "node:test";
 import assert from "node:assert/strict";
 import {Direction, LAYER_SURFACE} from "@/common/constants.js";
 import {CreateObjectMessage, DeleteObjectMessage} from "@/common/CoreMessages.js";
-import {EMPTY, NO_EID} from "@/sim/sentinels.js";
 import {ModPackage} from "@/common/ModPackage.js";
 import {makeGameEngine} from "@/test/ecsSim.js";
 import {TestMachineType, MachineFixtureDeclaration} from "@/test/machineFixture.js";

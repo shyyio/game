@@ -40,7 +40,7 @@ export function blendWidth() {
  * A baked grid of biome ids, with the blend toward each cell's nearest competing biome when baked
  * with blending.
  */
-export class TerrainBake {
+export class BiomeGrid {
 
     /**
      * @param {number} cellsPerAxis the bake is square
@@ -109,15 +109,15 @@ export class Terrain {
 
         /**
          * chunk -> its bake, row-major within the chunk.
-         * @type {Map<number, TerrainBake>}
+         * @type {Map<number, BiomeGrid>}
          * @private
          */
         this._bakes = new Map();
         /**
          * The region at overworld resolution, filled row by row by {@link bakeOverworldRows}.
-         * @type {TerrainBake}
+         * @type {BiomeGrid}
          */
-        this.overworldBake = new TerrainBake(OVERWORLD_CELLS_PER_AXIS, true);
+        this.overworldBake = new BiomeGrid(OVERWORLD_CELLS_PER_AXIS, true);
         this._overworldRowsBaked = 0;
         // Scratch: the channel samples and per-biome margins of the tile under evaluation.
         this._samples = new Float64Array(noise.channels.length);
@@ -166,7 +166,7 @@ export class Terrain {
         }
         if (winner === -1) {
             // Unreachable: freeze guarantees the last biome is unconditional.
-            throw new Error(`Terrain.classify: no biome matches tile ${tileX},${tileY}`);
+            throw new Error(`No biome matches tile ${tileX},${tileY}`);
         }
         tile.biomeId = winner;
         tile.otherId = winner;
@@ -217,7 +217,7 @@ export class Terrain {
 
     /**
      * @param {number} chunkKey
-     * @returns {TerrainBake} the chunk's tiles with blends, index = localY * CHUNK_SIZE + localX; cached
+     * @returns {BiomeGrid} the chunk's tiles with blends, index = localY * CHUNK_SIZE + localX; cached
      */
     bakeChunk(chunkKey) {
         let bake = this._bakes.get(chunkKey);
@@ -225,7 +225,7 @@ export class Terrain {
             return bake;
         }
         const origin = chunkOrigin(chunkKey);
-        bake = new TerrainBake(CHUNK_SIZE, true);
+        bake = new BiomeGrid(CHUNK_SIZE, true);
         let index = 0;
         for (let localY = 0; localY < CHUNK_SIZE; localY++) {
             for (let localX = 0; localX < CHUNK_SIZE; localX++) {

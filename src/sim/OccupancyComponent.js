@@ -1,5 +1,4 @@
-import {AbstractComponent} from "@/sim/AbstractComponent.js";
-import {NO_EID} from "@/sim/sentinels.js";
+import {AbstractComponent, FieldDefinition, NO_EID} from "@/sim/AbstractComponent.js";
 
 /**
  * The cell claim on a Position: its layer, the owner object (so a delete releases every cell by
@@ -10,9 +9,9 @@ export class OccupancyComponent extends AbstractComponent {
 
     constructor() {
         super("Occupancy", [
-            {name: "layer"},
-            {name: "owner", defaultValue: NO_EID},
-            {name: "userData"},
+            new FieldDefinition("layer"),
+            new FieldDefinition("owner", "i32", NO_EID),
+            new FieldDefinition("userData"),
         ]);
     }
 }

@@ -1,8 +1,6 @@
 // Entity ids and component membership. Component *data* lives in the caller's own SoA columns
 // (see GameEngine.defineComponent), so a world only answers "which entities carry which component".
-
-// Entity ids and per-component sparse sets grow by doubling from here.
-const INITIAL_CAPACITY = 1024;
+import {AbstractComponent} from "@/sim/AbstractComponent.js";
 
 const BITS_PER_MASK = 32;
 
@@ -22,7 +20,7 @@ export class ComponentSet {
      * @param {number} capacity - eid capacity the sparse column must cover
      */
     constructor(capacity) {
-        this.dense = new Int32Array(INITIAL_CAPACITY);
+        this.dense = new Int32Array(AbstractComponent.INITIAL_CAPACITY);
         this.count = 0;
         this.sparse = new Int32Array(capacity).fill(NOT_IN_SET);
 
@@ -93,13 +91,13 @@ export class World {
          * @private
          * @type {number}
          */
-        this._capacity = INITIAL_CAPACITY;
+        this._capacity = AbstractComponent.INITIAL_CAPACITY;
 
         /**
          * @private
          * @type {Uint8Array}
          */
-        this._alive = new Uint8Array(INITIAL_CAPACITY);
+        this._alive = new Uint8Array(AbstractComponent.INITIAL_CAPACITY);
 
         /**
          * @private

@@ -1,8 +1,8 @@
+import {EMPTY} from "@/sim/AbstractComponent.js";
 import {UIPanel} from "@/client/hud/UIPanel.js";
 import {InspectContent, inspectContentHeight} from "@/client/hud/InspectContent.js";
 import {SlotTooltip} from "@/client/hud/SlotTooltip.js";
 import {PANEL_TINT, PANEL_TITLE_TEXT} from "@/client/Theme.js";
-import {EMPTY} from "@/sim/sentinels.js";
 import {ConnectedPanelLayer} from "@/client/hud/ConnectedPanelLayer.js";
 
 const PANEL_WIDTH = 375;

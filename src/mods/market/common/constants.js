@@ -12,8 +12,8 @@ export const MARKET_SETTING_BALANCE = 10;
 // buy-side, so a player with nothing cannot trade their way to a first credit.
 export const MARKET_STARTING_BALANCE = 10000;
 
-// This mod's metrics fact type: one fact per trade side (shared flat keyspace, see MetricsFact.js).
-export const METRICS_FACT_TYPE_TRADE_EXECUTED = 3;
+// This mod's metrics entry type: one entry per trade side (shared flat keyspace, see MetricsEntry.js).
+export const METRICS_ENTRY_TYPE_TRADE_EXECUTED = 3;
 
 // TRADE_EXECUTED's `tag`: trade side `playerRef` was on; a global price series reads SELL rows only.
 export const METRICS_TRADE_SIDE_SELL = 0;

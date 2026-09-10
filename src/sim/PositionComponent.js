@@ -1,5 +1,4 @@
-import {AbstractComponent} from "@/sim/AbstractComponent.js";
-import {NO_EID} from "@/sim/sentinels.js";
+import {AbstractComponent, FieldDefinition, NO_EID} from "@/sim/AbstractComponent.js";
 
 /**
  * Where an entity sits: a placed object's anchor tile, an edge port's edge, an occupied cell.
@@ -9,9 +8,9 @@ export class PositionComponent extends AbstractComponent {
 
     constructor() {
         super("Position", [
-            {name: "x"},
-            {name: "y"},
-            {name: "direction", defaultValue: NO_EID},
+            new FieldDefinition("x"),
+            new FieldDefinition("y"),
+            new FieldDefinition("direction", "i32", NO_EID),
         ]);
     }
 }

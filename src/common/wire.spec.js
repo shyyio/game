@@ -124,6 +124,13 @@ test("Repeated int64 decodes to Numbers, exact up to the 2^53 cap", () => {
     assert.deepStrictEqual(decoded.objectRefs, ids);
 });
 
+test("Repeated int64 round-trips negative values past the first element", () => {
+    const reg = registry();
+    const ids = [-1, -1, -7];
+    const decoded = reg.decode(reg.encode(new SetInspectedObjectsMessage(ids)));
+    assert.deepStrictEqual(decoded.objectRefs, ids);
+});
+
 test("Throws on an unregistered class", () => {
     const reg = registry();
     class Bogus {}

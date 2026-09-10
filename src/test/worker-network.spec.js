@@ -1,3 +1,4 @@
+import {EMPTY} from "@/sim/AbstractComponent.js";
 import {test} from "node:test";
 import assert from "node:assert/strict";
 import {Direction} from "@/common/constants.js";
@@ -15,7 +16,6 @@ import {
 } from "@/test/machineFixture.js";
 import {RoadType, HousingType} from "@/mods/logistics/common/objectTypes.js";
 import {HOUSING_WORKER_SUPPLY} from "@/mods/logistics/common/constants.js";
-import {EMPTY} from "@/sim/sentinels.js";
 import {NodeSaveStore} from "@/server/NodeSaveStore.js";
 import {makeGameEngine} from "@/test/ecsSim.js";
 import {EventCollector, flattenBatches} from "@/test/EventCollector.js";

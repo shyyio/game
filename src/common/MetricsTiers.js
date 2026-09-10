@@ -4,19 +4,19 @@
 // The only widths a rollup may be asked for, coarsening as the chart zooms out.
 export const TIER_LADDER = [10, 100, 1000, 6000];
 
-// Tiers a store pre-aggregates. The finest tier stays a raw-fact query: its zoom level spans a few
-// hundred ticks at most, while each wider tier would otherwise scan millions of facts.
+// Tiers a store pre-aggregates. The finest tier stays a raw-entry query: its zoom level spans a few
+// hundred ticks at most, while each wider tier would otherwise scan millions of entries.
 export const METRICS_BAKED_TIERS = TIER_LADDER.slice(1);
 
 // Facts fold into buckets one window of this width at a time, so a query's un-baked tail is never
-// more than this many ticks of raw facts. Every wider tier is a whole number of these.
+// more than this many ticks of raw entries. Every wider tier is a whole number of these.
 export const METRICS_FOLD_TIER = TIER_LADDER[1];
 
-// Tiers folded from the fold tier's buckets rather than from facts.
+// Tiers folded from the fold tier's buckets rather than from entries.
 export const METRICS_COARSE_TIERS = TIER_LADDER.slice(2);
 
 // Bucket ceiling per request, well above the ~170 the chart's own zoom ever asks for. Bounds what
-// one message can make a store read, since the finest tier is served by scanning facts.
+// one message can make a store read, since the finest tier is served by scanning entries.
 export const MAX_BUCKETS_PER_REQUEST = 2000;
 
 /**

@@ -1,7 +1,7 @@
+import {EMPTY, NO_EID} from "@/sim/AbstractComponent.js";
 import {InspectHeartbeatEvent} from "@/common/InspectEvents.js";
 import {LOGIC_KEY_ENABLED, LOGIC_KEY_PROCESSING} from "@/common/constants.js";
 import {AbstractSystem} from "@/sim/AbstractSystem.js";
-import {EMPTY, NO_EID} from "@/sim/sentinels.js";
 import {deterministicRoll} from "@/sim/Rng.js";
 import {AbstractBehavior} from "@/common/behaviors/AbstractBehavior.js";
 import {SyncedFields, SyncedField} from "@/common/SyncedFields.js";

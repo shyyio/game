@@ -1,6 +1,6 @@
+import {EMPTY, NO_EID} from "@/sim/AbstractComponent.js";
 import {InspectHeartbeatEvent} from "@/common/InspectEvents.js";
 import {AbstractSystem} from "@/sim/AbstractSystem.js";
-import {EMPTY, NO_EID} from "@/sim/sentinels.js";
 import {AbstractBehavior} from "@/common/behaviors/AbstractBehavior.js";
 import {SyncedFields, SyncedField} from "@/common/SyncedFields.js";
 import {LAYER_RESOURCE} from "@/sim/behaviors/ResourceBehavior.js";

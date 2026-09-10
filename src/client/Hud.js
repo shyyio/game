@@ -29,7 +29,7 @@ import SafeArea from "@/client/SafeArea.js";
 import {ClaimChunkMessage, UnclaimChunkMessage, SetChunkPermissionMessage} from "@/common/ClaimMessages.js";
 import {AddFriendMessage, AddFriendByCodeMessage, RemoveFriendMessage} from "@/common/PlayerMessages.js";
 import {MetricsSubscribeMessage, MetricsUnsubscribeMessage} from "@/common/MetricsMessages.js";
-import {METRICS_FACT_TYPE_ITEM_PRODUCED, METRICS_QUERY_SCOPE_OWN} from "@/common/MetricsFact.js";
+import {METRICS_ENTRY_TYPE_ITEM_PRODUCED, METRICS_QUERY_SCOPE_OWN} from "@/common/MetricsEntry.js";
 import {ViewMode, FRIENDS_PANEL_REFRESH_THROTTLE_MS} from "@/client/constants.js";
 
 /**
@@ -168,7 +168,7 @@ export class Hud {
         this.productionPanelLayer = new ProductionPanelLayer(
             app,
             cache,
-            METRICS_FACT_TYPE_ITEM_PRODUCED,
+            METRICS_ENTRY_TYPE_ITEM_PRODUCED,
             METRICS_QUERY_SCOPE_OWN,
             modRegistry.items,
         );

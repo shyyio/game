@@ -1,4 +1,4 @@
-import {EMPTY} from "@/sim/sentinels.js";
+import {EMPTY} from "@/sim/AbstractComponent.js";
 
 // Initial row count for the per-tick intent/resolved columns; grows by doubling.
 const INTENT_CAPACITY = 1024;

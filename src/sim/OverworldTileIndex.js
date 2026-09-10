@@ -7,9 +7,9 @@ const REGION_HALF = REGION_SIZE / 2;
 const TILES_PER_CHUNK = CHUNK_SIZE * CHUNK_SIZE;
 
 /**
- * One chunk's baked tile picture: objectTypeId + 1 per tile, 0 = empty.
+ * One chunk's tile picture: objectTypeId + 1 per tile, 0 = empty.
  */
-class OverworldChunkBake {
+class OverworldChunkEntry {
 
     constructor() {
         this.tiles = new Uint16Array(TILES_PER_CHUNK);
@@ -18,10 +18,10 @@ class OverworldChunkBake {
 }
 
 /**
- * The hot-read overworld map: a per-chunk bake of every overworld-visible object's tiles,
- * repainted on spawn/despawn so a snapshot never scans the ECS.
+ * The hot-read overworld map: per chunk, the tiles of every overworld-visible object, rebuilt on
+ * spawn/despawn so a snapshot never scans the ECS.
  */
-export class OverworldBake extends AbstractSystem {
+export class OverworldTileIndex extends AbstractSystem {
 
     /**
      * @param {GameEngine} engine
@@ -31,7 +31,10 @@ export class OverworldBake extends AbstractSystem {
         super();
         this.engine = engine;
         this.placed = placed;
-        // Chunk ordinal -> OverworldChunkBake, only chunks with visible tiles.
+        /**
+         * Only chunks with visible tiles.
+         * @type {Map<number, OverworldChunkEntry>}
+         */
         this._chunks = new Map();
         // After PlacedObjects, so its chunk index is rebuilt before the repaint.
         engine.registerSystem(this);
@@ -54,9 +57,9 @@ export class OverworldBake extends AbstractSystem {
         for (let cy = chunkY; cy < chunkY + chunkHeight; cy += 1) {
             for (let cx = chunkX; cx < chunkX + chunkWidth; cx += 1) {
                 const chunkKey = chunkOrdinal(cx, cy);
-                const bake = this._chunks.get(chunkKey);
-                if (bake !== undefined) {
-                    this._addRuns(event, chunkKey, bake.tiles);
+                const entry = this._chunks.get(chunkKey);
+                if (entry !== undefined) {
+                    this._addRuns(event, chunkKey, entry.tiles);
                 }
             }
         }
@@ -104,16 +107,16 @@ export class OverworldBake extends AbstractSystem {
     }
 
     onChunkChanged(chunkKey) {
-        this._bakeChunk(chunkKey);
+        this._rebuildChunk(chunkKey);
     }
 
     /**
-     * Bakes one chunk from its placed objects, dropping the record when none are visible.
+     * Rebuilds one chunk from its placed objects, dropping its entry when none are visible.
      * @private
      * @param {number} chunkKey
      * @returns {void}
      */
-    _bakeChunk(chunkKey) {
+    _rebuildChunk(chunkKey) {
         const eids = this.placed.getEidsByChunkKey(chunkKey);
         if (eids.size === 0) {
             this._chunks.delete(chunkKey);
@@ -131,11 +134,11 @@ export class OverworldBake extends AbstractSystem {
         });
         const origin = chunkOrigin(chunkKey);
         const position = this.engine.Position;
-        let bake = this._chunks.get(chunkKey);
-        if (bake === undefined) {
-            bake = new OverworldChunkBake();
+        let entry = this._chunks.get(chunkKey);
+        if (entry === undefined) {
+            entry = new OverworldChunkEntry();
         } else {
-            bake.tiles.fill(0);
+            entry.tiles.fill(0);
         }
         let filled = 0;
         for (const eid of sorted) {
@@ -148,18 +151,18 @@ export class OverworldBake extends AbstractSystem {
             const value = type.objectTypeId + 1;
             for (const cell of type.geometry.getTilesByDirection(position.direction[eid])) {
                 const offset = (baseY + cell.y) * CHUNK_SIZE + baseX + cell.x;
-                if (bake.tiles[offset] === 0) {
+                if (entry.tiles[offset] === 0) {
                     filled += 1;
                 }
-                bake.tiles[offset] = value;
+                entry.tiles[offset] = value;
             }
         }
         if (filled === 0) {
             this._chunks.delete(chunkKey);
             return;
         }
-        bake.filled = filled;
-        this._chunks.set(chunkKey, bake);
+        entry.filled = filled;
+        this._chunks.set(chunkKey, entry);
     }
 
     /**
@@ -176,7 +179,7 @@ export class OverworldBake extends AbstractSystem {
             touched.add(chunkKeyAt(position.x[eid], position.y[eid]));
         }
         for (const chunk of touched) {
-            this._bakeChunk(chunk);
+            this._rebuildChunk(chunk);
         }
     }
 }

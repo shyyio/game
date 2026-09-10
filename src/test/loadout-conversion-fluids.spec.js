@@ -1,10 +1,10 @@
+import {EMPTY} from "@/sim/AbstractComponent.js";
 // A loadout change empties the item-typed columns; the amount beside them is not an item type, so it
 // survives. Each module that pairs the two puts the pair back in step as it rebuilds.
 
 import {test} from "node:test";
 import assert from "node:assert/strict";
 import {Direction} from "@/common/constants.js";
-import {EMPTY} from "@/sim/sentinels.js";
 import {CreateObjectMessage} from "@/common/CoreMessages.js";
 import {pipesOf} from "@/mods/fluids/sim/testHelpers.js";
 import {FLUID_TYPE_WATER} from "@/mods/fluids/common/constants.js";

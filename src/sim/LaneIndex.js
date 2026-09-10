@@ -15,10 +15,9 @@ import {
     LaneItemBatchEvent,
 } from "@/common/LaneEvents.js";
 import {AbstractSystem} from "@/sim/AbstractSystem.js";
-import {LaneComponent} from "@/sim/LaneComponent.js";
+import {AbstractComponent, FieldDefinition, EMPTY, NO_EID} from "@/sim/AbstractComponent.js";
 import {LaneCellComponent} from "@/sim/LaneCellComponent.js";
 import {LaneItemComponent} from "@/sim/LaneItemComponent.js";
-import {EMPTY, NO_EID} from "@/sim/sentinels.js";
 
 // The level a lane cell takes flow from or gives it to: 0 is the surface, negative is buried,
 // positive is elevated.
@@ -143,6 +142,46 @@ function shouldConnectLevels(outLevel, outDirection, inLevel, inDirection) {
  * @property {number} portEid
  * @property {number} parent
  */
+
+/**
+ * A transport lane: the chain of cells from its head, the ports at its two ends, and the file of
+ * items riding it.
+ */
+class LaneComponent extends AbstractComponent {
+
+    constructor() {
+        super("Lane", [
+            new FieldDefinition("headCell", "eid", NO_EID),
+            new FieldDefinition("inputPort", "eid", NO_EID),
+            new FieldDefinition("outputPort", "eid", NO_EID),
+            new FieldDefinition("slotCount"),
+            new FieldDefinition("itemCount"),
+            new FieldDefinition("headGap"),
+            new FieldDefinition("firstItem", "eid", NO_EID),
+            new FieldDefinition("lastItem", "eid", NO_EID),
+            new FieldDefinition("nextItemRef", "i32", 1),
+        ], {sparse: true});
+    }
+
+    /**
+     * Creates an empty lane with its head gap spanning every slot.
+     * @param {number} headCellEid
+     * @param {number} inputPortEid
+     * @param {number} outputPortEid
+     * @param {number} slotCount
+     * @returns {number} the lane eid
+     */
+    create(headCellEid, inputPortEid, outputPortEid, slotCount) {
+        const eid = super.create();
+        const row = this.getRowByEid(eid);
+        this.store.headCell[row] = headCellEid;
+        this.store.inputPort[row] = inputPortEid;
+        this.store.outputPort[row] = outputPortEid;
+        this.store.slotCount[row] = slotCount;
+        this.store.headGap[row] = slotCount;
+        return eid;
+    }
+}
 
 export class LaneIndex extends AbstractSystem {
 
@@ -682,28 +721,25 @@ export class LaneIndex extends AbstractSystem {
      */
     _createLane(cells) {
         const engine = this.engine;
-        const laneEid = this.lanes.create();
-        const laneRow = this.lanes.getRowByEid(laneEid);
-        const lanes = this.lanes.store;
         const tailCellEid = cells[cells.length - 1];
+        const outputPortEid = this._getOutputPortEidByCellEid(tailCellEid);
         let slots = 0;
+        for (const cellEid of cells) {
+            slots += this._getBehaviorByCellEid(cellEid).slotsPerTile;
+        }
+        const laneEid = this.lanes.create(
+            cells[0],
+            this._getParentLinkByCellEid(cells[0]).portEid,
+            outputPortEid,
+            slots - 1,
+        );
         for (let i = 0; i < cells.length; i += 1) {
             const cellRow = this.cells.getRowByEid(cells[i]);
             this.cells.store.lane[cellRow] = laneEid;
             const nextCellEid = i + 1 < cells.length ? cells[i + 1] : NO_EID;
             this.cells.store.childCell[cellRow] = nextCellEid;
             this.cells.store.parentEdge[cellRow] = this._getParentLinkByCellEid(cells[i]).edge;
-            slots += this._getBehaviorByCellEid(cells[i]).slotsPerTile;
         }
-        lanes.headCell[laneRow] = cells[0];
-        lanes.outputPort[laneRow] = this._getOutputPortEidByCellEid(tailCellEid);
-        lanes.inputPort[laneRow] = this._getParentLinkByCellEid(cells[0]).portEid;
-        lanes.slotCount[laneRow] = slots - 1;
-        lanes.itemCount[laneRow] = 0;
-        lanes.headGap[laneRow] = slots - 1;
-        lanes.firstItem[laneRow] = NO_EID;
-        lanes.lastItem[laneRow] = NO_EID;
-        lanes.nextItemRef[laneRow] = 1;
         const chunkKey = this._getChunkKeyByEid(cells[0]);
         let chunkLanes = this._lanesByChunk.get(chunkKey);
         if (chunkLanes === undefined) {
@@ -714,7 +750,7 @@ export class LaneIndex extends AbstractSystem {
         // The output port is the tail cell's last slot, so its item draws on the tail's tile
         // and routes to the lane's own chunk.
         const position = engine.Position;
-        engine.portItems.addOutputPort(lanes.outputPort[laneRow], position.x[tailCellEid], position.y[tailCellEid]);
+        engine.portItems.addOutputPort(outputPortEid, position.x[tailCellEid], position.y[tailCellEid]);
         return laneEid;
     }
 

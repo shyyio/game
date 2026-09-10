@@ -1,5 +1,4 @@
-import {AbstractComponent} from "@/sim/AbstractComponent.js";
-import {EMPTY, NO_EID} from "@/sim/sentinels.js";
+import {AbstractComponent, FieldDefinition, EMPTY, NO_EID} from "@/sim/AbstractComponent.js";
 
 /**
  * The items riding the lanes: each lane holds its items in a singly linked file ordered
@@ -11,11 +10,11 @@ export class LaneItemComponent extends AbstractComponent {
 
     constructor() {
         super("LaneItem", [
-            {name: "lane", kind: "eid", defaultValue: NO_EID},
-            {name: "nextItem", kind: "eid", defaultValue: NO_EID},
-            {name: "itemTypeId", kind: "item", defaultValue: EMPTY},
-            {name: "gap"},
-            {name: "itemRef"},
+            new FieldDefinition("lane", "eid", NO_EID),
+            new FieldDefinition("nextItem", "eid", NO_EID),
+            new FieldDefinition("itemTypeId", "item", EMPTY),
+            new FieldDefinition("gap"),
+            new FieldDefinition("itemRef"),
         ], {sparse: true});
     }
 
