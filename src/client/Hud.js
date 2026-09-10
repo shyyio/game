@@ -312,7 +312,7 @@ export class Hud {
      * there), and irrelevant with nothing to build on.
      * @returns {void}
      */
-    refreshToolbarVisibility() {
+    resyncToolbarVisibility() {
         const hasClaims = this._client.cache.view("chunkClaims").hasOwnClaims();
         this.toolbarLayer.visible = isToolbarVisible(hasClaims, this._client.viewMode.current);
     }
@@ -328,7 +328,7 @@ export class Hud {
         const now = Date.now();
         if (isFriendsPanelRefreshDue(now, this._lastFriendsPanelRefreshMs)) {
             this._lastFriendsPanelRefreshMs = now;
-            this.friendsPanelLayer.refresh();
+            this.friendsPanelLayer.rebuild();
         }
     }
 
@@ -344,17 +344,17 @@ export class Hud {
         this.inspectPanelLayer.viewport = viewport;
         this.inspectPanelLayer.onClose(objectRef => this._client.unInspectObject(objectRef));
         this.statusLayer.textureCache = textureCache;
-        this.statusLayer.refreshBackground();
+        this.statusLayer.rebuildBackground();
         this._layoutTopLeft();
         this.topStatusBar.textureCache = textureCache;
-        this.topStatusBar.refreshBackground();
+        this.topStatusBar.rebuildBackground();
         this.bottomActionBar.textureCache = textureCache;
-        this.bottomActionBar.refreshBackground();
+        this.bottomActionBar.rebuildBackground();
         this.noticeLayer.textureCache = textureCache;
         this.confirmDialogLayer.textureCache = textureCache;
         this.chunkActionsLayer.textureCache = textureCache;
         // A chunk can be selected before the textures land, which skips the stack's build.
-        this.chunkActionsLayer.refresh();
+        this.chunkActionsLayer.rebuild();
         this.friendsPanelLayer.textureCache = textureCache;
         this.friendsPanelLayer.viewport = viewport;
         this.friendsPanelLayer.anchorButton = this.friendsButtonLayer;

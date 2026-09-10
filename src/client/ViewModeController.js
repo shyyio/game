@@ -54,7 +54,7 @@ export class ViewModeController {
         this._client.drawLayerRegistry.setViewMode(mode);
         this._client.hud.mapButtonsLayer.setViewMode(mode);
         this._client.hud.friendsPanelLayer.setViewMode(mode);
-        this._client.hud.refreshToolbarVisibility();
+        this._client.hud.resyncToolbarVisibility();
         for (const mod of this._client.modRegistry.clientMods) {
             mod.setViewMode(mode, this._client);
         }

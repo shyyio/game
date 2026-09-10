@@ -69,7 +69,7 @@ export class EffectiveToolController {
         const tool = this.inputHandler.activeTool;
         this.inputHandler.clearToolPreview();
         this.inputHandler.clearInspect();
-        this.inputHandler.refreshHover();
+        this.inputHandler.resyncHover();
         this.client.hud.rotateButtonsLayer.setVisible(tool != null && tool.orientable);
         this.client.hud.topStatusBar.setSection(SECTION_ID, this._statusBarSection(tool));
         const mobile = Mobile.enabled;

@@ -242,7 +242,7 @@ export class InputHandler {
      * Re-runs the hover for the current tile so a tool switch previews immediately; a
      * no-op in map mode.
      */
-    refreshHover() {
+    resyncHover() {
         if (this._mapMode || this._hoverTileX == null) {
             return;
         }

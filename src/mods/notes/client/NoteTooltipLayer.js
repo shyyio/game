@@ -49,8 +49,8 @@ export class NoteTooltipLayer extends AbstractTooltipLayer {
         this._author.x = TOOLTIP_PADDING;
         this.addChild(this._author);
 
-        cache.subscribe("notes.hoverTarget", () => this._refresh());
-        cache.subscribe("notes.editorTarget", () => this._refresh());
+        cache.subscribe("notes.hoverTarget", () => this._resync());
+        cache.subscribe("notes.editorTarget", () => this._resync());
         // The pin moves with every pan and zoom; the box follows it per frame.
         this._tick = () => this._follow();
         app.ticker.add(this._tick);
@@ -73,7 +73,7 @@ export class NoteTooltipLayer extends AbstractTooltipLayer {
     restyle() {
         this._text.style.fill = PANEL_TINT_TEXT;
         this._author.style.fill = PANEL_BORDER;
-        this._refresh();
+        this._resync();
     }
 
     /**
@@ -91,7 +91,7 @@ export class NoteTooltipLayer extends AbstractTooltipLayer {
      * @private
      * @returns {void}
      */
-    _refresh() {
+    _resync() {
         const note = this._note();
         this.visible = note !== null;
         if (note === null) {

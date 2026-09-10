@@ -46,10 +46,10 @@ export class FriendsPanelLayer extends Container {
         this._onUnfriend = null;
         this._onError = null;
 
-        const refresh = () => this.refresh();
-        state.subscribe("chunkClaims.friendIds", refresh);
-        state.subscribe("chunkClaims.ownerByChunk", refresh);
-        state.subscribe("players.usernameByPlayer", refresh);
+        const rebuild = () => this.rebuild();
+        state.subscribe("chunkClaims.friendIds", rebuild);
+        state.subscribe("chunkClaims.ownerByChunk", rebuild);
+        state.subscribe("players.usernameByPlayer", rebuild);
     }
 
     /**
@@ -90,7 +90,7 @@ export class FriendsPanelLayer extends Container {
             this._onError(`No player with code "${event.code}"`);
         }
         if (event instanceof WelcomeEvent) {
-            this.refresh();
+            this.rebuild();
         }
     }
 
@@ -100,7 +100,7 @@ export class FriendsPanelLayer extends Container {
      */
     setViewMode(mode) {
         this._viewMode = mode;
-        this.refresh();
+        this.rebuild();
     }
 
     /**
@@ -153,7 +153,7 @@ export class FriendsPanelLayer extends Container {
      * Re-renders while open; a no-op while hidden (the next {@link show} rebuilds fresh).
      * @returns {void}
      */
-    refresh() {
+    rebuild() {
         if (this.visible) {
             this._rebuild();
         }

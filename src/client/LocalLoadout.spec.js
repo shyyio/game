@@ -6,7 +6,7 @@ import {
     BASE_MOD_NAMES,
     compatibleVersions,
     latestCompatibleVersion,
-    refreshLoadout,
+    buildLatestLoadout,
     serverLockfile,
 } from "@/client/LocalLoadout.js";
 import {formatIntegrity} from "@/common/ModIntegrity.js";
@@ -144,7 +144,7 @@ test("a refresh moves a tracking mod onto the newest compatible version", () => 
     const loadout = new LocalLoadout([chosen("widgets", "1.0.0")]);
     const listings = [listing("widgets", [published("1.0.0"), published("2.0.0"), published("9.0.0", SDK_VERSION + 1)])];
 
-    const refreshed = refreshLoadout(loadout, listings);
+    const refreshed = buildLatestLoadout(loadout, listings);
 
     assert.equal(refreshed.findEntryByName("widgets").version, "2.0.0");
     assert.equal(refreshed.findEntryByName("widgets").pinned, false);
@@ -154,14 +154,14 @@ test("a refresh leaves a pinned mod exactly where it was", () => {
     const loadout = new LocalLoadout([chosen("widgets", "1.0.0", true)]);
     const listings = [listing("widgets", [published("1.0.0"), published("2.0.0")])];
 
-    assert.equal(refreshLoadout(loadout, listings).findEntryByName("widgets").version, "1.0.0");
+    assert.equal(buildLatestLoadout(loadout, listings).findEntryByName("widgets").version, "1.0.0");
 });
 
 test("a refresh keeps the last resolved version when the listing is gone or no longer compatible", () => {
     const loadout = new LocalLoadout([chosen("widgets", "1.0.0"), chosen("gadgets", "1.0.0")]);
     const listings = [listing("gadgets", [published("2.0.0", SDK_VERSION + 1)])];
 
-    const refreshed = refreshLoadout(loadout, listings);
+    const refreshed = buildLatestLoadout(loadout, listings);
 
     assert.equal(refreshed.findEntryByName("widgets").version, "1.0.0");
     assert.equal(refreshed.findEntryByName("gadgets").version, "1.0.0");

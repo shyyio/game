@@ -147,7 +147,7 @@ export class ChunkClaimsDrawLayer extends AbstractDrawLayer {
         }
         if (this._labelsDirty) {
             this._labelsDirty = false;
-            this._refreshLabels();
+            this._rebuildLabels();
         }
     }
 
@@ -156,7 +156,7 @@ export class ChunkClaimsDrawLayer extends AbstractDrawLayer {
      * @private
      * @returns {void}
      */
-    _refreshLabels() {
+    _rebuildLabels() {
         const territories = new Map();
         let ownTerritory = null;
         for (const chunk of this._graphics.keys()) {
@@ -178,7 +178,7 @@ export class ChunkClaimsDrawLayer extends AbstractDrawLayer {
         }
         // Next tick rescales all labels.
         this._labelScale = null;
-        this._refreshHomeMarker(ownTerritory);
+        this._resyncHomeMarker(ownTerritory);
         for (const [owner, label] of this._labels) {
             if (!territories.has(owner)) {
                 this._labelLayer.removeChild(label);
@@ -214,7 +214,7 @@ export class ChunkClaimsDrawLayer extends AbstractDrawLayer {
      * @param {{chunks: number[], sumX: number, sumY: number}|null} territory
      * @returns {void}
      */
-    _refreshHomeMarker(territory) {
+    _resyncHomeMarker(territory) {
         if (territory === null) {
             if (this._homeMarker !== null) {
                 this._labelLayer.removeChild(this._homeMarker);

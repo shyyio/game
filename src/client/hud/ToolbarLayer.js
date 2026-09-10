@@ -214,7 +214,7 @@ export class ToolbarLayer extends Container {
         if (!this._tools.includes(this._activeTool)) {
             this.setActiveTool(null);
         }
-        this._refreshHighlights();
+        this._resyncHighlights();
         this._layout();
     }
 
@@ -236,7 +236,7 @@ export class ToolbarLayer extends Container {
             tool.onActivate();
         }
         this._setDrawerOpen(false);
-        this._refreshHighlights();
+        this._resyncHighlights();
         if (this._onChange !== null) {
             this._onChange();
         }
@@ -535,7 +535,7 @@ export class ToolbarLayer extends Container {
 
         if (drag.moveTo(this._nearestModToolIndex(x, y))) {
             this._layoutDragOrder(drag);
-            this._refreshDragBadges(drag);
+            this._resyncDragBadges(drag);
         }
     }
 
@@ -591,7 +591,7 @@ export class ToolbarLayer extends Container {
      * @private
      * @param {ToolReorderDrag} drag
      */
-    _refreshDragBadges(drag) {
+    _resyncDragBadges(drag) {
         for (const [i, tool] of drag.order.entries()) {
             const badge = this._cellForModTool(tool)._badge;
             if (badge == null) {
@@ -733,7 +733,7 @@ export class ToolbarLayer extends Container {
      * Repaints the none cell and every tool cell to match the active selection.
      * @private
      */
-    _refreshHighlights() {
+    _resyncHighlights() {
         if (this._noneCell !== null) {
             this._noneCell._highlight.setActive(this._activeTool === null);
         }
@@ -767,7 +767,7 @@ export class ToolbarLayer extends Container {
         if (barTools !== this._barTools) {
             this._barTools = barTools;
             this._rebuild();
-            this._refreshHighlights();
+            this._resyncHighlights();
         }
         // Grows the picked-up icon into its lifted scale while a reorder drag is in progress.
         if (this._drag !== null) {

@@ -101,7 +101,7 @@ export class ProductionLogPanelLayer extends Container {
      * Re-asks for the own log when it is the one on screen.
      * @returns {void}
      */
-    refreshOwn() {
+    requestOwnLog() {
         const view = this._current();
         if (this.visible && view instanceof LogView && view.playerRef === this._claims.ownPlayerRef) {
             this._writer.requestLog(view.playerRef);

@@ -3,7 +3,7 @@ import {computed, onMounted, ref} from "vue";
 import {useRouter} from "vue-router";
 import {listMods} from "@/client/ModRegistryClient.js";
 import {
-  LocalLoadout, refreshLoadout, readLocalLoadout, writeLocalLoadout,
+  LocalLoadout, buildLatestLoadout, readLocalLoadout, writeLocalLoadout,
 } from "@/client/LocalLoadout.js";
 import {LocalConfig, readLocalConfig, writeLocalConfig} from "@/client/LocalConfig.js";
 import {hasLocalSave} from "@/client/state/ClientSaveStore.js";
@@ -64,7 +64,7 @@ async function load() {
   error.value = "";
   try {
     listings.value = await listMods();
-    commitLoadout(refreshLoadout(loadout.value, listings.value));
+    commitLoadout(buildLatestLoadout(loadout.value, listings.value));
   } catch (loadError) {
     listings.value = [];
     error.value = loadError.message;

@@ -22,7 +22,7 @@ class FakeClient {
         this.hud = {
             mapButtonsLayer: {setViewMode: mode => this.told.push(["mapButtons", mode])},
             friendsPanelLayer: {setViewMode: mode => this.told.push(["friends", mode])},
-            refreshToolbarVisibility: () => this.told.push(["toolbar", null]),
+            resyncToolbarVisibility: () => this.told.push(["toolbar", null]),
         };
         this.modRegistry = {clientMods: [{setViewMode: mode => this.told.push(["mod", mode])}]};
         this.claimSelection = {onViewMode: previous => this.previous.push(["claimSelection", previous])};

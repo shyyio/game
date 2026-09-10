@@ -361,7 +361,7 @@ export class LocalLoadout {
  * @param {object[]} listings the registry index's mods
  * @returns {LocalLoadout}
  */
-export function refreshLoadout(loadout, listings) {
+export function buildLatestLoadout(loadout, listings) {
     return new LocalLoadout(loadout.mods.map((mod) => {
         if (!mod.tracksLatest) {
             return mod;

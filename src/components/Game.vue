@@ -163,7 +163,7 @@ onMounted(async () => {
   const unsubMobile = Mobile.onChange(() => {
     syncMobileTouchInput();
     toolController.applyEffectiveTool();
-    client.hud.versionWatermarkLayer.refresh();
+    client.hud.versionWatermarkLayer.resync();
   });
 
   bindSettingsMenu(client);

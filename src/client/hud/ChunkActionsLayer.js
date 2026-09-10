@@ -147,7 +147,7 @@ export class ChunkActionsLayer extends Container {
      * Re-renders the current chunk after a claim/friend change; a no-op while hidden.
      * @returns {void}
      */
-    refresh() {
+    rebuild() {
         if (this._chunk !== null) {
             this._rebuild();
         }
@@ -158,7 +158,7 @@ export class ChunkActionsLayer extends Container {
      * @returns {void}
      */
     restyle() {
-        this.refresh();
+        this.rebuild();
     }
 
     /**

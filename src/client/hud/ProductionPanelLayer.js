@@ -174,17 +174,17 @@ export class ProductionPanelLayer extends Container {
                     this._onSubscribe(this._metricsType, this._scope, tier, windowTicks);
                 }
             },
-            onRangeChange: () => this._refreshList(),
+            onRangeChange: () => this._rebuildList(),
         });
         this._chart.setHighlightKey(this._selectedKey);
         this._rollup = this._metrics.rollup(this._metricsType, this._scope);
         this._chart.push(this._rollup);
-        this._refreshList();
+        this._rebuildList();
         this._unbindRollup = this._state.subscribe("metrics.rollups", (key, value) => {
             if (key === this._rollupKey) {
                 this._rollup = value;
                 this._chart.push(value);
-                this._refreshList();
+                this._rebuildList();
             }
         });
 
@@ -209,7 +209,7 @@ export class ProductionPanelLayer extends Container {
      * @private
      * @returns {void}
      */
-    _refreshList() {
+    _rebuildList() {
         const entries = this._listEntries();
         if (this._selectedKey !== null && !entries.some(entry => entry.key === this._selectedKey)) {
             this._selectedKey = null;
@@ -287,7 +287,7 @@ export class ProductionPanelLayer extends Container {
             this._selectedKey = key;
         }
         this._chart.setHighlightKey(this._selectedKey);
-        this._refreshList();
+        this._rebuildList();
     }
 
     /**

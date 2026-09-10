@@ -1,7 +1,7 @@
 import {ModRegistry} from "@/common/ModRegistry.js";
 import {fetchModLoadout} from "@/client/ModFetcher.js";
 import {
-    LocalLoadout, readLocalLoadout, writeLocalLoadout, refreshLoadout,
+    LocalLoadout, readLocalLoadout, writeLocalLoadout, buildLatestLoadout,
 } from "@/client/LocalLoadout.js";
 import {listMods} from "@/client/ModRegistryClient.js";
 import {loadLocalMods} from "@/client/LocalModLoader.js";
@@ -59,13 +59,13 @@ async function loadoutFor(props, localLoadout) {
  * @param {LocalLoadout} stored
  * @returns {Promise<LocalLoadout>}
  */
-async function refreshedLoadout(stored) {
+async function requestLatestLoadout(stored) {
     if (!stored.tracksLatest) {
         return stored;
     }
     let refreshed;
     try {
-        refreshed = refreshLoadout(stored, await listMods());
+        refreshed = buildLatestLoadout(stored, await listMods());
     } catch (error) {
         console.warn(`Could not check the mod registry for newer versions: ${error.message}`);
         return stored;
@@ -120,7 +120,7 @@ export async function createClient(app, viewport, props) {
     // A server's loadout is exactly what it pins, so only local play picks its own mods.
     let localLoadout = new LocalLoadout([]);
     if (props.mode !== GAME_MODE_REMOTE) {
-        localLoadout = await refreshedLoadout(readLocalLoadout());
+        localLoadout = await requestLatestLoadout(readLocalLoadout());
     }
 
     const modRegistry = new ModRegistry();

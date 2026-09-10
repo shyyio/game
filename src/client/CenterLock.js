@@ -39,14 +39,14 @@ export class CenterLock {
         // Draw layers before the input layer, so a hover Mouse emits renders with center-lock on.
         this._client.drawLayerRegistry.setCenterLock(enabled);
         Mouse.setCenterLock(enabled);
-        this.refreshMarker();
+        this.resyncMarker();
     }
 
     /**
      * The center aim dot follows whichever chunk-picking mode is on, center-lock only.
      * @returns {void}
      */
-    refreshMarker() {
+    resyncMarker() {
         const picking = this._client.chunkMode.active;
         this.markerLayer.setActive(this._enabled && picking && this._client.viewMode.current !== ViewMode.WORLD);
     }

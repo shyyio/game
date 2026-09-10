@@ -44,7 +44,7 @@ export const CHUNK_PICK_ZOOM_SCALE = OVERWORLD_SCALE_THRESHOLD * 1.1;
 export const OVERWORLD_CHUNK_TTL_MS = 30_000;
 
 // At most one overworld request per this window while panning.
-export const OVERWORLD_REFRESH_THROTTLE_MS = 500;
+export const OVERWORLD_REQUEST_THROTTLE_MS = 500;
 
 // At most one friends-panel rebuild (full DOM-input teardown/recreate included) per this window
 // while panning/zooming with the panel open.

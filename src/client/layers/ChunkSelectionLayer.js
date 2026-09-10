@@ -110,7 +110,7 @@ export class ChunkSelectionLayer extends AbstractDrawLayer {
      * Recolors the selection after a claim change.
      * @returns {void}
      */
-    refresh() {
+    resync() {
         this._drawSelection();
     }
 

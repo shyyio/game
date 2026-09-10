@@ -103,7 +103,7 @@ export class StatusMessageLayer extends Container {
      */
     setConnecting() {
         this._connecting = true;
-        this._refresh();
+        this._resync();
     }
 
     /**
@@ -114,7 +114,7 @@ export class StatusMessageLayer extends Container {
      */
     setOverride(message) {
         this._override = message;
-        this._refresh();
+        this._resync();
     }
 
     /**
@@ -126,7 +126,7 @@ export class StatusMessageLayer extends Container {
             return;
         }
         this._override = null;
-        this._refresh();
+        this._resync();
     }
 
     /**
@@ -157,7 +157,7 @@ export class StatusMessageLayer extends Container {
                 this._batch.add(chunk);
             }
         }
-        this._refresh();
+        this._resync();
     }
 
     /**
@@ -170,14 +170,14 @@ export class StatusMessageLayer extends Container {
             if (this._pending.delete(event.chunkKey)) {
                 // The first arriving chunk ends the connecting phase.
                 this._connecting = false;
-                this._refresh();
+                this._resync();
             }
         } else if (event instanceof ChunkUnsubscribeEvent) {
             this._subscribed.delete(event.chunkKey);
             // A chunk that left drops from total (and pending, if not yet subscribed).
             if (this._batch.delete(event.chunkKey)) {
                 this._pending.delete(event.chunkKey);
-                this._refresh();
+                this._resync();
             }
         }
     }
@@ -187,7 +187,7 @@ export class StatusMessageLayer extends Container {
      * @private
      * @returns {void}
      */
-    _refresh() {
+    _resync() {
         if (this._override !== null) {
             this._show(this._override);
         } else if (this._connecting) {
@@ -294,14 +294,14 @@ export class StatusMessageLayer extends Container {
      */
     restyle() {
         this._text.style.fill = PANEL_TINT_TEXT;
-        this.refreshBackground();
+        this.rebuildBackground();
     }
 
     /**
      * Rebuilds the background for the already-showing message, once textureCache becomes available.
      * @returns {void}
      */
-    refreshBackground() {
+    rebuildBackground() {
         if (this.textureCache !== null && this.visible) {
             this._rebuildBackground();
         }

@@ -94,12 +94,12 @@ test("the marker shows only while locked, picking chunks, and out of world view"
     assert.equal(centerLock.markerLayer.visible, true);
 
     client.viewMode.current = ViewMode.WORLD;
-    centerLock.refreshMarker();
+    centerLock.resyncMarker();
     assert.equal(centerLock.markerLayer.visible, false, "world view aims with the cursor");
 
     client.viewMode.current = ViewMode.MAP;
     client.chunkMode.active = false;
-    centerLock.refreshMarker();
+    centerLock.resyncMarker();
     assert.equal(centerLock.markerLayer.visible, false, "nothing is being picked");
 
     client.chunkMode.active = true;

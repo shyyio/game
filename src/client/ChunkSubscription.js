@@ -4,7 +4,7 @@ import {
     snapToChunk,
     ViewportChunkWindow,
     OVERWORLD_CHUNK_TTL_MS,
-    OVERWORLD_REFRESH_THROTTLE_MS,
+    OVERWORLD_REQUEST_THROTTLE_MS,
 } from "@/client/constants.js";
 import {CHUNK_SIZE} from "@/common/constants.js";
 import {chunkKeyAt, REGION_HALF} from "@/common/util.js";
@@ -36,7 +36,7 @@ export class ChunkSubscription {
         this._lastVisibleKey = null;
         // Rebuilds the visible-chunk set only when the covered rect moves.
         this._chunkWindow = new ViewportChunkWindow();
-        this._lastOverworldRefreshMs = 0;
+        this._lastOverworldRequestMs = 0;
         // Whether the overworld snapshot feed has replaced the chunk subscriptions.
         this._overworld = false;
     }
@@ -59,7 +59,7 @@ export class ChunkSubscription {
      */
     viewportMoved() {
         if (this._overworld) {
-            this._refreshOverworld(false);
+            this._requestOverworld(false);
         } else {
             this._updateViewportChunks();
         }
@@ -75,7 +75,7 @@ export class ChunkSubscription {
         this._requestedChunks.clear();
         this._sendSetViewport(false);
         this._lastVisibleKey = null;
-        this._refreshOverworld(true);
+        this._requestOverworld(true);
     }
 
     /**
@@ -96,8 +96,8 @@ export class ChunkSubscription {
     resync() {
         this._lastVisibleKey = null;
         if (this._overworld) {
-            this._lastOverworldRefreshMs = 0;
-            this._refreshOverworld(true);
+            this._lastOverworldRequestMs = 0;
+            this._requestOverworld(true);
         } else {
             this._requestedChunks.clear();
             this._updateViewportChunks();
@@ -110,12 +110,12 @@ export class ChunkSubscription {
      * @private
      * @param {boolean} force
      */
-    _refreshOverworld(force) {
+    _requestOverworld(force) {
         const now = Date.now();
-        if (!force && now - this._lastOverworldRefreshMs < OVERWORLD_REFRESH_THROTTLE_MS) {
+        if (!force && now - this._lastOverworldRequestMs < OVERWORLD_REQUEST_THROTTLE_MS) {
             return;
         }
-        this._lastOverworldRefreshMs = now;
+        this._lastOverworldRequestMs = now;
         const rect = this._visibleOverworldRect();
         if (rect === null) {
             return;

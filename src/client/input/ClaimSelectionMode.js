@@ -74,7 +74,7 @@ export class ClaimSelectionMode {
      */
     onEvent(event) {
         if (event instanceof FriendListEvent) {
-            this._client.hud.chunkActionsLayer.refresh();
+            this._client.hud.chunkActionsLayer.rebuild();
             this.updateIndicators();
             return;
         }
@@ -84,9 +84,9 @@ export class ClaimSelectionMode {
         if (!this._hasClaims()) {
             this.set(false);
         }
-        this._client.hud.refreshToolbarVisibility();
-        this._client.hud.chunkActionsLayer.refresh();
-        this._client.chunkSelectionLayer.refresh();
+        this._client.hud.resyncToolbarVisibility();
+        this._client.hud.chunkActionsLayer.rebuild();
+        this._client.chunkSelectionLayer.resync();
         this.updateIndicators();
     }
 
@@ -112,7 +112,7 @@ export class ClaimSelectionMode {
      * @returns {void}
      */
     updateIndicators() {
-        this._client.centerLock.refreshMarker();
+        this._client.centerLock.resyncMarker();
         this._client.claimFrontierLayer.setModeActive(this.active);
         // Entry buttons only show outside the mode; inside, the bars own entry and exit.
         const showButtons = this._hasClaims() && !this.active;

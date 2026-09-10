@@ -45,7 +45,7 @@ export class VersionWatermarkLayer extends Container {
             style: {fontFamily: GAME_FONT, fontSize: 13, fill: WATERMARK_COLOR},
         });
         this.addChild(this._text);
-        this.refresh();
+        this.resync();
         app.renderer.on("resize", () => this._layout());
     }
 
@@ -53,7 +53,7 @@ export class VersionWatermarkLayer extends Container {
      * Re-reads the touchscreen-input setting and repositions.
      * @returns {void}
      */
-    refresh() {
+    resync() {
         this.visible = !Mobile.enabled;
         this._layout();
     }

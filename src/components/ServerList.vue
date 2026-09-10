@@ -17,13 +17,13 @@ const emit = defineEmits(["select", "back", "mods", "unauthorized"]);
 const DEV_SERVER_ORIGIN = "ws://localhost:27500";
 const DEV_SERVER_NAME = "🧪 DEV";
 
-const REFRESH_COOLDOWN_MS = 3000;
+const REQUEST_COOLDOWN_MS = 3000;
 
 const servers = ref([]);
 // origin -> {loading, offline, name, online, chunksClaimed, chunksAvailable, pingMs, sdkVersion}
 const statusByOrigin = reactive({});
-const refreshing = ref(false);
-const refreshCoolingDown = ref(false);
+const loadingServers = ref(false);
+const requestCoolingDown = ref(false);
 const allowUnverifiedMods = ref(DeviceSettings.getBoolean(DEVICE_SETTING_UNVERIFIED_MODS, false));
 
 // The opt-in shows only where the player hit the refusal, not as a standing invitation.
@@ -43,14 +43,14 @@ onMounted(loadServers);
 /**
  * @returns {void}
  */
-function refresh() {
-  if (refreshCoolingDown.value) {
+function requestServers() {
+  if (requestCoolingDown.value) {
     return;
   }
-  refreshCoolingDown.value = true;
+  requestCoolingDown.value = true;
   window.setTimeout(() => {
-    refreshCoolingDown.value = false;
-  }, REFRESH_COOLDOWN_MS);
+    requestCoolingDown.value = false;
+  }, REQUEST_COOLDOWN_MS);
   loadServers();
 }
 
@@ -58,13 +58,13 @@ function refresh() {
  * @returns {Promise<void>}
  */
 async function loadServers() {
-  refreshing.value = true;
+  loadingServers.value = true;
   try {
     servers.value = await listServers();
   } catch {
     servers.value = [];
     if (!hasSessionToken()) {
-      refreshing.value = false;
+      loadingServers.value = false;
       emit("unauthorized");
       return;
     }
@@ -79,7 +79,7 @@ async function loadServers() {
     statusByOrigin[origin] = {loading: true, offline: false};
     fetchStatus(origin);
   }
-  refreshing.value = false;
+  loadingServers.value = false;
 }
 
 const preconnectedOrigins = new Set();
@@ -324,7 +324,7 @@ function connectToCustomOrigin() {
       <v-btn variant="text" @click="emit('back')">Back</v-btn>
       <v-btn variant="text" @click="emit('mods')">Mods</v-btn>
       <v-spacer/>
-      <v-btn variant="text" :disabled="refreshCoolingDown" :loading="refreshing" @click="refresh">Refresh</v-btn>
+      <v-btn variant="text" :disabled="requestCoolingDown" :loading="loadingServers" @click="requestServers">Refresh</v-btn>
     </v-card-actions>
   </v-card>
 </template>

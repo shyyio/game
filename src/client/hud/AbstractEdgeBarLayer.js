@@ -58,7 +58,7 @@ export class AbstractEdgeBarLayer extends Container {
      * be set before the client has loaded textures).
      * @returns {void}
      */
-    refreshBackground() {
+    rebuildBackground() {
         this._rebuild();
     }
 

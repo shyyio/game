@@ -26,7 +26,7 @@ export function addSlotHighlight(target, size) {
 
     let active = false;
     let hovered = false;
-    const refresh = () => {
+    const resync = () => {
         graphics.visible = active || hovered;
         graphics.alpha = active ? HIGHLIGHT_ACTIVE_ALPHA : HIGHLIGHT_HOVER_ALPHA;
     };
@@ -34,17 +34,17 @@ export function addSlotHighlight(target, size) {
     target.eventMode = "static";
     target.on("pointerenter", () => {
         hovered = true;
-        refresh();
+        resync();
     });
     target.on("pointerleave", () => {
         hovered = false;
-        refresh();
+        resync();
     });
 
     return {
         setActive(value) {
             active = value;
-            refresh();
+            resync();
         },
     };
 }

@@ -77,7 +77,7 @@ export class MapButtonsLayer extends Container {
         this._buttons.push(button);
         this.addChild(container);
         this._drawButton(button);
-        this._refresh();
+        this._resync();
     }
 
     /**
@@ -91,7 +91,7 @@ export class MapButtonsLayer extends Container {
             return;
         }
         button.shown = shown;
-        this._refresh();
+        this._resync();
     }
 
     /**
@@ -101,7 +101,7 @@ export class MapButtonsLayer extends Container {
      */
     setViewMode(mode) {
         this._zoomedOut = mode !== ViewMode.WORLD;
-        this._refresh();
+        this._resync();
     }
 
     /**
@@ -131,7 +131,7 @@ export class MapButtonsLayer extends Container {
      * @private
      * @returns {void}
      */
-    _refresh() {
+    _resync() {
         for (const button of this._buttons) {
             button.container.visible = button.shown;
         }

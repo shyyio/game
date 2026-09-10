@@ -153,7 +153,7 @@ export class SpriteEditorSession {
         this.state.frameName = frameName;
         this.pixels = this.textureCache.frameImageData(frameName);
         this.state.playIndex = 0;
-        this._refreshPalette();
+        this._rebuildPalette();
         this._syncStacks();
         this.state.paintVersion++;
     }
@@ -252,7 +252,7 @@ export class SpriteEditorSession {
         this._push();
         this._pushUndo(before);
         this._syncStacks();
-        this._refreshPalette();
+        this._rebuildPalette();
         this.state.commitVersion++;
         this.flushPersist();
         await this.store.delete(frame.name);
@@ -404,7 +404,7 @@ export class SpriteEditorSession {
         this._pushUndo(before);
         this._redo.set(this.state.frameName, []);
         this._syncStacks();
-        this._refreshPalette();
+        this._rebuildPalette();
         this.state.commitVersion++;
         if (this._persistTimer !== null) {
             window.clearTimeout(this._persistTimer);
@@ -456,7 +456,7 @@ export class SpriteEditorSession {
         this.pixels = stack.pop();
         this._push();
         this._syncStacks();
-        this._refreshPalette();
+        this._rebuildPalette();
         this.state.commitVersion++;
         this._persistFrame(this.frame);
     }
@@ -486,7 +486,7 @@ export class SpriteEditorSession {
     /**
      * @private
      */
-    _refreshPalette() {
+    _rebuildPalette() {
         this.state.palette = paletteOf(this.pixels, PALETTE_LIMIT).map(rgba => ({hex: toHex(rgba), alpha: rgba[3]}));
     }
 }

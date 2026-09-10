@@ -59,7 +59,7 @@ export class ProductionLogClientMod extends AbstractClientMod {
             return;
         }
         client.hud.notify(this._discoveryText(event.itemTypeIds, client.modRegistry.items));
-        this._logPanel.refreshOwn();
+        this._logPanel.requestOwnLog();
     }
 
     /**

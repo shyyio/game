@@ -121,10 +121,10 @@ export class ObjectTool extends AbstractTool {
         this._active = true;
         if (this._placeOn.length > 0) {
             // Keep the target highlight live as resources come and go, only while active.
-            this._unsubscribes.push(this._cache.onStructuralChange(() => this._refreshHighlight()));
-            this._unsubscribes.push(this._cache.onRemove(() => this._refreshHighlight()));
+            this._unsubscribes.push(this._cache.onStructuralChange(() => this._resyncHighlight()));
+            this._unsubscribes.push(this._cache.onRemove(() => this._resyncHighlight()));
         }
-        this._refreshHighlight();
+        this._resyncHighlight();
     }
 
     onDeactivate() {
@@ -161,7 +161,7 @@ export class ObjectTool extends AbstractTool {
      * Repaints the blue highlight over every current target tile, while this tool is active.
      * @private
      */
-    _refreshHighlight() {
+    _resyncHighlight() {
         if (!this._active || this._placeOn.length === 0) {
             return;
         }

@@ -73,7 +73,7 @@ export class InspectSlot extends Container {
         }
         this._item = item;
         this._present = present;
-        this._refresh();
+        this._resync();
     }
 
     /**
@@ -88,7 +88,7 @@ export class InspectSlot extends Container {
      * @returns {void}
      * @private
      */
-    _refresh() {
+    _resync() {
         if (this._item === 0) {
             this._icon.visible = false;
             return;
