@@ -13,12 +13,7 @@ export class DisplayPool {
      * @param {function(*, ...*): void} revive readies a pooled object, with take's arguments
      * @param {number} [capacity] idle objects kept before releases destroy instead
      */
-    constructor(
-        create,
-        park,
-        revive,
-        capacity=UNBOUNDED,
-    ) {
+    constructor(create, park, revive, capacity=UNBOUNDED) {
         this._create = create;
         this._park = park;
         this._revive = revive;

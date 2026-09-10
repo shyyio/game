@@ -5,11 +5,9 @@ import {ChunkSubscription} from "@/client/ChunkSubscription.js";
 import {SetViewportMessage, OverworldRequestMessage} from "@/common/CoreMessages.js";
 import {ClientCache} from "@/client/state/ClientCache.js";
 import {OVERWORLD_SCHEMA, OverworldWriter, OverworldView} from "@/client/state/OverworldState.js";
-import {TILE_SIZE} from "@/client/constants.js";
+import {CHUNK_PX, TILE_SIZE} from "@/client/constants.js";
 import {CHUNK_SIZE} from "@/common/constants.js";
 import {chunkKeyAt} from "@/common/util.js";
-
-const CHUNK_PX = CHUNK_SIZE * TILE_SIZE;
 
 // The subscription reads only the viewport's world-pixel edges.
 class FakeViewport {

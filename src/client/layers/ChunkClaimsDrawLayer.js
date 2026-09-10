@@ -1,13 +1,11 @@
 import {Container, Graphics, Text} from "pixi.js";
 import {AbstractDrawLayer} from "@/client/layers/AbstractDrawLayer.js";
-import {GAME_FONT, TILE_SIZE, ViewMode} from "@/client/constants.js";
+import {CHUNK_PX, GAME_FONT, TILE_SIZE, ViewMode} from "@/client/constants.js";
 import {CHUNK_SIZE, PLAYER_REF_NONE} from "@/common/constants.js";
 import {chunkCenter, chunkOrdinal, chunkOrigin, chunkPosition, getOrCreate, isInRegion} from "@/common/util.js";
 import {claimColor, CLAIM_FILL_ALPHA, CLAIM_BORDER_ALPHA} from "@/client/Theme.js";
 import {ChunkPermission} from "@/common/ClaimEvents.js";
 import {drawHomeIcon, drawFriendIcon} from "@/client/hud/icons.js";
-
-const CHUNK_PX = CHUNK_SIZE * TILE_SIZE;
 
 // World-space inset keeping a chunk's permission badge off its corner.
 const BADGE_CORNER_INSET = TILE_SIZE * 6;

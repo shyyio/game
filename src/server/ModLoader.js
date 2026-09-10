@@ -16,10 +16,7 @@ export class PackagedMod {
      * @param {ModLockEntry} entry
      * @param {ModManifest} manifest
      */
-    constructor(
-        entry,
-        manifest,
-    ) {
+    constructor(entry, manifest) {
         this.entry = entry;
         this.manifest = manifest;
     }

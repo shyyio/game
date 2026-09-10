@@ -9,7 +9,7 @@ export const TextRole = {
     CAPTION: "caption",
 };
 
-const TEXT_SIZE = 15;
+export const PANEL_TEXT_SIZE = 15;
 const CAPTION_SIZE = 12;
 // Dimmed as far as the high-contrast theme's AAA ratio allows.
 const DIMMED_ALPHA = 0.7;
@@ -22,12 +22,12 @@ const ELLIPSIS = "…";
  */
 function styleFor(role) {
     if (role === TextRole.HEADER) {
-        return {fontFamily: GAME_FONT, fontSize: TEXT_SIZE, fill: PANEL_TINT_TEXT, fontWeight: "bold"};
+        return {fontFamily: GAME_FONT, fontSize: PANEL_TEXT_SIZE, fill: PANEL_TINT_TEXT, fontWeight: "bold"};
     }
     if (role === TextRole.CAPTION) {
         return {fontFamily: GAME_FONT, fontSize: CAPTION_SIZE, fill: PANEL_TINT_TEXT};
     }
-    return {fontFamily: GAME_FONT, fontSize: TEXT_SIZE, fill: PANEL_TINT_TEXT};
+    return {fontFamily: GAME_FONT, fontSize: PANEL_TEXT_SIZE, fill: PANEL_TINT_TEXT};
 }
 
 /**

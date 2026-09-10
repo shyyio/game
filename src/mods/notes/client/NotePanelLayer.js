@@ -36,12 +36,7 @@ export class NotePanelLayer extends ConnectedPanelLayer {
      * @param {AbstractSession} session
      * @param {boolean} showAuthor false in solo play, where every note is the reader's own
      */
-    constructor(
-        app,
-        cache,
-        session,
-        showAuthor,
-    ) {
+    constructor(app, cache, session, showAuthor) {
         super(app);
         this._cache = cache;
         this._session = session;

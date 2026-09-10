@@ -1,4 +1,4 @@
-import {ManagedPanel, UIPanel, ConnectedPanelLayer, TextRole, TILE_SIZE, buildPanelButton, buildIconButton, panelText, PanelStack, ScrollView, IconPicker, IconPickerEntry, ROW_HEIGHT, Graphics, TextInput} from "@spup/sdk/client";
+import {ManagedPanel, UIPanel, ConnectedPanelLayer, TextRole, TILE_SIZE, buildPanelButton, buildIconButton, panelText, PanelStack, SWATCH_SIZE, ScrollView, IconPicker, IconPickerEntry, ROW_HEIGHT, Graphics, TextInput} from "@spup/sdk/client";
 import {PANEL_TINT, PANEL_TITLE_TEXT, ACTIVE_ACCENT} from "@spup/sdk/client";
 import {
     LOGIC_RULE_CAP,
@@ -21,7 +21,6 @@ const COMPARATOR_LABELS = ["≥", "≤", "=", "≠"];
 // Suspended rules mark red (blocked).
 const SUSPENDED_TINT = 0xcc4444;
 const INACTIVE_TINT = 0x777777;
-const SWATCH_SIZE = 14;
 // New stored/numeric conditions start here; the number box adjusts.
 const DEFAULT_STORED_VALUE = 1;
 const VALUE_INPUT_WIDTH = 80;
@@ -103,11 +102,7 @@ export class LogicTerminalConfigLayer extends ConnectedPanelLayer {
      * @param {ClientCache} cache
      * @param {ModRegistry} modRegistry
      */
-    constructor(
-        app,
-        cache,
-        modRegistry,
-    ) {
+    constructor(app, cache, modRegistry) {
         super(app);
         this._cache = cache;
         this._modRegistry = modRegistry;

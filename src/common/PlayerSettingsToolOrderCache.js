@@ -7,7 +7,9 @@ export const PLAYER_SETTINGS_TOOL_ORDER_TABLE = "PlayerSettingsToolOrder";
 export class PlayerSettingsToolOrderCache {
 
     constructor() {
-        // playerRef -> number[]
+        /**
+         * @type {Map<number, number[]>}
+         */
         this._byPlayer = new Map();
     }
 

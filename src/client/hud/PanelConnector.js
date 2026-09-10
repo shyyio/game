@@ -10,7 +10,7 @@ const CONNECTOR_BOW_FULL_LENGTH = 440;
 // Inset of the curve's attach point inside the panel rect (screen px).
 export const CONNECTOR_PANEL_INSET = 6;
 
-// Smooth 0→1 ramp of `x` across [edge0, edge1].
+// Smooth 0->1 ramp of `x` across [edge0, edge1].
 function smoothstep(edge0, edge1, x) {
     const t = Math.min(Math.max((x - edge0) / (edge1 - edge0), 0), 1);
     return t * t * (3 - 2 * t);

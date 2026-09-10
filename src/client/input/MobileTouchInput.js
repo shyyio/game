@@ -10,11 +10,7 @@ class HeldTouch {
      * @param {string} pointerType
      * @param {Point} global
      */
-    constructor(
-        pointerId,
-        pointerType,
-        global,
-    ) {
+    constructor(pointerId, pointerType, global) {
         this.pointerId = pointerId;
         this.pointerType = pointerType;
         this.global = global;
@@ -30,13 +26,13 @@ export class MobileTouchInput {
      * @param {Application} app
      * @param {ClientViewport} viewport
      */
-    constructor(
-        app,
-        viewport,
-    ) {
+    constructor(app, viewport) {
         this._stage = app.stage;
         this._viewport = viewport;
-        // pointerId -> held-back HUD touch, replayed into the tracker when a pinch partner lands.
+        /**
+         * Held-back HUD touches, replayed into the tracker when a pinch partner lands.
+         * @type {Map<number, HeldTouch>}
+         */
         this._heldHudTouches = new Map();
         // Bound once so uninstall() can remove the exact listeners install() added.
         this._onFullscreenChange = () => {

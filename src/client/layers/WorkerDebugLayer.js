@@ -69,7 +69,7 @@ export class WorkerDebugLayer extends AbstractDebugDrawLayer {
             label.destroy();
         }
 
-        // tileKey -> road cell, over every cached road entry's cells.
+        /** @type {Map<number, {x: number, y: number, entryId: number}>} over every cached road entry's cells */
         const roadTiles = new Map();
         for (const entry of this.cache.values()) {
             if (entry.behavior instanceof RoadBehavior) {

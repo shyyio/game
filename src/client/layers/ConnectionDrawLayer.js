@@ -20,12 +20,7 @@ class Connection {
      * @param {number} tileY
      * @param {number} quarterTurns - clockwise 90-degree turns, from the object's facing
      */
-    constructor(
-        sequence,
-        tileX,
-        tileY,
-        quarterTurns,
-    ) {
+    constructor(sequence, tileX, tileY, quarterTurns) {
         this.sequence = sequence;
         this.tileX = tileX;
         this.tileY = tileY;

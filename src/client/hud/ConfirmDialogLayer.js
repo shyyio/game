@@ -1,14 +1,13 @@
 import {Container, Graphics, Text} from "pixi.js";
 import {GAME_FONT} from "@/client/constants.js";
 import {PANEL_TINT_TEXT, ACTIVE_ACCENT, BLOCKED_TILE_COLOR, PANEL_TINT} from "@/client/Theme.js";
-import {FRAME_MARGIN, UIPanel} from "@/client/hud/UIPanel.js";
+import {FRAME_MARGIN, UIPanel, PANEL_TITLE_FONT_SIZE} from "@/client/hud/UIPanel.js";
 import {buildPanelButton} from "@/client/hud/panelButton.js";
 import {BUTTON_HEIGHT} from "@/client/hud/UiScale.js";
 import {HudLayer} from "@/client/hud/HudLayer.js";
 
 const PANEL_WIDTH = 360;
 const PADDING = 20;
-const TITLE_FONT_SIZE = 18;
 const MESSAGE_FONT_SIZE = 15;
 const MESSAGE_GAP = 16;
 const BUTTON_GAP = 10;
@@ -71,7 +70,7 @@ export class ConfirmDialogLayer extends Container {
 
         const titleText = new Text({
             text: title,
-            style: {fontFamily: GAME_FONT, fontSize: TITLE_FONT_SIZE, fill: PANEL_TINT_TEXT, fontWeight: "bold"},
+            style: {fontFamily: GAME_FONT, fontSize: PANEL_TITLE_FONT_SIZE, fill: PANEL_TINT_TEXT, fontWeight: "bold"},
         });
         titleText.x = FRAME_MARGIN + PADDING;
         titleText.y = FRAME_MARGIN + PADDING;

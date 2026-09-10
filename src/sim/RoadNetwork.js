@@ -108,7 +108,10 @@ export class RoadNetwork {
         this._tiles = new Map();
         // A full recompute pending (load/rebuild); the cell/component sets below cover edits.
         this._dirtyAll = false;
-        // tileKey -> {x, y} cells edited since the last recompute.
+        /**
+         * Cells edited since the last recompute.
+         * @type {Map<number, {x: number, y: number}>}
+         */
         this._dirtyCells = new Map();
         // Prior component ids affected by an edit (e.g. a removed road tile's), so their
         // assignments rediff even when no surviving road tile leads back to them.

@@ -411,10 +411,7 @@ class ItemParticle extends Particle {
      * @param {Texture} texture
      * @param {ParticleContainer} container the container whose static buffer this particle rides
      */
-    constructor(
-        texture,
-        container,
-    ) {
+    constructor(texture, container) {
         super({texture, anchorX: 0.5, anchorY: 0.5});
         this._container = container;
         // The item type on show, so a picked particle can be named.

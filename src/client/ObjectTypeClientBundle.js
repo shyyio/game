@@ -11,12 +11,7 @@ export class ObjectTypeClientBundle {
      * @param {AbstractDrawLayer} ghostLayer
      * @param {AbstractTool} tool
      */
-    constructor(
-        type,
-        drawLayer,
-        ghostLayer,
-        tool,
-    ) {
+    constructor(type, drawLayer, ghostLayer, tool) {
         this.type = type;
         this.drawLayer = drawLayer;
         this.ghostLayer = ghostLayer;

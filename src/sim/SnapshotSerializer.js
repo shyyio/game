@@ -68,7 +68,7 @@ export class SnapshotSerializer {
         const globals = engine.saveGlobals();
         for (const key of Object.keys(globals)) {
             if (!Number.isSafeInteger(globals[key])) {
-                throw new RangeError(`SnapshotSerializer.serialize: global "${key}" is not a safe integer: ${globals[key]}`);
+                throw new RangeError(`Global "${key}" is not a safe integer: ${globals[key]}`);
             }
         }
         // Every object type's name, in objectTypeId order — deserialize compares this against the current

@@ -7,9 +7,9 @@ const BACKPRESSURE_HIGH_WATER = 256 * 1024;
 const MAX_QUEUED_BYTES = 4 * 1024 * 1024;
 
 // uWS send() results.
-const SEND_DROPPED = 0;
-const SEND_OK = 1;
-const SEND_BACKPRESSURE = 2;
+export const SEND_DROPPED = 0;
+export const SEND_OK = 1;
+export const SEND_BACKPRESSURE = 2;
 
 /**
  * Per-session outbound frame queue: push never blocks, frames flow to the socket only while its

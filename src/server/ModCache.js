@@ -67,10 +67,7 @@ export class ModCache {
      * @param {string} dir
      * @param {function(string): Promise<Uint8Array>} [fetchFile] injected for tests
      */
-    constructor(
-        dir,
-        fetchFile = fetchPackageFile,
-    ) {
+    constructor(dir, fetchFile = fetchPackageFile) {
         this._dir = dir;
         this._fetchFile = fetchFile;
     }

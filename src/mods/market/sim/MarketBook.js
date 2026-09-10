@@ -188,7 +188,9 @@ export class MarketBook {
         // This tick's confirmed NPC purchases, drained by MarketSimMod.onTick.
         this._purchases = [];
 
-        // itemTypeId -> GuidePrice.
+        /**
+         * @type {Map<number, GuidePrice>}
+         */
         this._guidePrices = new Map();
         // Own tick clock; advanced once per onTick call.
         this._tick = 0;

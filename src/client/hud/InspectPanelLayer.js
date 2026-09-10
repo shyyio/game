@@ -181,10 +181,7 @@ class InspectPanelEntry {
      * @param {UIPanel} panel
      * @param {InspectContent} content
      */
-    constructor(
-        panel,
-        content,
-    ) {
+    constructor(panel, content) {
         this.panel = panel;
         this.content = content;
         /**

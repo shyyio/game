@@ -2,12 +2,11 @@ import {test} from "node:test";
 import assert from "node:assert/strict";
 
 import {Camera} from "@/client/Camera.js";
-import {TILE_SIZE} from "@/client/constants.js";
+import {CHUNK_PX} from "@/client/constants.js";
 import {CHUNK_SIZE} from "@/common/constants.js";
 import {chunkKeyAt} from "@/common/util.js";
 
 // A chunk's center in world pixels, the unit every assertion below is written in.
-const CHUNK_PX = CHUNK_SIZE * TILE_SIZE;
 const CHUNK_CENTER_PX = CHUNK_PX / 2;
 
 class FakeViewport {

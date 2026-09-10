@@ -235,7 +235,7 @@ export class WireRegistry {
     }
 
     /**
-     * Encodes a message/event instance to protobuf bytes (Number → int64).
+     * Encodes a message/event instance to protobuf bytes (Number -> int64).
      * @param {object} obj
      * @returns {Uint8Array}
      */
@@ -299,7 +299,7 @@ export class WireRegistry {
     }
 
     /**
-     * Decodes protobuf bytes into a message/event instance (int64 → Number, absent scalars → null).
+     * Decodes protobuf bytes into a message/event instance (int64 -> Number, absent scalars -> null).
      * @param {Uint8Array} bytes
      * @returns {AbstractWireObject}
      */

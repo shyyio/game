@@ -51,7 +51,9 @@ export class SettingsCache {
 export class PlayerSettingsCache {
 
     constructor() {
-        // playerRef -> SettingsCache
+        /**
+         * @type {Map<number, SettingsCache>}
+         */
         this._byPlayer = new Map();
     }
 

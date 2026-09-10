@@ -1,11 +1,7 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
-import {OutboundQueue} from "@/server/OutboundQueue.js";
+import {OutboundQueue, SEND_DROPPED, SEND_OK, SEND_BACKPRESSURE} from "@/server/OutboundQueue.js";
 import {CLOSE_CODE_SLOW_CONSUMER} from "@/common/CloseCodes.js";
-
-const SEND_DROPPED = 0;
-const SEND_OK = 1;
-const SEND_BACKPRESSURE = 2;
 
 class FakeSocket {
 

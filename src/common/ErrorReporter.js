@@ -1,6 +1,6 @@
-const MESSAGE_MAX_BYTES = 1024;
-const STACK_MAX_BYTES = 8192;
-const URL_MAX_BYTES = 500;
+export const MESSAGE_MAX_BYTES = 1024;
+export const STACK_MAX_BYTES = 8192;
+export const URL_MAX_BYTES = 500;
 
 const MAX_FINGERPRINTS = 500;
 
@@ -48,12 +48,7 @@ export class ErrorReporter {
      * @param {() => string} urlProvider - the report's `url` field, read per report
      * @param {(endpoint: string, body: string) => Promise<*>} transport
      */
-    constructor(
-        endpoint,
-        buildVersion,
-        urlProvider,
-        transport,
-    ) {
+    constructor(endpoint, buildVersion, urlProvider, transport) {
         this._endpoint = endpoint;
         this._buildVersion = buildVersion;
         this._urlProvider = urlProvider;

@@ -58,7 +58,10 @@ export class EventQueue {
         // still has queued sync (per-chunk order); everything else applies on arrival, so live
         // tick traffic for already-synced chunks can never pile up behind a loading burst.
         this._pendingEvents = [];
-        // chunk -> its queued event count; a chunk with an entry gates its later events.
+        /**
+         * A chunk with an entry gates its later events.
+         * @type {Map<number, number>}
+         */
         this._queuedCountByChunk = new Map();
         // Host event listeners, the last stop of the event fan-out.
         this._eventListeners = new ListenerList();

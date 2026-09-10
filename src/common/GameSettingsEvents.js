@@ -7,7 +7,7 @@ export class GameSettingsSyncEvent extends AbstractEvent {
     };
 
     /**
-     * @param {Object.<number, number>} values - all key→value pairs
+     * @param {Object.<number, number>} values - all key->value pairs
      */
     constructor(values) {
         super();

@@ -14,12 +14,7 @@ export class CursorPublisher {
      * @param {ClientCache} state
      * @param {WindowFocus} windowFocus
      */
-    constructor(
-        session,
-        mouse,
-        state,
-        windowFocus,
-    ) {
+    constructor(session, mouse, state, windowFocus) {
         this._session = session;
         this._mouse = mouse;
         this._playerSettings = state.view("playerSettings");

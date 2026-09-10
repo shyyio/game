@@ -2,6 +2,7 @@ import {CHUNK_SIZE, REGION_SIZE} from "@/common/constants.js";
 import {chunkKeyAt} from "@/common/util.js";
 
 export const TILE_SIZE = 64;
+export const CHUNK_PX = CHUNK_SIZE * TILE_SIZE;
 
 // Font for all in-canvas (pixi) game text; loaded via the Lexend stylesheet in index.html.
 export const GAME_FONT = "Lexend";

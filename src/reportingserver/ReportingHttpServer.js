@@ -1,13 +1,11 @@
 import {createHash} from "node:crypto";
 import {formatUptime} from "@/common/util.js";
+import {MESSAGE_MAX_BYTES, STACK_MAX_BYTES, URL_MAX_BYTES} from "@/common/ErrorReporter.js";
 import {GAME_VERSION} from "@/common/constants.js";
 import {BUILD_COMMIT, BUILD_DATE} from "@/common/env.js";
 import {AbstractHttpServer, rejectRequest, readJson} from "@/nodeservice/AbstractHttpServer.js";
 
-const MESSAGE_MAX_BYTES = 1024;
-const STACK_MAX_BYTES = 8192;
 const EXTRA_MAX_BYTES = 2048;
-const URL_MAX_BYTES = 500;
 const BUILD_VERSION_MAX_BYTES = 100;
 
 const DEDUP_WINDOW_MS = 5 * 60 * 1000;

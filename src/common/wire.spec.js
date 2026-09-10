@@ -33,7 +33,7 @@ function registry() {
 }
 
 /**
- * Reduces an object to its declared wire fields, mapping undefined → null so
+ * Reduces an object to its declared wire fields, mapping undefined -> null so
  * absent-on-the-wire fields compare equal to the source.
  */
 function pick(obj, cls) {

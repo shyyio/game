@@ -1,7 +1,6 @@
 import {Graphics} from "pixi.js";
 import {AbstractDrawLayer} from "@/client/layers/AbstractDrawLayer.js";
-import {TILE_SIZE, ViewMode} from "@/client/constants.js";
-import {CHUNK_SIZE} from "@/common/constants.js";
+import {CHUNK_PX, TILE_SIZE, ViewMode} from "@/client/constants.js";
 import {ClaimResult} from "@/common/ClaimEvents.js";
 import {chunkOrigin} from "@/common/util.js";
 import Mobile from "@/client/Mobile.js";
@@ -15,7 +14,6 @@ import {
     BLOCKED_TILE_COLOR,
 } from "@/client/Theme.js";
 
-const CHUNK_PX = CHUNK_SIZE * TILE_SIZE;
 // Matches the map-zoom claim borders (one tile).
 const OUTLINE_WIDTH = TILE_SIZE;
 

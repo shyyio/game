@@ -19,7 +19,7 @@ const ICON_PADDING = 7;
 const LABEL_GAP = 0;
 const LABEL_SIZE = 15;
 // Number-key hotkeys cover the first this-many mod tools (keys 1-9).
-const TOOL_SHORTCUT_COUNT = 9;
+export const TOOL_SHORTCUT_COUNT = 9;
 // Reserved height for the label under each slot (up to 2 wrapped lines), so cells align regardless of text.
 const LABEL_HEIGHT = 34;
 const CELL_GAP = 12;

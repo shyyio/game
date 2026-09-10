@@ -4,8 +4,8 @@ import {PANEL_TINT, PROGRESS_BAR_TINT, PROGRESS_TEXT_COLOR, PROGRESS_TEXT_STROKE
 import {nineSlice} from "@/client/layers/pixiUtils.js";
 import {slotFrameSprite} from "@/client/hud/slotFrame.js";
 import {BUTTON_HEIGHT} from "@/client/hud/UiScale.js";
+import {PANEL_TEXT_SIZE} from "@/client/hud/PanelText.js";
 
-const TEXT_SIZE = 15;
 const TEXT_STROKE_WIDTH = 1;
 // 9-slice inset (atlas px) for the fill blocks (keeps their end caps fixed).
 const BARFILL_INSET = 10;
@@ -29,11 +29,7 @@ export class InspectProgressBar extends Container {
      * @param {number} width
      * @param {number} total - the machine's processing ticks (0 = instant, drawn as a bare frame)
      */
-    constructor(
-        textureCache,
-        width,
-        total,
-    ) {
+    constructor(textureCache, width, total) {
         super();
         // total+1 steps: idle shows 0, just-started shows 1, each elapsed tick adds one, done fills all.
         this._steps = total + 1;
@@ -61,7 +57,7 @@ export class InspectProgressBar extends Container {
                 text: "",
                 style: {
                     fontFamily: GAME_FONT,
-                    fontSize: TEXT_SIZE,
+                    fontSize: PANEL_TEXT_SIZE,
                     fill: PROGRESS_TEXT_COLOR,
                     fontWeight: "bold",
                     stroke: {color: PROGRESS_TEXT_STROKE, width: TEXT_STROKE_WIDTH},

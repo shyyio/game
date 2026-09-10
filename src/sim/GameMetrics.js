@@ -177,7 +177,7 @@ export class GameMetrics {
      */
     push() {
         const toTick = this._simEngine.clock;
-        // signature -> {metricsType, scope, playerRef, bucketTick, tier, recipients}
+        /** @type {Map<string, {metricsType: number, scope: number, playerRef: number, bucketTick: number, tier: number, recipients: number[]}>} */
         const groups = new Map();
         for (const [sessionRef, subs] of this._subscriptions) {
             for (const sub of subs.values()) {

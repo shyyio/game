@@ -25,14 +25,24 @@ export class PlacedObjects extends AbstractSystem {
         this.engine = engine;
         this.objects = engine.components.register(new PlacedObjectComponent());
 
-        // objectTypeId -> ObjectType, derived types only.
+        /**
+         * Derived types only.
+         * @type {Map<number, ObjectType>}
+         */
         this._types = new Map();
-        // objectTypeId -> behavior, a dense array over the positional objectTypeIds: the tick loops resolve a
-        // behavior per entity per tick, so this stays off a Map lookup.
+        /**
+         * Dense over the positional objectTypeIds: the tick loops resolve a behavior per entity per tick, so this stays off a Map lookup.
+         * @type {AbstractBehavior[]}
+         */
         this._behaviors = [];
+        /**
+         * @type {Map<number, number>}
+         */
         this._eidByObjectRef = new Map();
-        // Chunk -> the eids placed in it, so a subscribing session syncs a chunk without a scan of
-        // every placed object in the world.
+        /**
+         * So a subscribing session syncs a chunk without a scan of every placed object.
+         * @type {Map<number, Set<number>>}
+         */
         this._eidsByChunk = new Map();
         // Before the behaviors install, so a chunk syncs its objects before what references them.
         engine.registerSystem(this);

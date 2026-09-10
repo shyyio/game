@@ -304,7 +304,7 @@ export class ProductionLogPanelLayer extends Container {
      * @returns {void}
      */
     _buildCategoryHeader(stack, category, counts) {
-        const itemTypeIds = Object.keys(category.items).map(Number);
+        const itemTypeIds = Object.keys(category.items).map(key => Number(key));
         const discovered = itemTypeIds.filter((itemTypeId) => counts.has(itemTypeId)).length;
         const caption = panelText(`${discovered}/${itemTypeIds.length}`, TextRole.CAPTION);
         const header = stack.headerRow(category.name, (row) => {

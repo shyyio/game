@@ -16,7 +16,7 @@ const SECTION_PADDING_LEFT = 6;
 const DEFAULT_VISIBLE_ROWS = 5;
 // Mobile screens are shorter, so a section's viewport shows fewer rows before scrolling.
 const DEFAULT_VISIBLE_ROWS_MOBILE = 3;
-const SWATCH_SIZE = 14;
+export const SWATCH_SIZE = 14;
 const SWATCH_RADIUS = 3;
 const SWATCH_GAP = 8;
 const SELECTED_RADIUS = 4;
@@ -348,10 +348,7 @@ export class ScrollSectionHandle {
      * @param {ScrollView} scrollView
      * @param {function(Container, Array): number} buildRows fills a container, returns its height
      */
-    constructor(
-        scrollView,
-        buildRows,
-    ) {
+    constructor(scrollView, buildRows) {
         this._scrollView = scrollView;
         this._buildRows = buildRows;
         this._rows = null;

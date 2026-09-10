@@ -14,7 +14,7 @@ export const PANEL_SCREEN_MARGIN = 12;
 const KEYBOARD_CLEAR_FRACTION = 1 / 3;
 // Gap between the outer frame and the inset body, so the outer border shows around it.
 const BODY_MARGIN = 8;
-const TITLE_FONT_SIZE = 18;
+export const PANEL_TITLE_FONT_SIZE = 18;
 // Close button icon shrinks to this fraction of its size while pressed.
 const CLOSE_PRESS_SCALE = 0.9;
 
@@ -527,7 +527,7 @@ export class UIPanel extends Container {
 
         const title = new Text({
             text: this._title,
-            style: {fontFamily: GAME_FONT, fontSize: TITLE_FONT_SIZE, fill: this._titleColor, fontWeight: "bold"},
+            style: {fontFamily: GAME_FONT, fontSize: PANEL_TITLE_FONT_SIZE, fill: this._titleColor, fontWeight: "bold"},
         });
         this._titleText = title;
         title.x = PADDING;

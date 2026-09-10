@@ -201,7 +201,10 @@ export class LaneIndex extends AbstractSystem {
             engine.space.registerLayer(laneLevel.verticalLayer);
         }
 
-        // chunk -> its lanes, so the client feed and chunk sync skip the rest of the world.
+        /**
+         * So the client feed and chunk sync skip the rest of the world.
+         * @type {Map<number, Set<number>>}
+         */
         this._lanesByChunk = new Map();
         // This pass's client rows, one batch per chunk.
         this._batches = new Map();

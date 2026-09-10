@@ -1,5 +1,5 @@
 import {BufferImageSource, Sprite, Texture} from "pixi.js";
-import {TILE_SIZE} from "@/client/constants.js";
+import {CHUNK_PX, TILE_SIZE} from "@/client/constants.js";
 import {CHUNK_SIZE, REGION_SIZE} from "@/common/constants.js";
 import {chunkOrigin} from "@/common/util.js";
 import {BLEND_LEVELS, BLEND_WEIGHT_SCALE, OVERWORLD_CELLS_PER_AXIS} from "@/common/Terrain.js";
@@ -40,7 +40,6 @@ export function blendLevelCount() {
     return blendLevels;
 }
 
-const CHUNK_PX = CHUNK_SIZE * TILE_SIZE;
 const REGION_PX = REGION_SIZE * CHUNK_PX;
 const REGION_HALF_PX = REGION_PX / 2;
 // Ground color while the terrain is off.

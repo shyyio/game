@@ -48,7 +48,10 @@ export class PipeFluidDrawLayer extends AbstractChunkedDrawLayer {
          * @type {Map<number, PipeFill>}
          */
         this._fills = new Map();
-        // Chunk -> the fills in it, for map-mode geometry.
+        /**
+         * For map-mode geometry.
+         * @type {Map<number, Set<number>>}
+         */
         this._fillsByChunk = new Map();
     }
 

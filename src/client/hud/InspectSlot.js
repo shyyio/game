@@ -19,11 +19,7 @@ export class InspectSlot extends Container {
      * @param {ItemRegistry} items
      * @param {SlotTooltip} tooltip - raised while the pointer rests on this slot
      */
-    constructor(
-        textureCache,
-        items,
-        tooltip,
-    ) {
+    constructor(textureCache, items, tooltip) {
         super();
         this._textureCache = textureCache;
         this._items = items;

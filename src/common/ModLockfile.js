@@ -21,12 +21,7 @@ export class ModLockEntry {
      * @param {string} version
      * @param {Map<string, string>} integrity package file name -> "sha256-..."
      */
-    constructor(
-        url,
-        name,
-        version,
-        integrity,
-    ) {
+    constructor(url, name, version, integrity) {
         this.url = url;
         this.name = name;
         this.version = version;

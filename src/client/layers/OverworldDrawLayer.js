@@ -1,11 +1,10 @@
 import {Graphics} from "pixi.js";
 import {AbstractDrawLayer} from "@/client/layers/AbstractDrawLayer.js";
-import {TILE_SIZE, ViewMode} from "@/client/constants.js";
+import {CHUNK_PX, TILE_SIZE, ViewMode} from "@/client/constants.js";
 import {CHUNK_SIZE, REGION_SIZE} from "@/common/constants.js";
 import {chunkOrigin, chunkPosition} from "@/common/util.js";
 import {MAP_TILE_COLOR} from "@/client/Theme.js";
 
-const CHUNK_PX = CHUNK_SIZE * TILE_SIZE;
 const REGION_HALF_PX = (REGION_SIZE / 2) * CHUNK_PX;
 
 /**

@@ -1,12 +1,10 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
-import {barToolCapacity, toolShortcut} from "@/client/hud/ToolbarLayer.js";
+import {barToolCapacity, toolShortcut, TOOL_SHORTCUT_COUNT} from "@/client/hud/ToolbarLayer.js";
 
 // The layer itself needs a renderer, but its layout math does not.
 const MIN_BAR_TOOLS = 4;
 const MAX_BAR_TOOLS_DESKTOP = 10;
-const TOOL_SHORTCUT_COUNT = 9;
-
 const NARROW_SCREEN = 320;
 const WIDE_SCREEN = 4000;
 const MOBILE = true;

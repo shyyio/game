@@ -28,7 +28,10 @@ export class PortItemSync {
         this._rendered = new Uint8Array(portCapacity);
         this._x = new Int32Array(portCapacity);
         this._y = new Int32Array(portCapacity);
-        // chunk -> Set of rendered port eids, so chunk sync walks only the chunk's ports.
+        /**
+         * Rendered port eids, so chunk sync walks only the chunk's ports.
+         * @type {Map<number, Set<number>>}
+         */
         this._byChunk = new Map();
         // Ports written since the last diff, and a per-eid flag so a port enters the list once. The
         // diff walks this.

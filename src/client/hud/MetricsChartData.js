@@ -111,12 +111,7 @@ export class SeriesRate {
      * @param {number} tag
      * @param {number} ratePerTick
      */
-    constructor(
-        key,
-        category,
-        tag,
-        ratePerTick,
-    ) {
+    constructor(key, category, tag, ratePerTick) {
         this.key = key;
         this.category = category;
         this.tag = tag;

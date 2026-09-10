@@ -15,11 +15,7 @@ export class NoteTool extends AbstractTool {
      * @param {NotesDrawLayer} notesLayer
      * @param {NoteGhostLayer} ghostLayer
      */
-    constructor(
-        client,
-        notesLayer,
-        ghostLayer,
-    ) {
+    constructor(client, notesLayer, ghostLayer) {
         super(client.session);
         this._client = client;
         this._cache = client.cache;

@@ -254,10 +254,7 @@ class Badge extends Graphics {
      * @param {GraphicsContext} context
      * @param {string} stateKey
      */
-    constructor(
-        context,
-        stateKey,
-    ) {
+    constructor(context, stateKey) {
         super(context);
         this.stateKey = stateKey;
     }

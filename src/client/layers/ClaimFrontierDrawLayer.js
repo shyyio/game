@@ -1,11 +1,9 @@
 import {Graphics} from "pixi.js";
 import {AbstractDrawLayer} from "@/client/layers/AbstractDrawLayer.js";
-import {TILE_SIZE, ViewMode} from "@/client/constants.js";
-import {CHUNK_SIZE, PLAYER_REF_NONE} from "@/common/constants.js";
+import {CHUNK_PX, TILE_SIZE, ViewMode} from "@/client/constants.js";
+import {PLAYER_REF_NONE} from "@/common/constants.js";
 import {chunkNeighbors, chunkOrigin} from "@/common/util.js";
 import {claimColor} from "@/client/Theme.js";
-
-const CHUNK_PX = CHUNK_SIZE * TILE_SIZE;
 
 // Dashed frontier outline (map zoom) and tint fill (overworld zoom), in the own-claim color.
 const DASH_WIDTH = TILE_SIZE / 2;

@@ -39,11 +39,7 @@ export class ScrollView extends Container {
      * @param {number} width
      * @param {number} height - the visible viewport height; content beyond this scrolls
      */
-    constructor(
-        textureCache,
-        width,
-        height,
-    ) {
+    constructor(textureCache, width, height) {
         super();
         this._height = height;
         this._contentHeight = 0;

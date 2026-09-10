@@ -34,7 +34,10 @@ export class GameServer extends AbstractHttpServer {
         this._origin = origin;
         this._name = name;
         this._startedAtMs = Date.now();
-        // playerRef -> WebSocketSession, to kick a superseded login.
+        /**
+         * To kick a superseded login.
+         * @type {Map<number, WebSocketSession>}
+         */
         this._sessionsByPlayer = new Map();
 
         this.app.get("/status", (res, req) => {

@@ -2,13 +2,13 @@ import {
     AbstractTooltipLayer,
     GAME_FONT,
     PANEL_BORDER,
+    PANEL_TEXT_SIZE,
     PANEL_TINT_TEXT,
     Text,
     TOOLTIP_PADDING,
 } from "@spup/sdk/client";
 import {noteAnchor} from "./layout.js";
 
-const TEXT_SIZE = 15;
 const WRAP_WIDTH = 240;
 // Clearance from the hovered pin.
 const PIN_CLEARANCE_X = 14;
@@ -24,11 +24,7 @@ export class NoteTooltipLayer extends AbstractTooltipLayer {
      * @param {ClientCache} cache the hovered note and the open editor
      * @param {boolean} showAuthor false in solo play, where every note is the reader's own
      */
-    constructor(
-        app,
-        cache,
-        showAuthor,
-    ) {
+    constructor(app, cache, showAuthor) {
         super(app);
         this._cache = cache;
         this._showAuthor = showAuthor;
@@ -37,14 +33,14 @@ export class NoteTooltipLayer extends AbstractTooltipLayer {
 
         this._text = new Text({
             text: "",
-            style: {fontFamily: GAME_FONT, fontSize: TEXT_SIZE, fill: PANEL_TINT_TEXT, wordWrap: true, wordWrapWidth: WRAP_WIDTH},
+            style: {fontFamily: GAME_FONT, fontSize: PANEL_TEXT_SIZE, fill: PANEL_TINT_TEXT, wordWrap: true, wordWrapWidth: WRAP_WIDTH},
         });
         this._text.x = TOOLTIP_PADDING;
         this._text.y = TOOLTIP_PADDING;
         this.addChild(this._text);
         this._author = new Text({
             text: "",
-            style: {fontFamily: GAME_FONT, fontSize: TEXT_SIZE, fill: PANEL_BORDER, fontStyle: "italic"},
+            style: {fontFamily: GAME_FONT, fontSize: PANEL_TEXT_SIZE, fill: PANEL_BORDER, fontStyle: "italic"},
         });
         this._author.x = TOOLTIP_PADDING;
         this.addChild(this._author);

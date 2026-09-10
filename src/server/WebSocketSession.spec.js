@@ -1,8 +1,7 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
 import {WebSocketSession} from "@/server/WebSocketSession.js";
-
-const SEND_OK = 1;
+import {SEND_OK} from "@/server/OutboundQueue.js";
 
 class FakeWs {
 

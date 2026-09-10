@@ -209,12 +209,7 @@ export class AnimatedTile {
      * @param {number} quarterTurns - clockwise 90-degree turns
      * @param {number} sequence - frame table slot
      */
-    constructor(
-        tileX,
-        tileY,
-        quarterTurns,
-        sequence,
-    ) {
+    constructor(tileX, tileY, quarterTurns, sequence) {
         this.tileX = tileX;
         this.tileY = tileY;
         this.quarterTurns = quarterTurns;

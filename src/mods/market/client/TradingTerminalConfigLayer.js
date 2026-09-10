@@ -20,12 +20,7 @@ export class TradingTerminalConfigLayer extends ConnectedPanelLayer {
      * @param {AbstractSession} session
      * @param {ItemRegistry} items
      */
-    constructor(
-        app,
-        cache,
-        session,
-        items,
-    ) {
+    constructor(app, cache, session, items) {
         super(app);
         this._cache = cache;
         this._session = session;

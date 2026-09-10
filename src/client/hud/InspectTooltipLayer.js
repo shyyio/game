@@ -20,11 +20,7 @@ export class InspectTooltipLayer extends AbstractTooltipLayer {
      * @param {ItemInspectLayer} itemInspectLayer - the locked item this labels
      * @param {ItemRegistry} items - names the locked item's type
      */
-    constructor(
-        app,
-        itemInspectLayer,
-        items,
-    ) {
+    constructor(app, itemInspectLayer, items) {
         super(app);
         this._inspect = itemInspectLayer;
         this._items = items;
