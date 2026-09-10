@@ -122,7 +122,7 @@ export class CursorSyncSimMod extends AbstractSimMod {
             this._cursorBySession.set(session.sessionRef, new CursorState(session.playerRef, chunkKey));
         } else {
             if (state.chunkKey !== chunkKey) {
-                this._publishCursorHide(state.playerRef, state.chunkKey, chunkKey, session.sessionRef, game);
+                this._publishPlayerCursorHide(state.playerRef, state.chunkKey, chunkKey, session.sessionRef, game);
             }
             state.chunkKey = chunkKey;
         }
@@ -196,7 +196,7 @@ export class CursorSyncSimMod extends AbstractSimMod {
             return;
         }
         this._cursorBySession.delete(sessionRef);
-        this._publishCursorHide(state.playerRef, state.chunkKey, null, sessionRef, game);
+        this._publishPlayerCursorHide(state.playerRef, state.chunkKey, null, sessionRef, game);
     }
 
     /**
@@ -208,7 +208,7 @@ export class CursorSyncSimMod extends AbstractSimMod {
      * @param {Game} game
      * @private
      */
-    _publishCursorHide(playerRef, fromChunk, toChunk, ownerSessionRef, game) {
+    _publishPlayerCursorHide(playerRef, fromChunk, toChunk, ownerSessionRef, game) {
         const losing = game.bus.findSubscribersByChunkKey(fromChunk);
         if (losing === undefined) {
             return;

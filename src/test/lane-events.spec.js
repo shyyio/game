@@ -4,11 +4,11 @@ import {Direction, CHUNK_SIZE} from "@/common/constants.js";
 import {chunkKeyAt} from "@/common/util.js";
 import {PortItemSetEvent, PortItemClearEvent} from "@/common/PortItemEvents.js";
 import {
-    LaneGeometryEvent,
+    LaneCreatedEvent,
     LaneItemUpsertEvent,
     LaneItemSyncEvent,
     LaneItemDeleteEvent,
-    LaneItemResetEvent,
+    LaneDeletedEvent,
     LaneItemBatchEvent,
 } from "@/common/LaneEvents.js";
 import {ModPackage} from "@/common/ModPackage.js";
@@ -149,7 +149,7 @@ test("a downstream extension emits geometry before item rows and clears the old 
     placeLane(engine, 0, 2, Direction.UP);
     const events = collector.drain();
 
-    const geometryAt = events.findIndex(event => event instanceof LaneGeometryEvent);
+    const geometryAt = events.findIndex(event => event instanceof LaneCreatedEvent);
     // Re-synced items snap rather than glide: the edit did not move them.
     const firstRowAt = events.findIndex(event => event instanceof LaneItemSyncEvent);
     assert.ok(geometryAt >= 0 && firstRowAt >= 0, "both a geometry event and item rows are emitted");
@@ -199,12 +199,12 @@ test("a rebuild's reset for a replaced lane precedes the geometry that reuses it
     placeLane(engine, 0, 1, Direction.UP);
     const events = collector.drain();
 
-    const resets = events.filter(event => event instanceof LaneItemResetEvent);
+    const resets = events.filter(event => event instanceof LaneDeletedEvent);
     assert.ok(resets.length > 0, "the replaced lane is reset");
     for (const reset of resets) {
         const resetAt = events.indexOf(reset);
         const geometryAt = events.findIndex(event =>
-            event instanceof LaneGeometryEvent && event.laneRef === reset.laneRef);
+            event instanceof LaneCreatedEvent && event.laneRef === reset.laneRef);
         assert.ok(geometryAt === -1 || geometryAt > resetAt, `the reset of lane ${reset.laneRef} precedes its new geometry`);
     }
 });

@@ -120,7 +120,7 @@ export class Client {
         this.cache.register("metrics", METRICS_SCHEMA, new MetricsWriter(this.cache), new MetricsView());
         this.cache.register("clock", CLOCK_SCHEMA, new ClockWriter(this.cache), new ClockView());
         // The open-menu set rides to the sim as the inspect subscription, whoever changes it.
-        this.cache.subscribe("inspect.openObjects", () => this._sendInspectedObjects());
+        this.cache.subscribe("inspect.openObjects", () => this._sendSetInspectedObjects());
     }
 
     /**
@@ -369,7 +369,7 @@ export class Client {
         this.cache.writer("inspect").close(objectRef);
     }
 
-    _sendInspectedObjects() {
+    _sendSetInspectedObjects() {
         this.sendMessage(new SetInspectedObjectsMessage(this.cache.view("inspect").openIds()));
     }
 

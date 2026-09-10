@@ -86,7 +86,7 @@ export class WorkerNetworks extends AbstractSystem {
         const next = this.allocation.run(seeds, affected);
         const previous = this.assignments.getAssignmentsByComponents(affected);
         this._applyGrants(previous, next);
-        this._emitDeltas(previous, next);
+        this._emitWorkerAssignments(previous, next);
         for (const objectRef of previous.keys()) {
             this.assignments.removeAssignment(objectRef);
         }
@@ -139,7 +139,7 @@ export class WorkerNetworks extends AbstractSystem {
      * @param {Map<number, WorkerAssignment>} next
      * @returns {void}
      */
-    _emitDeltas(previous, next) {
+    _emitWorkerAssignments(previous, next) {
         for (const [objectRef, assignment] of next) {
             const before = previous.get(objectRef);
             if (before !== undefined

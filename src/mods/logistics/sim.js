@@ -79,7 +79,7 @@ export class LogisticsSimMod extends AbstractSimMod {
             return true;
         }
         if (message instanceof LogicSnapshotRequestMessage) {
-            this._sendLogicSnapshot(message, session, game);
+            this._publishLogicSnapshot(message, session, game);
             return true;
         }
         if (message instanceof ConfigureLogicRulesMessage) {
@@ -342,7 +342,7 @@ export class LogisticsSimMod extends AbstractSimMod {
      * @param {Game} game
      * @private
      */
-    _sendLogicSnapshot(message, session, game) {
+    _publishLogicSnapshot(message, session, game) {
         const engine = game.simEngine;
         const eid = engine.placed.findEidByObjectRef(message.objectRef);
         if (eid === undefined) {

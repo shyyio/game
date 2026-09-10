@@ -6,9 +6,10 @@ import {AbstractBatchEvent} from "@/common/AbstractBatchEvent.js";
 // lane's length and the gaps ahead of it, so the geometry always precedes the rows.
 
 /**
- * A lane's shape: the cells it covers, head first, and the port past its tail.
+ * A lane was built: the cells it covers, head first, and the port past its tail. A lane is never
+ * edited in place, so a rebuild deletes the old one and creates the new.
  */
-export class LaneGeometryEvent extends AbstractChunkRoutedEvent {
+export class LaneCreatedEvent extends AbstractChunkRoutedEvent {
 
     static wireFields = {
         laneRef: "int64",
@@ -38,7 +39,7 @@ export class LaneGeometryEvent extends AbstractChunkRoutedEvent {
  * Every lane in one chunk, for a subscribing session: `cellCounts[i]` cells of lane `laneRefs[i]`,
  * taken in order from the flat `cellObjectRefs`.
  */
-export class LaneGeometryBatchEvent extends AbstractBatchEvent {
+export class LaneSyncBatchEvent extends AbstractBatchEvent {
 
     static wireFields = {
         laneRefs: "int64[]",
@@ -81,7 +82,7 @@ export class LaneGeometryBatchEvent extends AbstractBatchEvent {
     }
 
     /**
-     * @returns {LaneGeometryEvent[]}
+     * @returns {LaneCreatedEvent[]}
      */
     explode() {
         const events = [];
@@ -90,7 +91,7 @@ export class LaneGeometryBatchEvent extends AbstractBatchEvent {
             const cells = this.cellObjectRefs.slice(read, read + this.cellCounts[i]);
             const edges = this.cellParentEdges.slice(read, read + this.cellCounts[i]);
             read += this.cellCounts[i];
-            events.push(new LaneGeometryEvent(this.x, this.y, this.laneRefs[i], cells, edges, this.outputPortRefs[i]));
+            events.push(new LaneCreatedEvent(this.x, this.y, this.laneRefs[i], cells, edges, this.outputPortRefs[i]));
         }
         return events;
     }
@@ -178,9 +179,9 @@ export class LaneItemDeleteEvent extends AbstractChunkRoutedEvent {
 }
 
 /**
- * A lane is gone: drop every sprite drawn against it.
+ * A lane was destroyed: every item drawn against it goes with it.
  */
-export class LaneItemResetEvent extends AbstractChunkRoutedEvent {
+export class LaneDeletedEvent extends AbstractChunkRoutedEvent {
 
     static wireFields = {
         laneRef: "int64",
@@ -198,7 +199,8 @@ export class LaneItemResetEvent extends AbstractChunkRoutedEvent {
 }
 
 /**
- * One chunk's item rows for one pass, in parallel columns: upserts glide, syncs snap, deletes drop.
+ * One chunk's item rows for one pass, in parallel columns: upserts glide, syncs snap, deletes and
+ * deleted lanes remove.
  */
 export class LaneItemBatchEvent extends AbstractBatchEvent {
 
@@ -213,7 +215,7 @@ export class LaneItemBatchEvent extends AbstractBatchEvent {
         syncItemTypeIds: "int32[]",
         deleteLaneRefs: "int64[]",
         deleteItemRefs: "int32[]",
-        resetLaneRefs: "int64[]",
+        deletedLaneRefs: "int64[]",
     };
 
     /**
@@ -232,7 +234,7 @@ export class LaneItemBatchEvent extends AbstractBatchEvent {
         this.syncItemTypeIds = [];
         this.deleteLaneRefs = [];
         this.deleteItemRefs = [];
-        this.resetLaneRefs = [];
+        this.deletedLaneRefs = [];
     }
 
     /**
@@ -277,8 +279,8 @@ export class LaneItemBatchEvent extends AbstractBatchEvent {
      * @param {number} laneRef
      * @returns {void}
      */
-    addReset(laneRef) {
-        this.resetLaneRefs.push(laneRef);
+    addLaneDeleted(laneRef) {
+        this.deletedLaneRefs.push(laneRef);
     }
 
     /**
@@ -286,17 +288,17 @@ export class LaneItemBatchEvent extends AbstractBatchEvent {
      */
     get isEmpty() {
         return this.upsertLaneRefs.length === 0 && this.syncLaneRefs.length === 0
-            && this.deleteLaneRefs.length === 0 && this.resetLaneRefs.length === 0;
+            && this.deleteLaneRefs.length === 0 && this.deletedLaneRefs.length === 0;
     }
 
     /**
-     * Resets first, then deletes, so a row re-added in the same pass survives.
+     * Deleted lanes first, then deleted items, so a row re-added in the same pass survives.
      * @returns {AbstractChunkRoutedEvent[]}
      */
     explode() {
         const events = [];
-        for (const laneRef of this.resetLaneRefs) {
-            events.push(new LaneItemResetEvent(this.x, this.y, laneRef));
+        for (const laneRef of this.deletedLaneRefs) {
+            events.push(new LaneDeletedEvent(this.x, this.y, laneRef));
         }
         for (let i = 0; i < this.deleteLaneRefs.length; i += 1) {
             events.push(new LaneItemDeleteEvent(this.x, this.y, this.deleteLaneRefs[i], this.deleteItemRefs[i]));

@@ -369,8 +369,8 @@ export class GameEngine {
             system.postResolve();
         }
         this.transfers.fillDestinations();
-        this.render.emit();
-        this.sync.emit();
+        this.render.emitPortItemBatch();
+        this.sync.emitObjectFieldsBatch();
     }
 
     /**

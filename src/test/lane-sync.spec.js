@@ -7,7 +7,7 @@ import {ClaimChunkMessage} from "@/common/ClaimMessages.js";
 import {ChunkSyncEvent} from "@/common/CoreEvents.js";
 import {PortItemSetEvent, PortItemBatchEvent} from "@/common/PortItemEvents.js";
 import {ObjectSyncEvent} from "@/common/ObjectEvents.js";
-import {LaneGeometryEvent, LaneItemSyncEvent} from "@/common/LaneEvents.js";
+import {LaneCreatedEvent, LaneItemSyncEvent} from "@/common/LaneEvents.js";
 import {ModPackage} from "@/common/ModPackage.js";
 import {Game} from "@/sim/Game.js";
 import {GameEngine} from "@/sim/GameEngine.js";
@@ -66,7 +66,7 @@ test("a session subscribing to a chunk receives its lanes, items and resting por
     const cells = synced.filter(event => event instanceof ObjectSyncEvent && event.objectTypeId === TestLaneType.objectTypeId);
     assert.equal(cells.length, CELLS.length, "one ObjectSyncEvent per placed cell");
 
-    const geometry = synced.filter(event => event instanceof LaneGeometryEvent);
+    const geometry = synced.filter(event => event instanceof LaneCreatedEvent);
     assert.equal(geometry.length, 1, "the lane's geometry is synced");
     assert.equal(geometry[0].laneRef, lane);
 
@@ -125,7 +125,7 @@ test("lane events reach only the sessions watching the chunk", async () => {
     );
     assert.equal(portItems(bystander.events).length, 0, "the bystander gets no lane render events");
     assert.equal(
-        bystander.events.filter(event => event instanceof LaneGeometryEvent).length,
+        bystander.events.filter(event => event instanceof LaneCreatedEvent).length,
         0,
         "and no lane geometry",
     );

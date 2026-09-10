@@ -62,7 +62,7 @@ export class SessionViews {
      * @param {OverworldRequestMessage} message
      * @returns {void}
      */
-    sendOverworldSnapshot(session, message) {
+    publishOverworldSnapshot(session, message) {
         const snapshot = this.game.simEngine.overworldBake.getSnapshotInRect(
             message.chunkX,
             message.chunkY,

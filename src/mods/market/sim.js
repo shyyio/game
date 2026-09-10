@@ -55,7 +55,7 @@ export class MarketSimMod extends AbstractSimMod {
             return true;
         }
         if (message instanceof MarketSnapshotRequestMessage) {
-            this._sendSnapshot(message, session, game);
+            this._publishMarketSnapshot(message, session, game);
             return true;
         }
         return false;
@@ -128,7 +128,7 @@ export class MarketSimMod extends AbstractSimMod {
      * @private
      * @returns {void}
      */
-    _sendSnapshot(message, session, game) {
+    _publishMarketSnapshot(message, session, game) {
         const engine = game.simEngine;
         const book = engine.resolve(MarketBook);
         const itemTypeIds = [];

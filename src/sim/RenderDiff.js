@@ -219,7 +219,7 @@ export class RenderDiff {
      * (item left) event.
      * @returns {void}
      */
-    emit() {
+    emitPortItemBatch() {
         // One batch per chunk, flushed at the end of the pass so the pass stays ordered against
         // everything emitted outside it.
         const batches = new Map();

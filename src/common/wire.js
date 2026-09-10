@@ -4,8 +4,8 @@ import {SetViewportMessage, SetInspectedObjectsMessage, DeleteObjectMessage, Cre
 import {OverworldSnapshotEvent} from "@/common/OverworldEvents.js";
 import {PortItemSetEvent, PortItemClearEvent, PortItemBatchEvent} from "@/common/PortItemEvents.js";
 import {
-    LaneGeometryEvent, LaneGeometryBatchEvent, LaneItemUpsertEvent, LaneItemSyncEvent,
-    LaneItemDeleteEvent, LaneItemResetEvent, LaneItemBatchEvent,
+    LaneCreatedEvent, LaneSyncBatchEvent, LaneItemUpsertEvent, LaneItemSyncEvent,
+    LaneItemDeleteEvent, LaneDeletedEvent, LaneItemBatchEvent,
 } from "@/common/LaneEvents.js";
 import {PlayerSettingsSyncEvent, PlayerSettingsUpdateEvent} from "@/common/PlayerSettingsEvents.js";
 import {GameSettingsSyncEvent, GameSettingsUpdateEvent} from "@/common/GameSettingsEvents.js";
@@ -86,12 +86,12 @@ const CORE_WIRE_CLASSES = [
     TickEndEvent,
     ObjectFieldsEvent,
     ObjectFieldsBatchEvent,
-    LaneGeometryEvent,
-    LaneGeometryBatchEvent,
+    LaneCreatedEvent,
+    LaneSyncBatchEvent,
     LaneItemUpsertEvent,
     LaneItemSyncEvent,
     LaneItemDeleteEvent,
-    LaneItemResetEvent,
+    LaneDeletedEvent,
     LaneItemBatchEvent,
 ];
 

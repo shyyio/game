@@ -198,7 +198,7 @@ export class GameMetrics {
             }
         }
         for (const group of groups.values()) {
-            this._publishBucket(
+            this._publishMetricsRollupBucket(
                 group.recipients, group.metricsType, group.scope, group.playerRef,
                 group.bucketTick, toTick, group.tier,
             );
@@ -226,7 +226,7 @@ export class GameMetrics {
      * @private
      */
     _handleRollupRequest(session, message) {
-        this._publishRollup(
+        this._publishMetricsRollup(
             [session.sessionRef], message.metricsType, message.scope, this._getPlayerRefByScope(message.scope, session.sessionRef),
             message.fromTick, message.toTick, message.tier,
         );
@@ -254,7 +254,7 @@ export class GameMetrics {
 
         const toTick = this._simEngine.clock;
         const fromTick = Math.max(0, toTick - message.windowTicks);
-        this._publishRollup(
+        this._publishMetricsRollup(
             [session.sessionRef], message.metricsType, message.scope, this._getPlayerRefByScope(message.scope, session.sessionRef),
             fromTick, toTick, message.tier,
             () => {
@@ -325,7 +325,7 @@ export class GameMetrics {
      * @param {function(): boolean} [isStillValid] - checked after the query resolves; skips publishing if false
      * @private
      */
-    _publishRollup(sessionRefs, metricsType, scope, playerRef, fromTick, toTick, tier, isStillValid) {
+    _publishMetricsRollup(sessionRefs, metricsType, scope, playerRef, fromTick, toTick, tier, isStillValid) {
         this._queryRollup(metricsType, playerRef, fromTick, toTick, tier).then(rows => {
             if (isStillValid !== undefined && !isStillValid()) {
                 return;
@@ -354,7 +354,7 @@ export class GameMetrics {
      * @param {number} tier
      * @private
      */
-    _publishBucket(recipients, metricsType, scope, playerRef, bucketTick, eventToTick, tier) {
+    _publishMetricsRollupBucket(recipients, metricsType, scope, playerRef, bucketTick, eventToTick, tier) {
         this._queryRollup(metricsType, playerRef, bucketTick, bucketTick + tier - 1, tier).then(rows => {
             const filteredRows = this._filterGlobalRows(metricsType, scope, rows);
             const category = filteredRows.map(row => row.category);

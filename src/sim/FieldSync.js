@@ -180,7 +180,7 @@ export class FieldSync {
      * subscriber gets the state through chunk sync.
      * @returns {void}
      */
-    emit() {
+    emitObjectFieldsBatch() {
         const position = this.engine.Position;
         const placed = this.engine.placed;
         for (const set of this._sets.values()) {

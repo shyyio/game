@@ -61,7 +61,7 @@ export class ClaimAdmin {
         const record = this.game.players.getPlayerByRef(session.playerRef);
         const result = this.game.claims.claim(session.playerRef, chunkKey, record.maxChunks);
         if (result === ClaimResult.CLAIM_RESULT_OK) {
-            this._publishUpdate(session, chunkKey, session.playerRef, this.game.claims.getPermissionByChunkKey(chunkKey));
+            this._publishChunkClaimUpdate(session, chunkKey, session.playerRef, this.game.claims.getPermissionByChunkKey(chunkKey));
         }
         this.game.bus.publishTo(session.sessionRef, new ClaimResultEvent(chunkKey, result));
     }
@@ -77,7 +77,7 @@ export class ClaimAdmin {
     setPermission(session, chunkKey, permission) {
         const result = this.game.claims.setPermission(session.playerRef, chunkKey, permission);
         if (result === ClaimResult.CLAIM_RESULT_OK) {
-            this._publishUpdate(session, chunkKey, session.playerRef, permission);
+            this._publishChunkClaimUpdate(session, chunkKey, session.playerRef, permission);
         }
     }
 
@@ -106,7 +106,7 @@ export class ClaimAdmin {
             for (const objectRef of solidIds) {
                 this.game.simEngine.applyMessage(new DeleteObjectMessage(objectRef), PLAYER_REF_NONE);
             }
-            this._publishUpdate(session, chunkKey, PLAYER_REF_NONE, ChunkPermission.PERMISSION_FRIENDS);
+            this._publishChunkClaimUpdate(session, chunkKey, PLAYER_REF_NONE, ChunkPermission.PERMISSION_FRIENDS);
         }
         this.game.bus.publishTo(session.sessionRef, new ClaimResultEvent(chunkKey, result));
     }
@@ -122,7 +122,7 @@ export class ClaimAdmin {
      * @param {number} permission - the chunk's ChunkPermission; meaningless for an unclaim
      * @returns {void}
      */
-    _publishUpdate(session, chunkKey, owner, permission) {
+    _publishChunkClaimUpdate(session, chunkKey, owner, permission) {
         const event = new ChunkClaimUpdateEvent(chunkKey, owner, permission);
         const subscribers = this.game.bus.findSubscribersByChunkKey(chunkKey);
         if (subscribers !== undefined) {

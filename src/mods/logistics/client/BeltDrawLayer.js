@@ -5,7 +5,7 @@ import {
     TILE_SIZE,
     Direction,
     AbstractTileMeshDrawLayer,
-    LaneGeometryEvent,
+    LaneCreatedEvent,
 } from "@spup/sdk/client";
 import {chunkKeyAt, getOrCreate, removeFromGroup} from "@spup/sdk";
 import {
@@ -141,12 +141,12 @@ export class BeltDrawLayer extends AbstractTileMeshDrawLayer {
     }
 
     get eventClasses() {
-        return [LaneGeometryEvent];
+        return [LaneCreatedEvent];
     }
 
     /**
      * Records each cell's parent edge and re-bends the belts already drawn.
-     * @param {LaneGeometryEvent} event
+     * @param {LaneCreatedEvent} event
      * @returns {void}
      */
     onEvent(event) {

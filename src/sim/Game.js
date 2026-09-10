@@ -137,7 +137,7 @@ export class Game {
         this._coreMessageHandlers = new Map([
             [SetViewportMessage, (session, message) => this.sessionViews.setViewport(session, message.chunks)],
             [SetInspectedObjectsMessage, (session, message) => this.sessionViews.setInspects(session, message.objectRefs)],
-            [OverworldRequestMessage, (session, message) => this.sessionViews.sendOverworldSnapshot(session, message)],
+            [OverworldRequestMessage, (session, message) => this.sessionViews.publishOverworldSnapshot(session, message)],
             [ClaimChunkMessage, (session, message) => this.claimAdmin.claim(session, message.chunkKey)],
             [UnclaimChunkMessage, (session, message) => this.claimAdmin.unclaim(session, message.chunkKey, message.clear === 1)],
             [SetChunkPermissionMessage, (session, message) => this.claimAdmin.setPermission(session, message.chunkKey, message.permission)],

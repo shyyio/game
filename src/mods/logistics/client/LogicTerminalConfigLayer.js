@@ -238,7 +238,7 @@ export class LogicTerminalConfigLayer extends ConnectedPanelLayer {
      * @private
      * @returns {void}
      */
-    _sendRules() {
+    _sendConfigureLogicRules() {
         this._cache.writer("logistics").configureLogicRules(this._targetObjectRef(), this._rules);
     }
 
@@ -408,12 +408,12 @@ export class LogicTerminalConfigLayer extends ConnectedPanelLayer {
                 () => this._openDropdown(
                     this._devicesWithWriteKey(snapshot, rule.actionKey).map(held => new DropdownOption(held.label, () => {
                         rule.actionDeviceId = held.objectRef;
-                        this._sendRules();
+                        this._sendConfigureLogicRules();
                     })), target));
             row.pushLeft(target);
             row.pushRight(this._removeButton(() => {
                 this._rules.splice(index, 1);
-                this._sendRules();
+                this._sendConfigureLogicRules();
             }));
         });
         for (const [conditionIndex, condition] of rule.conditions.entries()) {
@@ -460,7 +460,7 @@ export class LogicTerminalConfigLayer extends ConnectedPanelLayer {
                     ACTIVE_ACCENT,
                     () => this._openDropdown(COMPARATOR_LABELS.map((label, value) => new DropdownOption(label, () => {
                         condition.comparator = value;
-                        this._sendRules();
+                        this._sendConfigureLogicRules();
                     })), comparator),
                 );
                 row.pushLeft(comparator);
@@ -468,7 +468,7 @@ export class LogicTerminalConfigLayer extends ConnectedPanelLayer {
             }
             row.pushRight(this._removeButton(() => {
                 rule.conditions.splice(conditionIndex, 1);
-                this._sendRules();
+                this._sendConfigureLogicRules();
             }));
         });
     }
@@ -520,7 +520,7 @@ export class LogicTerminalConfigLayer extends ConnectedPanelLayer {
             const containerButton = buildIconButton(this.textureCache, containerTexture, 0xffffff, ACTIVE_ACCENT,
                 () => this._openDropdown(containers.map(device => new DropdownOption(device.label, () => {
                     condition.deviceId = device.objectRef;
-                    this._sendRules();
+                    this._sendConfigureLogicRules();
                 })), containerButton));
             buttons.push(containerButton);
         }
@@ -528,7 +528,7 @@ export class LogicTerminalConfigLayer extends ConnectedPanelLayer {
         const itemButton = buildIconButton(this.textureCache, item.texture, item.tint, ACTIVE_ACCENT,
             () => this._openIconPicker(this._storableEntries(), condition.itemTypeId, (itemTypeId) => {
                 condition.itemTypeId = itemTypeId;
-                this._sendRules();
+                this._sendConfigureLogicRules();
             }, itemButton));
         buttons.push(itemButton);
         return buttons;
@@ -553,7 +553,7 @@ export class LogicTerminalConfigLayer extends ConnectedPanelLayer {
         const deviceButton = buildIconButton(this.textureCache, deviceTexture, 0xffffff, ACTIVE_ACCENT,
             () => this._openDropdown(devices.map(held => new DropdownOption(held.label, () => {
                 condition.deviceId = held.objectRef;
-                this._sendRules();
+                this._sendConfigureLogicRules();
             })), deviceButton));
         buttons.push(deviceButton);
         const entry = this._modRegistry.getLogicKeyEntryByKey(condition.key);
@@ -569,7 +569,7 @@ export class LogicTerminalConfigLayer extends ConnectedPanelLayer {
             () => this._openDropdown(entry.states.map(state => new DropdownOption(state.state, () => {
                 condition.comparator = LOGIC_COMPARATOR_EXACTLY;
                 condition.value = state.value;
-                this._sendRules();
+                this._sendConfigureLogicRules();
             })), stateButton));
         buttons.push(stateButton);
         return buttons;
@@ -592,7 +592,7 @@ export class LogicTerminalConfigLayer extends ConnectedPanelLayer {
                 return;
             }
             condition.value = parsed;
-            this._sendRules();
+            this._sendConfigureLogicRules();
         };
         input.onSubmit(commit);
         input.onBlur(commit);
@@ -636,7 +636,7 @@ export class LogicTerminalConfigLayer extends ConnectedPanelLayer {
         return this._modRegistry.getLogicKeyEntryByKey(key).states.map((state, stateIndex) =>
             new DropdownOption(state.verb, () => {
                 this._applySwitch(rule, device, key, stateIndex);
-                this._sendRules();
+                this._sendConfigureLogicRules();
             }));
     }
 
@@ -662,7 +662,7 @@ export class LogicTerminalConfigLayer extends ConnectedPanelLayer {
                     const appended = new LogicRule(device.objectRef, 0, 0, []);
                     this._applySwitch(appended, device, key, stateIndex);
                     this._rules.push(appended);
-                    this._sendRules();
+                    this._sendConfigureLogicRules();
                 }));
             }
         }
@@ -721,7 +721,7 @@ export class LogicTerminalConfigLayer extends ConnectedPanelLayer {
         const options = [];
         const append = (condition) => {
             rule.conditions.push(condition);
-            this._sendRules();
+            this._sendConfigureLogicRules();
         };
         const storables = this._storableItems();
         const containers = this._pickerDevices(snapshot).filter(device => this._isContainer(device));

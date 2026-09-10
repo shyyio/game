@@ -136,11 +136,11 @@ export {PortItemSetEvent, PortItemClearEvent} from "@/common/PortItemEvents.js";
 
 // The lane feed: a lane's shape whenever it is rebuilt, and the item rows riding it.
 export {
-    LaneGeometryEvent,
+    LaneCreatedEvent,
     LaneItemUpsertEvent,
     LaneItemSyncEvent,
     LaneItemDeleteEvent,
-    LaneItemResetEvent,
+    LaneDeletedEvent,
 } from "@/common/LaneEvents.js";
 
 // The joining session's own identity, and the friend list a mod may gate on.

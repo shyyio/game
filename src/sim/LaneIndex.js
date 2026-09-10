@@ -2,8 +2,8 @@ import {Direction, LAYER_SURFACE} from "@/common/constants.js";
 import {chunkKeyAt} from "@/common/util.js";
 import {portAt} from "@/common/portGeometry.js";
 import {
-    LaneGeometryEvent,
-    LaneGeometryBatchEvent,
+    LaneCreatedEvent,
+    LaneSyncBatchEvent,
     LaneItemBatchEvent,
 } from "@/common/LaneEvents.js";
 import {AbstractSystem} from "@/sim/AbstractSystem.js";
@@ -571,12 +571,12 @@ export class LaneIndex extends AbstractSystem {
             this._destroyCellSlotItems(items);
         }
         for (const laneEid of built) {
-            this._emitGeometry(laneEid);
-            this._emitSync(laneEid);
+            this._emitLaneCreated(laneEid);
+            this._addLaneItemSyncs(laneEid);
         }
         this._flushBatches();
         // The port items the rebuild moved go out with its rows, not a render pass later.
-        this.engine.render.emit();
+        this.engine.render.emitPortItemBatch();
     }
 
     /**
@@ -690,7 +690,7 @@ export class LaneIndex extends AbstractSystem {
                 this._lanesByChunk.delete(chunkKey);
             }
         }
-        this._getBatchByChunkKey(chunkKey, lanes.headCell[laneRow]).addReset(laneEid);
+        this._getBatchByChunkKey(chunkKey, lanes.headCell[laneRow]).addLaneDeleted(laneEid);
         this.engine.components.destroyEntity(laneEid);
     }
 
@@ -1089,16 +1089,14 @@ export class LaneIndex extends AbstractSystem {
      * @param {number} laneEid
      * @returns {void}
      */
-    // emit geometry? That's not an action, that's not precice.
-    // Should be something like _emitGeometryChange/Update/Diff. Propose a terminology and stick to it
-    _emitGeometry(laneEid) {
+    _emitLaneCreated(laneEid) {
         const laneRow = this._getLaneRowByLaneRef(laneEid);
         const head = this.lanes.store.headCell[laneRow];
         const position = this.engine.Position;
         if (!this.engine.isTileObserved(position.x[head], position.y[head])) {
             return;
         }
-        this.engine.emitEvent(new LaneGeometryEvent(
+        this.engine.emitEvent(new LaneCreatedEvent(
             position.x[head],
             position.y[head],
             laneEid,
@@ -1113,7 +1111,7 @@ export class LaneIndex extends AbstractSystem {
      * @param {number} laneEid
      * @returns {void}
      */
-    _emitSync(laneEid) {
+    _addLaneItemSyncs(laneEid) {
         const laneRow = this._getLaneRowByLaneRef(laneEid);
         const batch = this._getBatchByLaneRow(laneRow);
         for (const item of this.getItemsByLaneRef(laneEid)) {
@@ -1138,7 +1136,7 @@ export class LaneIndex extends AbstractSystem {
             const laneRow = this._getLaneRowByLaneRef(laneEid);
             const head = this.lanes.store.headCell[laneRow];
             if (geometry === null) {
-                geometry = new LaneGeometryBatchEvent(position.x[head], position.y[head]);
+                geometry = new LaneSyncBatchEvent(position.x[head], position.y[head]);
                 items = new LaneItemBatchEvent(position.x[head], position.y[head]);
             }
             geometry.add(

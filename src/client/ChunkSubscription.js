@@ -73,7 +73,7 @@ export class ChunkSubscription {
     enterOverworld() {
         this._overworld = true;
         this._requestedChunks.clear();
-        this._sendViewport(false);
+        this._sendSetViewport(false);
         this._lastVisibleKey = null;
         this._refreshOverworld(true);
     }
@@ -202,7 +202,7 @@ export class ChunkSubscription {
             }
         }
         if (changed) {
-            this._sendViewport(added);
+            this._sendSetViewport(added);
         }
     }
 
@@ -211,7 +211,7 @@ export class ChunkSubscription {
      * @private
      * @param {boolean} loading - whether to drive the loading status (only when subscribing)
      */
-    _sendViewport(loading) {
+    _sendSetViewport(loading) {
         const chunks = Array.from(this._requestedChunks);
         if (loading) {
             // Track the request before sending: single-player replies with the

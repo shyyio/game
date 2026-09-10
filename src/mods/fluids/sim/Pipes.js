@@ -181,7 +181,8 @@ export class Pipes extends AbstractSystem {
             fluidType = EMPTY;
         }
         const net = this._buildNetwork(component, fluidType, amount);
-        this._emitNetworkEvents(net);
+        this._emitPipeNetworkRecalculate(net);
+        this._emitPipeFluidSet(net);
         return net.netId;
     }
 
@@ -233,7 +234,8 @@ export class Pipes extends AbstractSystem {
                 fluidType = EMPTY;
             }
             const rebuilt = this._buildNetwork(component, fluidType, shares[index]);
-            this._emitNetworkEvents(rebuilt);
+            this._emitPipeNetworkRecalculate(rebuilt);
+            this._emitPipeFluidSet(rebuilt);
         }
         return true;
     }
@@ -385,8 +387,16 @@ export class Pipes extends AbstractSystem {
      * @param {PipeNetwork} net
      * @returns {void}
      */
-    _emitNetworkEvents(net) {
+    _emitPipeNetworkRecalculate(net) {
         this.engine.emitEvent(new PipeNetworkRecalculateEvent(net.originX, net.originY, net.netId, net.pipes.map(pipe => pipe.id)));
+    }
+
+    /**
+     * @private
+     * @param {PipeNetwork} net
+     * @returns {void}
+     */
+    _emitPipeFluidSet(net) {
         this.engine.emitEvent(new PipeFluidSetEvent(net.originX, net.originY, net.netId, net.fluidType, net.amount));
     }
 

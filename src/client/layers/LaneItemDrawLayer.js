@@ -3,11 +3,11 @@ import {Direction} from "@/common/constants.js";
 import {LANE_LEVEL_SURFACE} from "@/sim/LaneIndex.js";
 import {PortItemSetEvent, PortItemClearEvent} from "@/common/PortItemEvents.js";
 import {
-    LaneGeometryEvent,
+    LaneCreatedEvent,
     LaneItemUpsertEvent,
     LaneItemSyncEvent,
     LaneItemDeleteEvent,
-    LaneItemResetEvent,
+    LaneDeletedEvent,
 } from "@/common/LaneEvents.js";
 
 // Item sprite keys, namespaced away from the port keys sharing the item layer.
@@ -88,11 +88,11 @@ export class LaneItemDrawLayer extends AbstractDrawLayer {
 
     get eventClasses() {
         return [
-            LaneGeometryEvent,
+            LaneCreatedEvent,
             LaneItemUpsertEvent,
             LaneItemSyncEvent,
             LaneItemDeleteEvent,
-            LaneItemResetEvent,
+            LaneDeletedEvent,
             PortItemSetEvent,
             PortItemClearEvent,
         ];
@@ -103,11 +103,11 @@ export class LaneItemDrawLayer extends AbstractDrawLayer {
      * @returns {void}
      */
     onEvent(event) {
-        if (event instanceof LaneGeometryEvent) {
-            this._setGeometry(event);
+        if (event instanceof LaneCreatedEvent) {
+            this._addLane(event);
             return;
         }
-        if (event instanceof LaneItemResetEvent) {
+        if (event instanceof LaneDeletedEvent) {
             this._forget(event.laneRef);
             return;
         }
@@ -124,10 +124,10 @@ export class LaneItemDrawLayer extends AbstractDrawLayer {
 
     /**
      * @private
-     * @param {LaneGeometryEvent} event
+     * @param {LaneCreatedEvent} event
      * @returns {void}
      */
-    _setGeometry(event) {
+    _addLane(event) {
         this._forget(event.laneRef);
         const lane = new LaneRecord(event.cellObjectRefs, event.cellParentEdges, event.outputPortRef);
         this._lanes.set(event.laneRef, lane);
