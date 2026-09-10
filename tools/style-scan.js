@@ -47,7 +47,11 @@ const GLOSSARY_VERBS = new Set([
     "shift", "delete", "build", "rebuild", "connect", "disconnect", "add", "remove", "acquire",
     "release", "insert", "put", "get", "advance", "tick", "place", "spawn", "despawn", "emit",
     "publish", "send", "dispatch", "notify", "register", "unregister", "generate", "subscribe",
-    "unsubscribe", "is", "has", "can", "should",
+    "unsubscribe", "is", "has", "can", "should", "load", "save", "read", "write", "serialize",
+    "deserialize", "parse", "init", "install", "uninstall", "mount", "unmount", "open", "close",
+    "start", "stop", "boot", "shutdown", "draw", "layout", "restyle", "show", "hide", "toggle",
+    "apply", "resolve", "on", "validate", "assert", "verify", "mark", "invalidate", "flush", "reset",
+    "grow", "submit", "collect", "request", "move", "glide", "select",
 ]);
 
 const ENGINE_HOOKS = new Set([
