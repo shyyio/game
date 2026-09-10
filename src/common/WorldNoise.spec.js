@@ -71,15 +71,15 @@ test("same seed yields identical fields across instances", () => {
     const a = new WorldNoise(42, channels);
     const b = new WorldNoise(42, channels);
     for (let i = 0; i < 50; i++) {
-        assert.equal(a.get(i * 3, i * 7, 0), b.get(i * 3, i * 7, 0));
-        assert.equal(a.get(i * 3, i * 7, 2), b.get(i * 3, i * 7, 2));
+        assert.equal(a.getNoiseAt(i * 3, i * 7, 0), b.getNoiseAt(i * 3, i * 7, 0));
+        assert.equal(a.getNoiseAt(i * 3, i * 7, 2), b.getNoiseAt(i * 3, i * 7, 2));
     }
 });
 
 test("values stay within [0, 1] with octaves", () => {
     const noise = new WorldNoise(7, makeChannels());
     for (let i = 0; i < 500; i++) {
-        const value = noise.get(i * 5, i * 11, i % 3);
+        const value = noise.getNoiseAt(i * 5, i * 11, i % 3);
         assert.ok(value >= 0 && value <= 1, `${value}`);
     }
 });
@@ -91,10 +91,10 @@ test("different seeds and channels give different fields", () => {
     let seedDiff = 0;
     let channelDiff = 0;
     for (let i = 1; i < 50; i++) {
-        if (a.get(i * 3, i * 7, 1) !== b.get(i * 3, i * 7, 1)) {
+        if (a.getNoiseAt(i * 3, i * 7, 1) !== b.getNoiseAt(i * 3, i * 7, 1)) {
             seedDiff++;
         }
-        if (a.get(i * 3, i * 7, 1) !== a.get(i * 3, i * 7, 2)) {
+        if (a.getNoiseAt(i * 3, i * 7, 1) !== a.getNoiseAt(i * 3, i * 7, 2)) {
             channelDiff++;
         }
     }
@@ -118,7 +118,7 @@ test("a channel's field is seeded by name, not by its position in the loadout", 
     const a = new WorldNoise(5, first.noiseChannels);
     const b = new WorldNoise(5, second.noiseChannels);
     for (let i = 0; i < 50; i++) {
-        assert.equal(a.get(i * 3, i * 7, heightFirst.channelId), b.get(i * 3, i * 7, heightSecond.channelId));
+        assert.equal(a.getNoiseAt(i * 3, i * 7, heightFirst.channelId), b.getNoiseAt(i * 3, i * 7, heightSecond.channelId));
     }
 });
 
@@ -126,8 +126,8 @@ test("rejects bad seeds and unknown channels", () => {
     const channels = makeChannels();
     assert.throws(() => new WorldNoise(-1, channels), RangeError);
     const noise = new WorldNoise(0, channels);
-    assert.throws(() => noise.get(0, 0, channels.length), new RegExp(`No noise channel ${channels.length}`));
-    assert.throws(() => noise.get(0, 0, -1), /No noise channel -1/);
+    assert.throws(() => noise.getNoiseAt(0, 0, channels.length), new RegExp(`No noise channel ${channels.length}`));
+    assert.throws(() => noise.getNoiseAt(0, 0, -1), /No noise channel -1/);
 });
 
 test("tileHash is deterministic and spreads across seeds and tiles", () => {

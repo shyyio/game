@@ -49,8 +49,8 @@ test("client writes to unknown or non-client-writable keys are dropped", async (
     game.dispatchMessage(new SetPlayerSettingMessage(999, 5), sender);
     game.dispatchMessage(new SetPlayerSettingMessage(LOCKED_KEY, 5), sender);
 
-    assert.equal(game.playerSettings.get(1, 999), undefined);
-    assert.equal(game.playerSettings.get(1, LOCKED_KEY), undefined);
+    assert.equal(game.playerSettings.getPlayerValueByKey(1, 999), undefined);
+    assert.equal(game.playerSettings.getPlayerValueByKey(1, LOCKED_KEY), undefined);
     assert.equal(updateEvents(sender).length, 0);
 });
 
@@ -59,7 +59,7 @@ test("out-of-range setting writes are dropped", async () => {
     game.dispatchMessage(new SetPlayerSettingMessage(WRITABLE_KEY, -1), sender);
     game.dispatchMessage(new SetPlayerSettingMessage(WRITABLE_KEY, 8), sender);
 
-    assert.equal(game.playerSettings.get(1, WRITABLE_KEY), undefined);
+    assert.equal(game.playerSettings.getPlayerValueByKey(1, WRITABLE_KEY), undefined);
     assert.equal(updateEvents(sender).length, 0);
 });
 
@@ -67,7 +67,7 @@ test("a setting write updates the cache and echoes to the sender", async () => {
     const {game, sender, watcher} = await gameWithSessions();
     game.dispatchMessage(new SetPlayerSettingMessage(WRITABLE_KEY, 5), sender);
 
-    assert.equal(game.playerSettings.get(1, WRITABLE_KEY), 5);
+    assert.equal(game.playerSettings.getPlayerValueByKey(1, WRITABLE_KEY), 5);
     const echoes = updateEvents(sender);
     assert.equal(echoes.length, 1);
     assert.equal(echoes[0].key, WRITABLE_KEY);

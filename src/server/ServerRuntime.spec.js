@@ -167,7 +167,7 @@ test("applying a config swaps what runs live and names the rest for a restart", 
     assert.equal(gameServer.origin, "wss://x:443");
     assert.deepEqual(loaded, ["https://auth.x"]);
     assert.deepEqual(gameServer.jwksVerifier, {url: "https://auth.x"});
-    assert.equal(game.gameSettings.get(GameSettingsKey.TICK_MS), 300);
+    assert.equal(game.gameSettings.getValueByKey(GameSettingsKey.TICK_MS), 300);
     assert.equal(runtime.running.name, "New");
     assert.equal(runtime.running.tickMs, 300);
     assert.equal(runtime.running.port, 27500);

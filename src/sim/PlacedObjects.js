@@ -98,7 +98,7 @@ export class PlacedObjects extends AbstractSystem {
      */
     getClaimOwnerByEid(eid) {
         const position = this.engine.Position;
-        return this.engine.getChunkOwnerByChunkKey(chunkKeyAt(position.x[eid], position.y[eid]));
+        return this.engine.ownership.getOwnerByChunkKey(chunkKeyAt(position.x[eid], position.y[eid]));
     }
 
     /**

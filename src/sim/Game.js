@@ -67,8 +67,8 @@ export class Game {
          * @type {SettingsCache}
          */
         this.gameSettings = new SettingsCache();
-        this.gameSettings.set(GameSettingsKey.CHUNK_SIZE, CHUNK_SIZE);
-        this.gameSettings.set(GameSettingsKey.TICK_MS, tickMs);
+        this.gameSettings.setValue(GameSettingsKey.CHUNK_SIZE, CHUNK_SIZE);
+        this.gameSettings.setValue(GameSettingsKey.TICK_MS, tickMs);
 
         /**
          * Seeded terrain noise; the client builds its own twin from GameSettingsKey.SEED.
@@ -114,8 +114,7 @@ export class Game {
          * @type {ClaimAdmin}
          */
         this.claimAdmin = new ClaimAdmin(this);
-        this.simEngine.setPlacementGate((playerRef, chunk) => this.claimAdmin.canBuildIn(playerRef, chunk));
-        this.simEngine.setChunkOwnerResolver(chunk => this.claims.getOwnerByChunkKey(chunk));
+        this.simEngine.setChunkOwnership(this.claimAdmin);
 
         /**
          * The chunks, overworld and inspect menus each session is looking at.
@@ -169,7 +168,7 @@ export class Game {
         this.noise = new WorldNoise(seed, this.modRegistry.noiseChannels);
         this.terrain = new Terrain(this.noise, this.modRegistry.biomes);
         this.simEngine.seed = seed;
-        this.gameSettings.set(GameSettingsKey.SEED, seed);
+        this.gameSettings.setValue(GameSettingsKey.SEED, seed);
     }
 
     /**
@@ -239,7 +238,7 @@ export class Game {
      * @returns {void}
      */
     setTickMs(tickMs) {
-        this.gameSettings.set(GameSettingsKey.TICK_MS, tickMs);
+        this.gameSettings.setValue(GameSettingsKey.TICK_MS, tickMs);
         this.bus.publishToAll(new GameSettingsUpdateEvent(GameSettingsKey.TICK_MS, tickMs));
     }
 
@@ -281,7 +280,7 @@ export class Game {
     }
 
     _syncGameSettings(session) {
-        this.bus.publishTo(session.sessionRef, new GameSettingsSyncEvent(this.gameSettings.snapshot()));
+        this.bus.publishTo(session.sessionRef, new GameSettingsSyncEvent(this.gameSettings.getSnapshot()));
     }
 
     /**
@@ -289,7 +288,7 @@ export class Game {
      * @private
      */
     _syncPlayerSettings(session) {
-        this.bus.publishTo(session.sessionRef, new PlayerSettingsSyncEvent(this.playerSettings.snapshot(session.playerRef)));
+        this.bus.publishTo(session.sessionRef, new PlayerSettingsSyncEvent(this.playerSettings.getPlayerSnapshot(session.playerRef)));
     }
 
     /**
@@ -297,7 +296,7 @@ export class Game {
      * @private
      */
     _syncToolOrder(session) {
-        this.bus.publishTo(session.sessionRef, new PlayerSettingsToolOrderSyncEvent(this.toolOrder.get(session.playerRef)));
+        this.bus.publishTo(session.sessionRef, new PlayerSettingsToolOrderSyncEvent(this.toolOrder.getToolOrderByPlayerRef(session.playerRef)));
     }
 
     /**
@@ -363,7 +362,7 @@ export class Game {
         if (value < 0 || value >= entry.optionCount) {
             return;
         }
-        this.playerSettings.set(session.playerRef, key, value);
+        this.playerSettings.setPlayerValue(session.playerRef, key, value);
         this.bus.publishTo(session.sessionRef, new PlayerSettingsUpdateEvent(key, value));
         for (const mod of this.modRegistry.simMods) {
             mod.onPlayerSettingWritten(session, key, value, this);
@@ -377,7 +376,7 @@ export class Game {
      * @private
      */
     _handleSetToolOrder(session, toolIds) {
-        this.toolOrder.set(session.playerRef, toolIds);
+        this.toolOrder.setToolOrder(session.playerRef, toolIds);
         this.bus.publishTo(session.sessionRef, new PlayerSettingsToolOrderSyncEvent(toolIds));
     }
 

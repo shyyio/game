@@ -5,17 +5,19 @@ import {
     OwnClaimsSyncEvent, ChunkClaimUpdateEvent, ClaimResultEvent, ClaimResult, ChunkPermission,
 } from "@/common/ClaimEvents.js";
 import {PLAYER_REF_NONE} from "@/common/constants.js";
+import {ChunkOwnership} from "@/sim/ChunkOwnership.js";
 
 /**
  * The chunk claim requests a session can make: claim, unclaim, and permission changes, plus the
  * build rights the engine's placement gate reads off them.
  */
-export class ClaimAdmin {
+export class ClaimAdmin extends ChunkOwnership {
 
     /**
      * @param {Game} game
      */
     constructor(game) {
+        super();
         this.game = game;
     }
 
@@ -39,6 +41,10 @@ export class ClaimAdmin {
             return false;
         }
         return this.game.players.isFriend(owner, playerRef);
+    }
+
+    getOwnerByChunkKey(chunkKey) {
+        return this.game.claims.getOwnerByChunkKey(chunkKey);
     }
 
     /**

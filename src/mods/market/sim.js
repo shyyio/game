@@ -37,10 +37,10 @@ export class MarketSimMod extends AbstractSimMod {
         if (session.playerRef === PLAYER_REF_NONE) {
             return;
         }
-        if (game.playerSettings.get(session.playerRef, MARKET_SETTING_BALANCE) !== undefined) {
+        if (game.playerSettings.getPlayerValueByKey(session.playerRef, MARKET_SETTING_BALANCE) !== undefined) {
             return;
         }
-        game.playerSettings.set(session.playerRef, MARKET_SETTING_BALANCE, MARKET_STARTING_BALANCE);
+        game.playerSettings.setPlayerValue(session.playerRef, MARKET_SETTING_BALANCE, MARKET_STARTING_BALANCE);
     }
 
     /**
@@ -233,9 +233,9 @@ export class MarketSimMod extends AbstractSimMod {
             }
         }
         for (const [playerRef, delta] of deltas) {
-            const current = game.playerSettings.get(playerRef, MARKET_SETTING_BALANCE) || 0;
+            const current = game.playerSettings.getPlayerValueByKey(playerRef, MARKET_SETTING_BALANCE) || 0;
             const next = Math.max(0, current + delta);
-            game.playerSettings.set(playerRef, MARKET_SETTING_BALANCE, next);
+            game.playerSettings.setPlayerValue(playerRef, MARKET_SETTING_BALANCE, next);
             game.bus.publishToPlayer(playerRef, new PlayerSettingsUpdateEvent(MARKET_SETTING_BALANCE, next));
         }
     }
@@ -270,9 +270,9 @@ export class MarketSimMod extends AbstractSimMod {
             }
         }
         for (const [playerRef, delta] of deltas) {
-            const current = game.playerSettings.get(playerRef, MARKET_SETTING_BALANCE) || 0;
+            const current = game.playerSettings.getPlayerValueByKey(playerRef, MARKET_SETTING_BALANCE) || 0;
             const next = Math.max(0, current + delta);
-            game.playerSettings.set(playerRef, MARKET_SETTING_BALANCE, next);
+            game.playerSettings.setPlayerValue(playerRef, MARKET_SETTING_BALANCE, next);
             game.bus.publishToPlayer(playerRef, new PlayerSettingsUpdateEvent(MARKET_SETTING_BALANCE, next));
         }
     }
@@ -310,7 +310,7 @@ export class MarketSimMod extends AbstractSimMod {
             const owner = this._getOwnerByEid(eids[row], engine, game, owners);
             let balance = 0;
             if (owner !== PLAYER_REF_NONE) {
-                balance = game.playerSettings.get(owner, MARKET_SETTING_BALANCE) || 0;
+                balance = game.playerSettings.getPlayerValueByKey(owner, MARKET_SETTING_BALANCE) || 0;
             }
             terminal.balance[row] = balance;
             terminal.owner[row] = owner;

@@ -113,7 +113,7 @@ export class WorldNoise {
      * @param {number} channelId
      * @returns {number} the channel's fBm noise in [0, 1]
      */
-    get(x, y, channelId) {
+    getNoiseAt(x, y, channelId) {
         const field = this._fields[channelId];
         if (field === undefined) {
             throw new RangeError(`No noise channel ${channelId}`);

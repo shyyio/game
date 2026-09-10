@@ -381,7 +381,7 @@ export function buildStimpackFactory(engine, game, originX, originY) {
             game.claims.claim(STIMPACK_FACTORY_PLAYER_REF, chunkOrdinal(cx, cy), maxChunks);
         }
     }
-    game.playerSettings.set(STIMPACK_FACTORY_PLAYER_REF, MARKET_SETTING_BALANCE, STARTING_BALANCE);
+    game.playerSettings.setPlayerValue(STIMPACK_FACTORY_PLAYER_REF, MARKET_SETTING_BALANCE, STARTING_BALANCE);
 
     const occupied = new Set();
     placeNode(engine, tree, originX, originY, occupied);

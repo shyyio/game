@@ -13,7 +13,7 @@ export class SettingsCache {
      * @param {number} key
      * @returns {number|undefined}
      */
-    get(key) {
+    getValueByKey(key) {
         return this._values.get(key);
     }
 
@@ -22,14 +22,14 @@ export class SettingsCache {
      * @param {number} value
      * @returns {void}
      */
-    set(key, value) {
+    setValue(key, value) {
         this._values.set(key, value);
     }
 
     /**
      * @returns {Object.<number, number>} a plain key→value snapshot for wire sync
      */
-    snapshot() {
+    getSnapshot() {
         const out = {};
         for (const [key, value] of this._values) {
             out[key] = value;
@@ -40,7 +40,7 @@ export class SettingsCache {
     /**
      * @returns {IterableIterator<[number, number]>} key→value pairs
      */
-    entries() {
+    getEntries() {
         return this._values.entries();
     }
 }
@@ -61,13 +61,13 @@ export class PlayerSettingsCache {
      * @param {number} value
      * @returns {void}
      */
-    set(playerRef, key, value) {
+    setPlayerValue(playerRef, key, value) {
         let settings = this._byPlayer.get(playerRef);
         if (settings === undefined) {
             settings = new SettingsCache();
             this._byPlayer.set(playerRef, settings);
         }
-        settings.set(key, value);
+        settings.setValue(key, value);
     }
 
     /**
@@ -75,24 +75,24 @@ export class PlayerSettingsCache {
      * @param {number} key
      * @returns {number|undefined}
      */
-    get(playerRef, key) {
+    getPlayerValueByKey(playerRef, key) {
         const settings = this._byPlayer.get(playerRef);
         if (settings === undefined) {
             return undefined;
         }
-        return settings.get(key);
+        return settings.getValueByKey(key);
     }
 
     /**
      * @param {number} playerRef
      * @returns {Object.<number, number>} a plain key→value snapshot for wire sync
      */
-    snapshot(playerRef) {
+    getPlayerSnapshot(playerRef) {
         const settings = this._byPlayer.get(playerRef);
         if (settings === undefined) {
             return {};
         }
-        return settings.snapshot();
+        return settings.getSnapshot();
     }
 
     /**
@@ -101,7 +101,7 @@ export class PlayerSettingsCache {
     serializeRecords() {
         const rows = [];
         for (const [playerRef, settings] of this._byPlayer) {
-            for (const [key, value] of settings.entries()) {
+            for (const [key, value] of settings.getEntries()) {
                 rows.push({player_id: playerRef, key, value});
             }
         }
@@ -126,7 +126,7 @@ export class PlayerSettingsCache {
             return;
         }
         for (const row of table.rows) {
-            this.set(row.player_id, row.key, row.value);
+            this.setPlayerValue(row.player_id, row.key, row.value);
         }
     }
 }

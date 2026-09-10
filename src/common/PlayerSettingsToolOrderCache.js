@@ -16,7 +16,7 @@ export class PlayerSettingsToolOrderCache {
      * @param {number[]} toolIds
      * @returns {void}
      */
-    set(playerRef, toolIds) {
+    setToolOrder(playerRef, toolIds) {
         this._byPlayer.set(playerRef, toolIds);
     }
 
@@ -24,7 +24,7 @@ export class PlayerSettingsToolOrderCache {
      * @param {number} playerRef
      * @returns {number[]}
      */
-    get(playerRef) {
+    getToolOrderByPlayerRef(playerRef) {
         const toolIds = this._byPlayer.get(playerRef);
         if (toolIds === undefined) {
             return [];

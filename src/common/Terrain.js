@@ -270,7 +270,7 @@ export class Terrain {
      * @returns {number} the shade noise in [0, 1]
      */
     getShadeAt(tileX, tileY) {
-        return this.noise.get(tileX, tileY, SHADE_CHANNEL.channelId);
+        return this.noise.getNoiseAt(tileX, tileY, SHADE_CHANNEL.channelId);
     }
 
     /**
@@ -279,7 +279,7 @@ export class Terrain {
      * @returns {number} the dither noise in [0, 1]
      */
     getDitherAt(x, y) {
-        return this.noise.get(x, y, DITHER_CHANNEL.channelId);
+        return this.noise.getNoiseAt(x, y, DITHER_CHANNEL.channelId);
     }
 
     /**
@@ -332,7 +332,7 @@ export class Terrain {
             const channelId = range.channel.channelId;
             let value = samples[channelId];
             if (Number.isNaN(value)) {
-                value = this.noise.get(tileX, tileY, channelId);
+                value = this.noise.getNoiseAt(tileX, tileY, channelId);
                 samples[channelId] = value;
             }
             if (range.min > 0) {

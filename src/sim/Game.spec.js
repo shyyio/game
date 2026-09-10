@@ -13,7 +13,7 @@ test("a new tick length is published to every connected session", async () => {
 
     game.setTickMs(250);
 
-    assert.equal(game.gameSettings.get(GameSettingsKey.TICK_MS), 250);
+    assert.equal(game.gameSettings.getValueByKey(GameSettingsKey.TICK_MS), 250);
     const update = session.events.find(event => event instanceof GameSettingsUpdateEvent);
     assert.deepEqual([update.key, update.value], [GameSettingsKey.TICK_MS, 250]);
 });

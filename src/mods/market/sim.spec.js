@@ -36,7 +36,7 @@ class NpcPriceFixtureDeclaration extends AbstractModDeclaration {
  */
 function clearBalances(game, ...sessions) {
     for (const session of sessions) {
-        game.playerSettings.set(session.playerRef, MARKET_SETTING_BALANCE, 0);
+        game.playerSettings.setPlayerValue(session.playerRef, MARKET_SETTING_BALANCE, 0);
     }
 }
 
@@ -69,14 +69,14 @@ function balanceUpdates(session) {
 }
 
 function getBalanceByEid(game, playerRef) {
-    return game.playerSettings.get(playerRef, MARKET_SETTING_BALANCE) || 0;
+    return game.playerSettings.getPlayerValueByKey(playerRef, MARKET_SETTING_BALANCE) || 0;
 }
 
 test("a player-market trade pays the seller and charges the buyer, at the buyer's price", async () => {
     const {game, seller, buyer} = await gameWithSessions();
     const sellerEid = placeTerminal(game, seller, 5, 5, MARKET_MODE_SELL, ITEM, 3);
     placeTerminal(game, buyer, 5 + CHUNK_SIZE * 4, 5, MARKET_MODE_BUY, ITEM, PRICE);
-    game.playerSettings.set(buyer.playerRef, MARKET_SETTING_BALANCE, 1000);
+    game.playerSettings.setPlayerValue(buyer.playerRef, MARKET_SETTING_BALANCE, 1000);
 
     const inputPort = game.simEngine.components.getComponentByName("MarketTerminal").store.in[game.simEngine.components.getComponentByName("MarketTerminal").getRowByEid(sellerEid)];
     game.simEngine.ports.setItem(inputPort, ITEM);
@@ -117,7 +117,7 @@ test("an unclaimed chunk's terminal never trades", async () => {
     game.dispatchMessage(new ConfigureTradingTerminalMessage(sellerObjectRef, MARKET_MODE_SELL, ITEM, PRICE), seller);
     placeTerminal(game, buyer, 5 + CHUNK_SIZE * 4, 5, MARKET_MODE_BUY, ITEM, PRICE);
     // Fund buyer directly, isolating the case to seller's missing ownership.
-    game.playerSettings.set(buyer.playerRef, MARKET_SETTING_BALANCE, 1000);
+    game.playerSettings.setPlayerValue(buyer.playerRef, MARKET_SETTING_BALANCE, 1000);
 
     const def = game.simEngine.components.getComponentByName("MarketTerminal");
     const inputPort = def.store.in[def.getRowByEid(sellerEid)];
@@ -144,7 +144,7 @@ test("an NPC-priced item trades without any buy terminal, crediting the seller's
 test("a buy terminal on an NPC-priced item purchases from the NPC, no seller needed", async () => {
     const {game, buyer} = await gameWithSessions([new ModPackage(new NpcPriceFixtureDeclaration())]);
     const buyerEid = placeTerminal(game, buyer, 5, 5, MARKET_MODE_BUY, ITEM, PRICE);
-    game.playerSettings.set(buyer.playerRef, MARKET_SETTING_BALANCE, 1000);
+    game.playerSettings.setPlayerValue(buyer.playerRef, MARKET_SETTING_BALANCE, 1000);
     const def = game.simEngine.components.getComponentByName("MarketTerminal");
     const outputPort = def.store.out[def.getRowByEid(buyerEid)];
 
@@ -173,7 +173,7 @@ test("a buy terminal on an NPC-priced item never purchases without enough balanc
 test("a buy terminal keeps purchasing from the NPC every tick its output is free", async () => {
     const {game, buyer} = await gameWithSessions([new ModPackage(new NpcPriceFixtureDeclaration())]);
     const buyerEid = placeTerminal(game, buyer, 5, 5, MARKET_MODE_BUY, ITEM, PRICE);
-    game.playerSettings.set(buyer.playerRef, MARKET_SETTING_BALANCE, 1000);
+    game.playerSettings.setPlayerValue(buyer.playerRef, MARKET_SETTING_BALANCE, 1000);
     const def = game.simEngine.components.getComponentByName("MarketTerminal");
     const outputPort = def.store.out[def.getRowByEid(buyerEid)];
 
@@ -228,7 +228,7 @@ test("a sustained trade keeps settling every tick (full throughput, end to end)"
     const {game, seller, buyer} = await gameWithSessions();
     const sellerEid = placeTerminal(game, seller, 5, 5, MARKET_MODE_SELL, ITEM, PRICE);
     const buyerEid = placeTerminal(game, buyer, 5 + CHUNK_SIZE * 4, 5, MARKET_MODE_BUY, ITEM, PRICE);
-    game.playerSettings.set(buyer.playerRef, MARKET_SETTING_BALANCE, 1000);
+    game.playerSettings.setPlayerValue(buyer.playerRef, MARKET_SETTING_BALANCE, 1000);
 
     const def = game.simEngine.components.getComponentByName("MarketTerminal");
     const inputPort = def.store.in[def.getRowByEid(sellerEid)];
@@ -254,7 +254,7 @@ test("a first-time player is granted a starting balance, a returning one is not 
     game.connect(player);
     assert.equal(getBalanceByEid(game, player.playerRef), MARKET_STARTING_BALANCE);
 
-    game.playerSettings.set(player.playerRef, MARKET_SETTING_BALANCE, 0);
+    game.playerSettings.setPlayerValue(player.playerRef, MARKET_SETTING_BALANCE, 0);
     game.connect(new CapturingSession(1));
     assert.equal(getBalanceByEid(game, player.playerRef), 0, "a player who spent down to 0 is not re-granted");
 });

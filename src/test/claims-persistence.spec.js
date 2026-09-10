@@ -37,29 +37,29 @@ test("player settings survive a save/load", async () => {
     const game = await makeGame([], store);
     const alice = game.players.getOrCreate("sub-alice", "alice");
     const bob = game.players.getOrCreate("sub-bob", "bob");
-    game.playerSettings.set(alice.playerRef, 1, 1);
-    game.playerSettings.set(alice.playerRef, 2, 0);
-    game.playerSettings.set(bob.playerRef, 1, 0);
+    game.playerSettings.setPlayerValue(alice.playerRef, 1, 1);
+    game.playerSettings.setPlayerValue(alice.playerRef, 2, 0);
+    game.playerSettings.setPlayerValue(bob.playerRef, 1, 0);
     await game.save();
 
     const restored = await makeGame([], store);
     assert.equal(await restored.load(), true);
-    assert.equal(restored.playerSettings.get(alice.playerRef, 1), 1);
-    assert.equal(restored.playerSettings.get(alice.playerRef, 2), 0);
-    assert.equal(restored.playerSettings.get(bob.playerRef, 1), 0);
-    assert.equal(restored.playerSettings.get(bob.playerRef, 2), undefined);
+    assert.equal(restored.playerSettings.getPlayerValueByKey(alice.playerRef, 1), 1);
+    assert.equal(restored.playerSettings.getPlayerValueByKey(alice.playerRef, 2), 0);
+    assert.equal(restored.playerSettings.getPlayerValueByKey(bob.playerRef, 1), 0);
+    assert.equal(restored.playerSettings.getPlayerValueByKey(bob.playerRef, 2), undefined);
 });
 
 test("a player's custom tool order survives a save/load", async () => {
     const store = new NodeSaveStore(":memory:");
     const game = await makeGame([], store);
     const alice = game.players.getOrCreate("sub-alice", "alice");
-    game.toolOrder.set(alice.playerRef, [30, -10, 20]);
+    game.toolOrder.setToolOrder(alice.playerRef, [30, -10, 20]);
     await game.save();
 
     const restored = await makeGame([], store);
     assert.equal(await restored.load(), true);
-    assert.deepEqual(restored.toolOrder.get(alice.playerRef), [30, -10, 20]);
+    assert.deepEqual(restored.toolOrder.getToolOrderByPlayerRef(alice.playerRef), [30, -10, 20]);
 });
 
 test("a snapshot without tables loads with empty registries", async () => {

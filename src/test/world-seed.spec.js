@@ -45,7 +45,7 @@ test("Game rejects an invalid seed", () => {
 test("a fresh world publishes its seed as a game setting", async () => {
     const game = await makeSeededGame(undefined, 12345);
     assert.equal(game.seed, 12345);
-    assert.equal(game.gameSettings.get(GameSettingsKey.SEED), 12345);
+    assert.equal(game.gameSettings.getValueByKey(GameSettingsKey.SEED), 12345);
 });
 
 test("the seed survives save and load, replacing the fresh-world seed", async () => {
@@ -56,7 +56,7 @@ test("the seed survives save and load, replacing the fresh-world seed", async ()
     const loaded = await makeSeededGame(store, 1);
     assert.equal(await loaded.load(), true);
     assert.equal(loaded.seed, 777);
-    assert.equal(loaded.gameSettings.get(GameSettingsKey.SEED), 777);
+    assert.equal(loaded.gameSettings.getValueByKey(GameSettingsKey.SEED), 777);
 });
 
 test("a format-1 save migrates to seed 0", async () => {

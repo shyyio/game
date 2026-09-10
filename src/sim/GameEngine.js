@@ -16,6 +16,7 @@ import {PortIndex} from "@/sim/PortIndex.js";
 import {LaneIndex} from "@/sim/LaneIndex.js";
 import {SnapshotSerializer} from "@/sim/SnapshotSerializer.js";
 import {AbstractSystem} from "@/sim/AbstractSystem.js";
+import {ChunkOwnership} from "@/sim/ChunkOwnership.js";
 import {EMPTY, NO_EID} from "@/sim/sentinels.js";
 
 
@@ -97,11 +98,11 @@ export class GameEngine {
          */
         this.tickSystems = [];
 
-        // Decides whether a player may modify a chunk; without one every change is allowed.
-        this._placementGate = null;
-
-        // Resolves a chunk's current owner for the placed-object owner cache; null in tests without a Game.
-        this._chunkOwnerResolver = null;
+        /**
+         * Who owns each chunk and who may build there; the open world until a Game sets its claims.
+         * @type {ChunkOwnership}
+         */
+        this.ownership = new ChunkOwnership();
 
         /**
          * @type {World|null}
@@ -257,12 +258,14 @@ export class GameEngine {
     }
 
     /**
-     * Sets the predicate deciding whether a player may modify a chunk.
-     * @param {function(number, number): boolean} gate - (playerRef, chunk) -> allowed
+     * @param {ChunkOwnership} ownership
      * @returns {void}
      */
-    setPlacementGate(gate) {
-        this._placementGate = gate;
+    setChunkOwnership(ownership) {
+        if (!(ownership instanceof ChunkOwnership)) {
+            throw new TypeError("chunk ownership extends ChunkOwnership");
+        }
+        this.ownership = ownership;
     }
 
     /**
@@ -273,32 +276,10 @@ export class GameEngine {
      * @returns {boolean}
      */
     canBuildIn(playerRef, chunkKey) {
-        if (playerRef === PLAYER_REF_NONE || this._placementGate === null) {
+        if (playerRef === PLAYER_REF_NONE) {
             return true;
         }
-        return this._placementGate(playerRef, chunkKey);
-    }
-
-    /**
-     * Sets the resolver a spawn queries for the placing chunk's current owner, cached onto the placed object.
-     * @param {function(number): number} resolver - chunk -> playerRef (PLAYER_REF_NONE if unclaimed)
-     * @returns {void}
-     */
-    setChunkOwnerResolver(resolver) {
-        this._chunkOwnerResolver = resolver;
-    }
-
-    /**
-     * The current owner of `chunk`, or PLAYER_REF_NONE when no resolver is installed (tests without
-     * a Game) or the chunk is unclaimed.
-     * @param {number} chunkKey
-     * @returns {number}
-     */
-    getChunkOwnerByChunkKey(chunkKey) {
-        if (this._chunkOwnerResolver === null) {
-            return PLAYER_REF_NONE;
-        }
-        return this._chunkOwnerResolver(chunkKey);
+        return this.ownership.canBuildIn(playerRef, chunkKey);
     }
 
     /**

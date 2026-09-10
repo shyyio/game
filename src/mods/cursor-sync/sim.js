@@ -159,7 +159,7 @@ export class CursorSyncSimMod extends AbstractSimMod {
      * @private
      */
     _getAudienceByPlayerRef(playerRef, key, game) {
-        const value = game.playerSettings.get(playerRef, key);
+        const value = game.playerSettings.getPlayerValueByKey(playerRef, key);
         return value === undefined ? CURSOR_AUDIENCE_DEFAULT : value;
     }
 

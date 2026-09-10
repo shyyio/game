@@ -104,8 +104,8 @@ test("biomeAt is deterministic and honors first-match order", () => {
         const biomeId = a.getBiomeIdAt(tileX, tileY);
         assert.equal(biomeId, b.getBiomeIdAt(tileX, tileY));
         seen.add(biomeId);
-        const h = a.noise.get(tileX, tileY, height.channelId);
-        const m = a.noise.get(tileX, tileY, humidity.channelId);
+        const h = a.noise.getNoiseAt(tileX, tileY, height.channelId);
+        const m = a.noise.getNoiseAt(tileX, tileY, humidity.channelId);
         if (h >= 0.7) {
             assert.equal(biomeId, peak.biomeId);
         } else if (m <= 0.4) {
@@ -164,8 +164,8 @@ test("classify blends toward the biome across the nearest threshold", () => {
     for (let i = 0; i < 40000 && checked < 30; i++) {
         const tileX = (i * 17) % 900;
         const tileY = (i * 31) % 900;
-        const h = terrain.noise.get(tileX, tileY, height.channelId);
-        const m = terrain.noise.get(tileX, tileY, humidity.channelId);
+        const h = terrain.noise.getNoiseAt(tileX, tileY, height.channelId);
+        const m = terrain.noise.getNoiseAt(tileX, tileY, humidity.channelId);
         if (h > 0.7 - BLEND_WIDTH) {
             continue;
         }
@@ -224,7 +224,7 @@ test("a range edge at 0 or 1 never blends", () => {
     for (let i = 0; i < 20000; i++) {
         const tileX = (i * 13) % 900;
         const tileY = (i * 7) % 900;
-        const m = terrain.noise.get(tileX, tileY, humidity.channelId);
+        const m = terrain.noise.getNoiseAt(tileX, tileY, humidity.channelId);
         if (Math.abs(m - 0.5) > BLEND_WIDTH) {
             assert.equal(terrain.classify(tileX, tileY).weight, 0, `tile ${tileX},${tileY} humidity ${m}`);
         }

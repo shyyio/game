@@ -369,7 +369,7 @@ export class ThroughputScenario extends AbstractScenario {
             ORIGIN_X, ORIGIN_X + (columns - 1) * pitchX + copyWidth - 1,
             ORIGIN_Y - 3 * stride, ORIGIN_Y + (rows - 1) * pitchY,
         );
-        game.playerSettings.set(THROUGHPUT_PLAYER_REF, MARKET_SETTING_BALANCE, STARTING_BALANCE_PER_COPY * copies);
+        game.playerSettings.setPlayerValue(THROUGHPUT_PLAYER_REF, MARKET_SETTING_BALANCE, STARTING_BALANCE_PER_COPY * copies);
 
         for (let copy = 0; copy < copies; copy += 1) {
             const originX = ORIGIN_X + (copy % columns) * pitchX;

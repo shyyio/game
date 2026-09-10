@@ -157,7 +157,7 @@ export async function createClient(app, viewport, props) {
     } else {
         game.connect(session);
         // runTick() flushes/pushes metrics itself, piggybacking on this interval.
-        tickInterval = window.setInterval(() => game.runTick(), game.gameSettings.get(GameSettingsKey.TICK_MS));
+        tickInterval = window.setInterval(() => game.runTick(), game.gameSettings.getValueByKey(GameSettingsKey.TICK_MS));
     }
     await client.init();
 

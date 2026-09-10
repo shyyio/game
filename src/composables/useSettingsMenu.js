@@ -104,7 +104,7 @@ export function useSettingsMenu() {
         }
         for (const control of playerControls) {
             // Seed from the cache: the settings sync may have landed during client init.
-            const initial = controlModel(control, playerSettings.get(control.key));
+            const initial = controlModel(control, playerSettings.getPlayerValueByKey(control.key));
             mirror(control, initial, modelValue => {
                 if (control instanceof PlayerSettingChoice) {
                     client.updatePlayerSetting(control.key, modelValue);
