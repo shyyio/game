@@ -40,17 +40,17 @@ test("the whole world round-trips through the engine serializer", async () => {
     assert.notEqual(restored.placed.eidByObjectRef(splitterId), undefined, "splitter restored");
     assert.equal(restored.space.cellsFree([{x: 10, y: 10, layer: "S"}]), false, "machine position restored");
 
-    // The extractor keeps producing water into its edge out-port after the load.
-    const outPort = restored.ports.at(5, 4, Direction.UP);
-    assert.deepEqual(restored.render.portTile(outPort), {x: 5, y: 4}, "out-port re-registered at its own tile");
+    // The extractor keeps producing water into its edge output port after the load.
+    const outputPort = restored.ports.at(5, 4, Direction.UP);
+    assert.deepEqual(restored.render.portTile(outputPort), {x: 5, y: 4}, "output port re-registered at its own tile");
     for (const tile of [{x: 3, y: 7}, {x: 4, y: 7}]) {
         const port = restored.ports.at(tile.x, tile.y, Direction.UP);
-        assert.deepEqual(restored.render.portTile(port), tile, "splitter out-port re-registered at its own tile");
+        assert.deepEqual(restored.render.portTile(port), tile, "splitter output port re-registered at its own tile");
     }
     let produced = false;
     for (let i = 0; i < 8 && !produced; i += 1) {
         restored.tick();
-        produced = restored.ports.item(outPort) === ITEM_TYPE_WATER;
+        produced = restored.ports.item(outputPort) === ITEM_TYPE_WATER;
     }
     assert.ok(produced, "restored extractor still produces");
 });

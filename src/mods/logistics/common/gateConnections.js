@@ -8,7 +8,7 @@ import {Direction, CONVEYS_ITEM, CONVEYS_FLUID} from "@spup/sdk";
  * @param {ObjectType} type
  * @param {Direction} direction - the transport's facing
  * @param {Direction} gateDirection
- * @param {boolean} behind - behind feeds the in-port; front receives from the out-port
+ * @param {boolean} behind - behind feeds the input port; front receives from the output port
  * @returns {boolean}
  */
 export function transportCouples(type, direction, gateDirection, behind) {

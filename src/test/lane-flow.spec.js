@@ -35,7 +35,7 @@ function placeProducer(engine, tileX, tileY, direction) {
 }
 
 // Two items fed into a three-cell lane arrive at the tail two ticks apart, one slot per tick.
-test("a lane carries fed items to its out-port one slot per tick", async () => {
+test("a lane carries fed items to its output port one slot per tick", async () => {
     const engine = await setup();
     for (const y of [0, 1, 2]) {
         placeLane(engine, 0, y, Direction.UP);
@@ -43,12 +43,12 @@ test("a lane carries fed items to its out-port one slot per tick", async () => {
     const lane = laneAt(engine, 0, 2);
     const stream = [];
     for (let i = 0; i < 10; i += 1) {
-        engine.ports.setItem(engine.lanes.outPortOf(lane), EMPTY);
+        engine.ports.setItem(engine.lanes.outputPortOf(lane), EMPTY);
         if (i < 2) {
-            engine.ports.setItem(engine.lanes.inPortOf(lane), CARGO);
+            engine.ports.setItem(engine.lanes.inputPortOf(lane), CARGO);
         }
         engine.tick();
-        stream.push(engine.ports.item(engine.lanes.outPortOf(lane)));
+        stream.push(engine.ports.item(engine.lanes.outputPortOf(lane)));
     }
     assert.deepEqual(stream, [EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, CARGO, CARGO, EMPTY, EMPTY, EMPTY]);
 });
@@ -115,104 +115,104 @@ test("a feeder into a mid-lane cell's flank backs up", async () => {
     assert.equal(itemCells(engine), 0, "nothing reached the lane");
 });
 
-// A fluid resting in the in-port is refused, so its producer backs up and the lane stays empty.
+// A fluid resting in the input port is refused, so its producer backs up and the lane stays empty.
 test("a lane refuses a resting fluid", async () => {
     const engine = await setup();
     for (const y of [0, 1, 2]) {
         placeLane(engine, 0, y, Direction.UP);
     }
     const lane = laneAt(engine, 0, 2);
-    engine.ports.setItem(engine.lanes.inPortOf(lane), FLUID);
+    engine.ports.setItem(engine.lanes.inputPortOf(lane), FLUID);
 
     for (let i = 0; i < 8; i += 1) {
         engine.tick();
     }
 
-    assert.equal(engine.ports.item(engine.lanes.inPortOf(lane)), FLUID, "the fluid stays put");
+    assert.equal(engine.ports.item(engine.lanes.inputPortOf(lane)), FLUID, "the fluid stays put");
     assert.equal(itemCells(engine), 0, "and never enters the lane");
 });
 
-// A producer creating into the lane's out-port beats the lane's own pop; the lane then keeps its lead
+// A producer creating into the lane's output port beats the lane's own pop; the lane then keeps its lead
 // rather than losing an item nothing carried.
-test("a lane losing its out-port to another producer keeps its lead", async () => {
+test("a lane losing its output port to another producer keeps its lead", async () => {
     const engine = await setup();
     for (const y of [0, 1]) {
         placeLane(engine, 0, y, Direction.UP);
     }
     const lane = laneAt(engine, 0, 1);
-    const outPort = engine.lanes.outPortOf(lane);
+    const outputPort = engine.lanes.outputPortOf(lane);
     let contend = false;
     engine.registerSystem(new ProbeSystem({submitIntents: () => {
         if (contend) {
-            engine.transfers.submitCreate(outPort, OTHER, true);
+            engine.transfers.submitCreate(outputPort, OTHER, true);
         }
     }}));
 
-    engine.ports.setItem(outPort, OTHER);
-    engine.ports.setItem(engine.lanes.inPortOf(lane), CARGO);
+    engine.ports.setItem(outputPort, OTHER);
+    engine.ports.setItem(engine.lanes.inputPortOf(lane), CARGO);
     for (let i = 0; i < 8; i += 1) {
         engine.tick();
     }
     assert.equal(engine.lanes.itemCountOf(lane), 1);
 
-    engine.ports.setItem(outPort, EMPTY);
+    engine.ports.setItem(outputPort, EMPTY);
     contend = true;
     engine.tick();
 
-    assert.equal(engine.ports.item(outPort), OTHER);
+    assert.equal(engine.ports.item(outputPort), OTHER);
     assert.equal(engine.lanes.itemCountOf(lane), 1, "the lead the other producer beat stays on the lane");
 });
 
-// A lane ingests only what its own drain took; an in-port emptied by anything else carried nothing.
-test("a lane does not ingest an in-port item something else took", async () => {
+// A lane ingests only what its own drain took; an input port emptied by anything else carried nothing.
+test("a lane does not ingest an input port item something else took", async () => {
     const engine = await setup();
     for (const y of [0, 1]) {
         placeLane(engine, 0, y, Direction.UP);
     }
     const lane = laneAt(engine, 0, 1);
-    const inPort = engine.lanes.inPortOf(lane);
+    const inputPort = engine.lanes.inputPortOf(lane);
     let steal = false;
     engine.registerSystem(new ProbeSystem({order: -1, postResolve: () => {
         if (steal) {
-            engine.ports.consumeItem(inPort);
+            engine.ports.consumeItem(inputPort);
         }
     }}));
 
-    engine.ports.setItem(engine.lanes.outPortOf(lane), OTHER);
+    engine.ports.setItem(engine.lanes.outputPortOf(lane), OTHER);
     for (let i = 0; i < 16; i += 1) {
-        engine.ports.setItem(inPort, CARGO);
+        engine.ports.setItem(inputPort, CARGO);
         engine.tick();
     }
     const packed = engine.lanes.itemCountOf(lane);
-    engine.ports.setItem(inPort, CARGO);
+    engine.ports.setItem(inputPort, CARGO);
     engine.tick();
-    assert.equal(engine.ports.item(inPort), CARGO, "a packed lane leaves the in-port item resting");
+    assert.equal(engine.ports.item(inputPort), CARGO, "a packed lane leaves the input port item resting");
 
     steal = true;
     engine.tick();
 
-    assert.equal(engine.ports.item(inPort), EMPTY);
+    assert.equal(engine.ports.item(inputPort), EMPTY);
     assert.equal(engine.lanes.itemCountOf(lane), packed, "nothing reached the lane");
 });
 
 // A lane popping empties its ingest port, so a feeder pushing the next item into that port the same
 // tick lands on an empty one. If the pop only marked the port as emptying, the item resting there
 // would be overwritten and lost.
-test("a feeder never overwrites the in-port item of a lane that is popping", async () => {
+test("a feeder never overwrites the input port item of a lane that is popping", async () => {
     const engine = await setup();
     for (const y of [0, 1, 2]) {
         placeLane(engine, 0, y, Direction.UP);
     }
     const lane = laneAt(engine, 0, 2);
-    const inPort = engine.lanes.inPortOf(lane);
-    const outPort = engine.lanes.outPortOf(lane);
+    const inputPort = engine.lanes.inputPortOf(lane);
+    const outputPort = engine.lanes.outputPortOf(lane);
 
-    // A producer pushing into the in-port even while it is occupied: it resolves on the tick the
+    // A producer pushing into the input port even while it is occupied: it resolves on the tick the
     // lane empties that port.
     let intentRow = -1;
     let fed = 0;
     engine.registerSystem(new ProbeSystem({submitIntents: () => {
-        intentRow = engine.transfers.submitCreate(inPort, CARGO, engine.ports.item(inPort) === EMPTY);
+        intentRow = engine.transfers.submitCreate(inputPort, CARGO, engine.ports.item(inputPort) === EMPTY);
     }}));
     engine.registerSystem(new ProbeSystem({postResolve: () => {
         if (engine.transfers.wasResolved(intentRow)) {
@@ -220,21 +220,21 @@ test("a feeder never overwrites the in-port item of a lane that is popping", asy
         }
     }}));
 
-    // Fill the lane solid against a blocked out-port, then drain it every tick.
-    engine.ports.setItem(outPort, OTHER);
+    // Fill the lane solid against a blocked output port, then drain it every tick.
+    engine.ports.setItem(outputPort, OTHER);
     for (let i = 0; i < 12; i += 1) {
         engine.tick();
     }
     let delivered = 0;
     for (let i = 0; i < 24; i += 1) {
-        engine.ports.setItem(outPort, EMPTY);
+        engine.ports.setItem(outputPort, EMPTY);
         engine.tick();
-        if (engine.ports.item(outPort) === CARGO) {
+        if (engine.ports.item(outputPort) === CARGO) {
             delivered += 1;
         }
     }
 
-    const resting = engine.ports.item(inPort) === CARGO ? 1 : 0;
-    assert.ok(delivered > 0, "items reach the out-port");
+    const resting = engine.ports.item(inputPort) === CARGO ? 1 : 0;
+    assert.ok(delivered > 0, "items reach the output port");
     assert.equal(delivered + engine.lanes.itemCountOf(lane) + resting, fed, "every fed item is still accounted for");
 });

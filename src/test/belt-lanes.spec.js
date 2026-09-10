@@ -34,12 +34,12 @@ test("a belt line placed via messages flows two items to the tail", async () => 
     const lane = engine.lanes.laneAt(HEAD.x, HEAD.y, LAYER_SURFACE);
     const stream = [];
     for (let i = 0; i < 10; i += 1) {
-        engine.ports.setItem(engine.lanes.outPortOf(lane), EMPTY);
+        engine.ports.setItem(engine.lanes.outputPortOf(lane), EMPTY);
         if (i < 2) {
-            engine.ports.setItem(engine.lanes.inPortOf(lane), RED);
+            engine.ports.setItem(engine.lanes.inputPortOf(lane), RED);
         }
         engine.tick();
-        stream.push(engine.ports.item(engine.lanes.outPortOf(lane)));
+        stream.push(engine.ports.item(engine.lanes.outputPortOf(lane)));
     }
     assert.deepEqual(stream, EXPECTED);
 });

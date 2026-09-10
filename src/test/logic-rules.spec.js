@@ -206,7 +206,7 @@ test("a stored condition sums the item across every storage in the network", asy
     engine.tick();
     assert.equal(columnOf(engine, "Gate", "open", gate), 1, "90 stored is under the threshold");
 
-    // Refill both: the first tick moved one unit from each tank into its out port.
+    // Refill both: the first tick moved one unit from each tank into its output port.
     fillTank(engine, tankA, FLUID_TYPE_WATER, 50);
     fillTank(engine, tankB, FLUID_TYPE_WATER, 50);
     engine.tick();

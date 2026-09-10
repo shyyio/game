@@ -37,7 +37,7 @@ function buildRing3x3(engine) {
 }
 
 // A straight run of same-direction cells is one lane; the head is the most upstream cell and the
-// out-port sits past the tail. Two slots per cell, less the tail's last slot (the port itself).
+// output port sits past the tail. Two slots per cell, less the tail's last slot (the port itself).
 test("a straight run builds one lane of the right length", async () => {
     const engine = await setup();
     placeLane(engine, 0, 0, Direction.RIGHT);
@@ -74,38 +74,38 @@ test("a cell feeding a run's middle splits it and steals the downstream", async 
     assert.equal(engine.lanes.lengthOf(upstream), 1);
 });
 
-// A resting out-port item belongs to whichever lane owns the tail, so a split hands it over.
-test("a split hands a resting out-port item to the stolen downstream lane", async () => {
+// A resting output port item belongs to whichever lane owns the tail, so a split hands it over.
+test("a split hands a resting output port item to the stolen downstream lane", async () => {
     const engine = await setup();
     placeLane(engine, 0, 0, Direction.RIGHT);
     placeLane(engine, 1, 0, Direction.RIGHT);
     placeLane(engine, 2, 0, Direction.RIGHT);
-    engine.ports.setItem(engine.lanes.outPortOf(laneAt(engine, 0, 0)), CARGO);
+    engine.ports.setItem(engine.lanes.outputPortOf(laneAt(engine, 0, 0)), CARGO);
 
     placeLane(engine, 1, 2, Direction.UP);
     placeLane(engine, 1, 1, Direction.UP);
 
     const stolen = laneAt(engine, 2, 0);
     const upstream = laneAt(engine, 0, 0);
-    assert.equal(engine.ports.item(engine.lanes.outPortOf(stolen)), CARGO, "the item stays in the tail's out-port");
-    assert.equal(engine.ports.item(engine.lanes.outPortOf(upstream)), EMPTY, "the shortened lane's out-port is empty");
+    assert.equal(engine.ports.item(engine.lanes.outputPortOf(stolen)), CARGO, "the item stays in the tail's output port");
+    assert.equal(engine.ports.item(engine.lanes.outputPortOf(upstream)), EMPTY, "the shortened lane's output port is empty");
 });
 
-// Prepending an upstream cell is a head extension: the out-port does not move, so a resting item stays.
-test("prepending an upstream cell keeps a resting out-port item", async () => {
+// Prepending an upstream cell is a head extension: the output port does not move, so a resting item stays.
+test("prepending an upstream cell keeps a resting output port item", async () => {
     const engine = await setup();
     placeLane(engine, 1, 0, Direction.RIGHT);
-    engine.ports.setItem(engine.lanes.outPortOf(laneAt(engine, 1, 0)), CARGO);
+    engine.ports.setItem(engine.lanes.outputPortOf(laneAt(engine, 1, 0)), CARGO);
 
     placeLane(engine, 0, 0, Direction.RIGHT);
 
     const lane = laneAt(engine, 1, 0);
     assert.deepEqual(laneTiles(engine, lane), [[0, 0], [1, 0]]);
-    assert.equal(engine.ports.item(engine.lanes.outPortOf(lane)), CARGO, "the out-port item survives the prepend");
+    assert.equal(engine.ports.item(engine.lanes.outputPortOf(lane)), CARGO, "the output port item survives the prepend");
 });
 
-// A bent lane is one contiguous run through the corner; an item flows around it to the out-port.
-test("an item flows around a bend to the out-port", async () => {
+// A bent lane is one contiguous run through the corner; an item flows around it to the output port.
+test("an item flows around a bend to the output port", async () => {
     const engine = await setup();
     placeLane(engine, 0, 0, Direction.RIGHT);
     placeLane(engine, 1, 0, Direction.RIGHT);
@@ -113,12 +113,12 @@ test("an item flows around a bend to the out-port", async () => {
     const lane = laneAt(engine, 0, 0);
     assert.deepEqual(laneTiles(engine, lane), [[0, 0], [1, 0], [2, 0]], "the corner cell joins the same lane");
 
-    engine.ports.setItem(engine.lanes.inPortOf(lane), CARGO);
+    engine.ports.setItem(engine.lanes.inputPortOf(lane), CARGO);
     let delivered = 0;
     for (let i = 0; i < 12; i += 1) {
-        engine.ports.setItem(engine.lanes.outPortOf(lane), EMPTY);
+        engine.ports.setItem(engine.lanes.outputPortOf(lane), EMPTY);
         engine.tick();
-        if (engine.ports.item(engine.lanes.outPortOf(lane)) === CARGO) {
+        if (engine.ports.item(engine.lanes.outputPortOf(lane)) === CARGO) {
             delivered += 1;
         }
     }
@@ -136,17 +136,17 @@ test("a closed loop is one lane sharing one port, and an item circulates", async
     assert.equal(engine.lanes.ids().length, 1);
     const lane = laneAt(engine, 0, 0);
     assert.equal(engine.lanes.lengthOf(lane), 4 * 2 - 1);
-    const port = engine.lanes.outPortOf(lane);
-    assert.equal(engine.lanes.inPortOf(lane), port, "the loop shares one port for both ends");
+    const port = engine.lanes.outputPortOf(lane);
+    assert.equal(engine.lanes.inputPortOf(lane), port, "the loop shares one port for both ends");
 
     engine.ports.setItem(port, CARGO);
     let rests = 0;
     for (let i = 0; i < 16; i += 1) {
         engine.tick();
-        const inPort = engine.ports.item(port) === CARGO ? 1 : 0;
+        const inputPort = engine.ports.item(port) === CARGO ? 1 : 0;
         const onLane = engine.lanes.itemCountOf(lane);
-        assert.equal(inPort + onLane, 1, "exactly one item exists at all times");
-        rests += inPort;
+        assert.equal(inputPort + onLane, 1, "exactly one item exists at all times");
+        rests += inputPort;
     }
     assert.ok(rests >= 2, `the item laps (rested in the port ${rests} ticks)`);
 });
@@ -221,9 +221,9 @@ test("a second surface cell cannot occupy the same tile, and delete frees it", a
 });
 
 // Every cell is fed over one edge, chosen once at rebuild: a machine beside the head wins that
-// cell's parent edge and hands it its in-port, while a cell inside the lane is fed straight from the
+// cell's parent edge and hands it its input port, while a cell inside the lane is fed straight from the
 // cell before it.
-test("a head fed on its flank by a machine takes that edge as its parent edge and in-port", async () => {
+test("a head fed on its flank by a machine takes that edge as its parent edge and input port", async () => {
     const engine = await setup();
     engine.applyMessage(new CreateObjectMessage(TestMachineType.objectTypeId, 4, 5, Direction.RIGHT));
     placeLane(engine, 5, 5, Direction.UP);
@@ -235,16 +235,16 @@ test("a head fed on its flank by a machine takes that edge as its parent edge an
 
     assert.equal(engine.lanes.parentEdgeOf(head), Direction.RIGHT, "the head is fed across its left flank");
     assert.equal(
-        engine.lanes.inPortOf(lane),
+        engine.lanes.inputPortOf(lane),
         engine.ports.at(5, 5, Direction.RIGHT),
-        "and takes that edge as its in-port",
+        "and takes that edge as its input port",
     );
     assert.equal(engine.lanes.parentEdgeOf(inside), Direction.UP, "the cell inside the lane is fed straight");
 });
 
 // A machine dropped beside a finished lane moves that head's parent edge with it: the lane is derived
 // from every adjacent object, not only from the cells placed before it.
-test("a machine placed beside a finished lane head takes its flank as the in-port", async () => {
+test("a machine placed beside a finished lane head takes its flank as the input port", async () => {
     const engine = await setup();
     placeLane(engine, 5, 5, Direction.UP);
     placeLane(engine, 5, 4, Direction.UP);
@@ -255,13 +255,13 @@ test("a machine placed beside a finished lane head takes its flank as the in-por
 
     const lane = laneAt(engine, 5, 5);
     assert.equal(engine.lanes.parentEdgeOf(head), Direction.RIGHT, "the machine's edge became the parent edge");
-    assert.equal(engine.lanes.inPortOf(lane), engine.ports.at(5, 5, Direction.RIGHT), "and the lane's in-port");
+    assert.equal(engine.lanes.inputPortOf(lane), engine.ports.at(5, 5, Direction.RIGHT), "and the lane's input port");
 
-    engine.ports.setItem(engine.lanes.inPortOf(lane), CARGO);
+    engine.ports.setItem(engine.lanes.inputPortOf(lane), CARGO);
     let delivered = false;
     for (let i = 0; i < 12 && !delivered; i += 1) {
         engine.tick();
-        delivered = engine.ports.item(engine.lanes.outPortOf(lane)) === CARGO;
+        delivered = engine.ports.item(engine.lanes.outputPortOf(lane)) === CARGO;
     }
     assert.ok(delivered, "the item waiting in the machine's output port rides the lane");
 });
@@ -279,7 +279,7 @@ test("deleting the machine returns the head to its back edge", async () => {
     engine.applyMessage(new DeleteObjectMessage(engine.placed.objectRefOf(machine)));
 
     assert.equal(engine.lanes.parentEdgeOf(head), Direction.UP, "the head is back on its back edge");
-    assert.equal(engine.lanes.inPortOf(laneAt(engine, 5, 5)), engine.ports.at(5, 5, Direction.UP));
+    assert.equal(engine.lanes.inputPortOf(laneAt(engine, 5, 5)), engine.ports.at(5, 5, Direction.UP));
 });
 
 // Re-laying a cell (delete then place, as the drag tool does at a corner) fires the port sweep. A

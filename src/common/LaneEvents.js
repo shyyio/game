@@ -14,7 +14,7 @@ export class LaneGeometryEvent extends AbstractChunkRoutedEvent {
         laneRef: "int64",
         cellObjectRefs: "int64[]",
         cellParentEdges: "int32[]",
-        outPortRef: "int64",
+        outputPortRef: "int64",
     };
 
     /**
@@ -23,14 +23,14 @@ export class LaneGeometryEvent extends AbstractChunkRoutedEvent {
      * @param {number} laneRef
      * @param {number[]} cellObjectRefs
      * @param {Direction[]} cellParentEdges - the edge each cell is fed over, in its own frame
-     * @param {number} outPortRef
+     * @param {number} outputPortRef
      */
-    constructor(x, y, laneRef, cellObjectRefs, cellParentEdges, outPortRef) {
+    constructor(x, y, laneRef, cellObjectRefs, cellParentEdges, outputPortRef) {
         super(x, y);
         this.laneRef = laneRef;
         this.cellObjectRefs = cellObjectRefs;
         this.cellParentEdges = cellParentEdges;
-        this.outPortRef = outPortRef;
+        this.outputPortRef = outputPortRef;
     }
 }
 
@@ -42,7 +42,7 @@ export class LaneGeometryBatchEvent extends AbstractBatchEvent {
 
     static wireFields = {
         laneRefs: "int64[]",
-        outPortRefs: "int64[]",
+        outputPortRefs: "int64[]",
         cellCounts: "int32[]",
         cellObjectRefs: "int64[]",
         cellParentEdges: "int32[]",
@@ -55,7 +55,7 @@ export class LaneGeometryBatchEvent extends AbstractBatchEvent {
     constructor(x, y) {
         super(x, y);
         this.laneRefs = [];
-        this.outPortRefs = [];
+        this.outputPortRefs = [];
         this.cellCounts = [];
         this.cellObjectRefs = [];
         this.cellParentEdges = [];
@@ -65,12 +65,12 @@ export class LaneGeometryBatchEvent extends AbstractBatchEvent {
      * @param {number} laneRef
      * @param {number[]} cellObjectRefs
      * @param {Direction[]} cellParentEdges
-     * @param {number} outPortRef
+     * @param {number} outputPortRef
      * @returns {void}
      */
-    add(laneRef, cellObjectRefs, cellParentEdges, outPortRef) {
+    add(laneRef, cellObjectRefs, cellParentEdges, outputPortRef) {
         this.laneRefs.push(laneRef);
-        this.outPortRefs.push(outPortRef);
+        this.outputPortRefs.push(outputPortRef);
         this.cellCounts.push(cellObjectRefs.length);
         for (const objectRef of cellObjectRefs) {
             this.cellObjectRefs.push(objectRef);
@@ -90,7 +90,7 @@ export class LaneGeometryBatchEvent extends AbstractBatchEvent {
             const cells = this.cellObjectRefs.slice(read, read + this.cellCounts[i]);
             const edges = this.cellParentEdges.slice(read, read + this.cellCounts[i]);
             read += this.cellCounts[i];
-            events.push(new LaneGeometryEvent(this.x, this.y, this.laneRefs[i], cells, edges, this.outPortRefs[i]));
+            events.push(new LaneGeometryEvent(this.x, this.y, this.laneRefs[i], cells, edges, this.outputPortRefs[i]));
         }
         return events;
     }

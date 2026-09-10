@@ -14,8 +14,8 @@ export class BeltLane {
      */
     constructor(engine, laneRef) {
         this.laneRef = laneRef;
-        this.inPort = engine.lanes.inPortOf(laneRef);
-        this.outPort = engine.lanes.outPortOf(laneRef);
+        this.inputPort = engine.lanes.inputPortOf(laneRef);
+        this.outputPort = engine.lanes.outputPortOf(laneRef);
     }
 }
 

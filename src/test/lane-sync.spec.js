@@ -40,7 +40,7 @@ function runTicks(game, count) {
 }
 
 // A session subscribing to a chunk is sent everything already there: the cells, the lane geometry,
-// its items, and the item resting in the out-port.
+// its items, and the item resting in the output port.
 test("a session subscribing to a chunk receives its lanes, items and resting port items", async () => {
     const {game, engine} = await setup();
     const builder = new CapturingSession(1);
@@ -50,7 +50,7 @@ test("a session subscribing to a chunk receives its lanes, items and resting por
         game.dispatchMessage(new CreateObjectMessage(TestLaneType.objectTypeId, cell[0], cell[1], Direction.UP), builder);
     }
     const lane = laneAt(engine, 0, 2);
-    engine.ports.setItem(engine.lanes.inPortOf(lane), CARGO);
+    engine.ports.setItem(engine.lanes.inputPortOf(lane), CARGO);
     runTicks(game, 2);
     const carried = engine.lanes.itemCountOf(lane);
     assert.equal(carried, 1, "one item is in flight when the viewer arrives");
@@ -74,8 +74,8 @@ test("a session subscribing to a chunk receives its lanes, items and resting por
     assert.equal(items.length, carried, "the in-flight item is synced, snapped not glided");
 });
 
-// A resting out-port item is synced as an ordinary rendered port item.
-test("a subscribing session receives a lane's resting out-port item", async () => {
+// A resting output port item is synced as an ordinary rendered port item.
+test("a subscribing session receives a lane's resting output port item", async () => {
     const {game, engine} = await setup();
     const builder = new CapturingSession(1);
     game.connect(builder);
@@ -84,7 +84,7 @@ test("a subscribing session receives a lane's resting out-port item", async () =
         game.dispatchMessage(new CreateObjectMessage(TestLaneType.objectTypeId, cell[0], cell[1], Direction.UP), builder);
     }
     const lane = laneAt(engine, 0, 2);
-    engine.ports.setItem(engine.lanes.inPortOf(lane), CARGO);
+    engine.ports.setItem(engine.lanes.inputPortOf(lane), CARGO);
     runTicks(game, 8);
 
     const viewer = new CapturingSession(2);
@@ -93,8 +93,8 @@ test("a subscribing session receives a lane's resting out-port item", async () =
 
     const synced = flattenBatches(viewer.events.find(event => event instanceof ChunkSyncEvent).events);
     const portItems = synced.filter(event => event instanceof PortItemSetEvent);
-    assert.equal(portItems.length, 1, "the resting out-port item is synced");
-    assert.equal(portItems[0].portRef, engine.lanes.outPortOf(lane));
+    assert.equal(portItems.length, 1, "the resting output port item is synced");
+    assert.equal(portItems[0].portRef, engine.lanes.outputPortOf(lane));
     assert.equal(portItems[0].itemTypeId, CARGO);
 });
 
@@ -113,7 +113,7 @@ test("lane events reach only the sessions watching the chunk", async () => {
     }
 
     const lane = laneAt(engine, 0, 2);
-    engine.ports.setItem(engine.lanes.inPortOf(lane), CARGO);
+    engine.ports.setItem(engine.lanes.inputPortOf(lane), CARGO);
     runTicks(game, 8);
 
     const portItems = events => events

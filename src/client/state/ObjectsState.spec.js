@@ -120,7 +120,7 @@ test("getByChunk returns objects grouped by chunk", () => {
     assert.strictEqual(cache.getByChunk(chunkKeyAt(200, 200)).length, 1);
 });
 
-test("getByPort resolves a rendered out-port to its entry and port name", () => {
+test("getByPort resolves a rendered output port to its entry and port name", () => {
     const cache = new ObjectsView(null);
     cache.set(1, 5, 5, cell(5, 5), {out_port_id: 42}, {type: 0});
 
@@ -133,23 +133,23 @@ test("getByPort resolves a rendered out-port to its entry and port name", () => 
     assert.strictEqual(cache.getByPort(42), null);
 });
 
-test("inPortAt / outPortAt resolve a feeder-consumer pair facing each other", () => {
+test("inputPortAt / outputPortAt resolve a feeder-consumer pair facing each other", () => {
     const cache = new ObjectsView(null);
     // Feeder at (5,6) outputs up into (5,5); consumer at (5,5) takes input there.
     machine(cache, 1, 5, 6, Direction.UP);
     machine(cache, 2, 5, 5, Direction.UP);
 
-    const consumer = cache.inPortAt(5, 5, Direction.UP);
+    const consumer = cache.inputPortAt(5, 5, Direction.UP);
     assert.strictEqual(consumer.entry.id, 2);
     assert.strictEqual(consumer.portName, "in");
 
-    const feeder = cache.outPortAt(5, 5, Direction.UP);
+    const feeder = cache.outputPortAt(5, 5, Direction.UP);
     assert.strictEqual(feeder.entry.id, 1);
     assert.strictEqual(feeder.portName, "out");
 
     // Wrong facing and an empty tile resolve to nothing.
-    assert.strictEqual(cache.inPortAt(5, 5, Direction.DOWN), null);
-    assert.strictEqual(cache.inPortAt(9, 9, Direction.UP), null);
+    assert.strictEqual(cache.inputPortAt(5, 5, Direction.DOWN), null);
+    assert.strictEqual(cache.inputPortAt(9, 9, Direction.UP), null);
 });
 
 test("connectedPorts reports a record's live output connection", () => {

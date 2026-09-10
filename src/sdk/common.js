@@ -131,7 +131,7 @@ export {AbstractEvent} from "@/common/AbstractEvent.js";
 export {AbstractChunkRoutedEvent} from "@/common/AbstractChunkRoutedEvent.js";
 export {AbstractBatchEvent} from "@/common/AbstractBatchEvent.js";
 
-// Engine render deltas for the item resting in a render-flagged out-port.
+// Engine render deltas for the item resting in a render-flagged output port.
 export {PortItemSetEvent, PortItemClearEvent} from "@/common/PortItemEvents.js";
 
 // The lane feed: a lane's shape whenever it is rebuilt, and the item rows riding it.

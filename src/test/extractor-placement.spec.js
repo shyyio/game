@@ -27,11 +27,11 @@ test("an extractor on water produces the water item into its output port", async
     const fields = events.find(event => event instanceof ObjectFieldsEvent && event.objectRef === insert.objectRef);
     assert.deepEqual(fields.values, [ITEM_TYPE_WATER], "lastOutput seeded at placement");
 
-    const outPort = engine.ports.at(5, 4, Direction.UP);
+    const outputPort = engine.ports.at(5, 4, Direction.UP);
     let produced = false;
     for (let i = 0; i < 8 && !produced; i += 1) {
         engine.tick();
-        produced = engine.ports.item(outPort) === ITEM_TYPE_WATER;
+        produced = engine.ports.item(outputPort) === ITEM_TYPE_WATER;
     }
     assert.ok(produced, "the extractor produced a water item");
 });

@@ -10,9 +10,9 @@ import {chunkKeyAt} from "@/common/util.js";
 
 const ITEM = 7;
 
-// A drawn out-port emits a PortItemSetEvent when it gains a resting item and a PortItemClearEvent
+// A drawn output port emits a PortItemSetEvent when it gains a resting item and a PortItemClearEvent
 // when it loses one, on change only.
-test("rendered out-ports emit port-item set/clear deltas on change only", async () => {
+test("rendered output ports emit port-item set/clear deltas on change only", async () => {
     const engine = new GameEngine();
     await engine.init();
     const collector = new EventCollector(engine);
@@ -152,9 +152,9 @@ test("a mod-emptied port refilled the same tick emits clear then set", async () 
     assert.equal(events[1].itemTypeId, ITEM);
 });
 
-// The splitter transfers out of its in-port like any consumer, so the rendered feed item glides
+// The splitter transfers out of its input port like any consumer, so the rendered feed item glides
 // into the splitter instead of vanishing in place.
-test("a splitter draining its rendered in-port emits a consumed clear", async () => {
+test("a splitter draining its rendered input port emits a consumed clear", async () => {
     const engine = new GameEngine();
     await engine.init();
     const collector = new EventCollector(engine);
@@ -162,7 +162,7 @@ test("a splitter draining its rendered in-port emits a consumed clear", async ()
     splitter.install(engine);
     const s = splitter.addSplitter(engine);
     engine.render.registerPort(s.in_a, 5, 4);
-    // Jam the splitter so the fed item rests in the in-port for a tick.
+    // Jam the splitter so the fed item rests in the input port for a tick.
     engine.ports.setItem(s.int_a, ITEM);
     engine.ports.setItem(s.out_a, ITEM);
     engine.ports.setItem(s.out_b, ITEM);
@@ -170,7 +170,7 @@ test("a splitter draining its rendered in-port emits a consumed clear", async ()
     engine.tick();
     collector.drain();
 
-    // Unjam: the internal hop frees, the resting in-port item transfers into it.
+    // Unjam: the internal hop frees, the resting input port item transfers into it.
     engine.ports.setItem(s.out_a, EMPTY);
     engine.tick();
     const events = collector.drain();

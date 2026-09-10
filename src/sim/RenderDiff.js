@@ -9,7 +9,7 @@ const PORT_EMPTIED_MOD = 1;
 const PORT_EMPTIED_CONSUMED = 2;
 
 /**
- * What the client is told about resting port items. Modules register the out-ports whose item is
+ * What the client is told about resting port items. Modules register the output ports whose item is
  * drawn and the tile it is drawn at; EMIT_RENDER diffs each port written since the last pass against
  * the shadow of what was last emitted, and sends one batch per chunk.
  */
@@ -24,7 +24,7 @@ export class RenderDiff {
 
         // Last emitted item per rendered port; EMPTY means nothing drawn.
         this._shadow = new Int32Array(portCapacity).fill(EMPTY);
-        // Out-ports whose resting item is drawn, and the tile it is drawn at. Modules register theirs;
+        // Output ports whose resting item is drawn, and the tile it is drawn at. Modules register theirs;
         // re-registration is idempotent and a removed path's port can be unregistered (paths churn).
         this._rendered = new Uint8Array(portCapacity);
         this._x = new Int32Array(portCapacity);
@@ -70,7 +70,7 @@ export class RenderDiff {
     }
 
     /**
-     * Registers an out-port whose resting item is drawn at tile (x, y); EMIT_RENDER emits a set/clear
+     * Registers an output port whose resting item is drawn at tile (x, y); EMIT_RENDER emits a set/clear
      * event whenever its item changes.
      * @param {number} eid
      * @param {number} x

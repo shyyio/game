@@ -78,7 +78,7 @@ test("deleting the down mouth collapses the tunnel, leaving the up mouth", async
 test("a tunnel item is kept on the surviving mouth when a mouth is deleted", async () => {
     const {engine, upRef} = await tunnel(1);
     const lane = beltLaneAt(engine, 1, 1);
-    engine.ports.setItem(lane.inPort, RED);
+    engine.ports.setItem(lane.inputPort, RED);
     engine.tick(); // ingest the item into the tunnel
     assert.equal(laneItemCount(engine), 1, "the item is in the tunnel");
 

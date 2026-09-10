@@ -8,7 +8,7 @@ import {rotate} from "@/common/util.js";
 import {PortItemSetEvent, PortItemClearEvent} from "@/common/PortItemEvents.js";
 import ReducedMotion from "@/client/ReducedMotion.js";
 
-// Item sprites resting in out-ports share this layer with lane items; their keys are
+// Item sprites resting in output ports share this layer with lane items; their keys are
 // namespaced from the lane item keys so the two can't collide.
 export const PORT_SPRITE_KEY = portRef => `port:${portRef}`;
 
@@ -19,7 +19,7 @@ const MOVE_DURATION_MS = 190;
 /**
  * The single shared item layer. Renders item particles keyed by id, with glide. Mods that
  * compute item positions (belts) drive it imperatively; resting items in render-flagged
- * out-ports are driven here from the PORT_ITEM_SET/CLEAR events, with the render tile derived
+ * output ports are driven here from the PORT_ITEM_SET/CLEAR events, with the render tile derived
  * from the shared object index and the owning object's PortDefinition.
  *
  * Items render as a ParticleContainer: gliding positions ride the per-frame dynamic buffer,
@@ -80,7 +80,7 @@ export class ItemDrawLayer extends AbstractDrawLayer {
         );
         /**
          * Live particles keyed by particle key — a number row id for belt items, a namespaced
-         * string for items resting in out-ports.
+         * string for items resting in output ports.
          * @type {KeyedDisplayPool}
          * @private
          */
@@ -127,13 +127,13 @@ export class ItemDrawLayer extends AbstractDrawLayer {
     }
 
     /**
-     * Renders or clears a resting out-port item, deriving its tile from the object index;
-     * ignores ports not in the index (a lane's out-port, which LaneItemDrawLayer draws).
+     * Renders or clears a resting output port item, deriving its tile from the object index;
+     * ignores ports not in the index (a lane's output port, which LaneItemDrawLayer draws).
      * @param {AbstractEvent} event
      * @returns {void}
      */
     onEvent(event) {
-        // A null placement means a port this layer doesn't own (a lane's out-port, or a
+        // A null placement means a port this layer doesn't own (a lane's output port, or a
         // port whose id isn't in the index): leave it to the owning layer.
         const placement = this._resolvePort(event.portRef);
         if (placement === null) {
@@ -178,7 +178,7 @@ export class ItemDrawLayer extends AbstractDrawLayer {
     }
 
     /**
-     * Drops a removed object's resting out-port item particles.
+     * Drops a removed object's resting output port item particles.
      * @param {CacheEntry} entry
      * @returns {void}
      */
@@ -210,7 +210,7 @@ export class ItemDrawLayer extends AbstractDrawLayer {
      * Places or repositions an item at a belt tile, with the texture for its item type. A hidden
      * item is still positioned, keeping its glide continuous.
      * @param {Object} move
-     * @param {number|string} move.key - particle key (row id for belt items, namespaced string for out-port items)
+     * @param {number|string} move.key - particle key (row id for belt items, namespaced string for output port items)
      * @param {number} move.tileX
      * @param {number} move.tileY
      * @param {boolean} move.halfTile
@@ -311,7 +311,7 @@ export class ItemDrawLayer extends AbstractDrawLayer {
 
     /**
      * Re-keys a live particle, preserving it (and its in-flight glide) so a moved item can
-     * keep gliding under a new identity — e.g. a belt item popping into an out-port.
+     * keep gliding under a new identity — e.g. a belt item popping into an output port.
      * Drops whatever particle already held the new key (the previous occupant). No-op for an
      * unknown source key.
      * @param {number|string} oldKey

@@ -9,7 +9,7 @@ const RICH = () => 1_000_000;
 
 test("a lone qualifying buyer is matched at its own price, not the seller's floor", () => {
     const book = new MarketBook(new Map());
-    book.postBuy(100, ITEM, 10, /* outPort */ 1);
+    book.postBuy(100, ITEM, 10, /* outputPort */ 1);
     const match = book.bestEligibleBuyer(ITEM, 5, OPEN, RICH);
     assert.equal(match.npc, false);
     assert.equal(match.eid, 100);
@@ -51,8 +51,8 @@ test("a buyer who can't afford their own bid is skipped for the next-best", () =
 
 test("a buyer whose output port is currently blocked is skipped for the next-best", () => {
     const book = new MarketBook(new Map());
-    book.postBuy(100, ITEM, 12, /* outPort */ 1);
-    book.postBuy(200, ITEM, 8, /* outPort */ 2);
+    book.postBuy(100, ITEM, 12, /* outputPort */ 1);
+    book.postBuy(200, ITEM, 8, /* outputPort */ 2);
     const portIsEmpty = port => port !== 1;
     const match = book.bestEligibleBuyer(ITEM, 5, portIsEmpty, RICH);
     assert.equal(match.eid, 200, "the blocked top bidder never consumes the slot");

@@ -23,9 +23,9 @@ test("a RIGHT-facing machine adopts a RIGHT belt and cooks", async () => {
     engine.applyMessage(new CreateObjectMessage(TestMachineType.objectTypeId, 6, 5, Direction.RIGHT));
     engine.applyMessage(new CreateObjectMessage(BeltType.objectTypeId, 5, 5, Direction.RIGHT));
     const belt = beltLaneAt(engine, 5, 5);
-    assert.equal(belt.outPort, engine.ports.at(6, 5, Direction.RIGHT), "belt out adopted as machine input");
+    assert.equal(belt.outputPort, engine.ports.at(6, 5, Direction.RIGHT), "belt out adopted as machine input");
 
-    engine.ports.setItem(belt.inPort, ITEM_TYPE_TEST_MACHINE_INPUT);
+    engine.ports.setItem(belt.inputPort, ITEM_TYPE_TEST_MACHINE_INPUT);
     const machineOut = engine.ports.at(7, 5, Direction.RIGHT);
     let cooked = false;
     for (let i = 0; i < 16 && !cooked; i += 1) {
@@ -41,9 +41,9 @@ test("a RIGHT-facing splitter adopts a RIGHT belt on its in_a", async () => {
     engine.applyMessage(new CreateObjectMessage(SplitterType.objectTypeId, 6, 5, Direction.RIGHT));
     engine.applyMessage(new CreateObjectMessage(BeltType.objectTypeId, 5, 5, Direction.RIGHT));
     const belt = beltLaneAt(engine, 5, 5);
-    assert.equal(belt.outPort, engine.ports.at(6, 5, Direction.RIGHT), "belt out adopted as splitter in_a");
+    assert.equal(belt.outputPort, engine.ports.at(6, 5, Direction.RIGHT), "belt out adopted as splitter in_a");
 
-    engine.ports.setItem(belt.inPort, 1);
+    engine.ports.setItem(belt.inputPort, 1);
     let arrived = false;
     // out_a for RIGHT splitter is one tile right of in_a tile.
     const outA = engine.ports.at(7, 5, Direction.RIGHT);

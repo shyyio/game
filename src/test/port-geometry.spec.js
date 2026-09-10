@@ -65,18 +65,18 @@ test("one edgeKey means one port eid", async () => {
 
 test("a producer and the consumer it reaches share one port", async () => {
     const engine = await makeGameEngine();
-    // An out-port reaching cell C facing D and an in-port sitting on C facing D are the same edge,
+    // An output port reaching cell C facing D and an input port sitting on C facing D are the same edge,
     // which is what lets the client pair them off edgeKey alone.
     const out = {x: 0, y: -1, direction: Direction.UP};
     const emitter = portAt(out, ORIGIN_X, ORIGIN_Y, Direction.UP);
     const consumerTileY = ORIGIN_Y - 1;
-    const inPort = {x: 0, y: 0, direction: Direction.UP};
-    const receiver = portAt(inPort, ORIGIN_X, consumerTileY, Direction.UP);
+    const inputPort = {x: 0, y: 0, direction: Direction.UP};
+    const receiver = portAt(inputPort, ORIGIN_X, consumerTileY, Direction.UP);
 
     assert.equal(edgeKey(emitter.x, emitter.y, emitter.direction), edgeKey(receiver.x, receiver.y, receiver.direction));
     assert.equal(
         engine.portFor(out, ORIGIN_X, ORIGIN_Y, Direction.UP).port,
-        engine.portFor(inPort, ORIGIN_X, consumerTileY, Direction.UP).port,
+        engine.portFor(inputPort, ORIGIN_X, consumerTileY, Direction.UP).port,
     );
 });
 

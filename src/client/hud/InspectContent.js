@@ -17,7 +17,7 @@ const BASE_CONTENT_HEIGHT = SLOT_SIZE + SLOT_MARGIN_Y + SLOT_SIZE;
 
 // Ticks an input item keeps its present look after leaving the port: a machine pulls its inputs
 // within the tick they arrive, so an input port reads as empty almost always. The output slot gets
-// no such hold — an out-port item genuinely rests there, and holding it made a port occupied every
+// no such hold — an output port item genuinely rests there, and holding it made a port occupied every
 // other tick look identical to one occupied every tick.
 const PRESENCE_HOLD_TICKS = 2;
 
@@ -117,7 +117,7 @@ export class InspectContent extends Container {
 
         this._progressBar.setProgress(event.processingRemaining, event.processingTotal);
 
-        // Out-port item first, else the inferred recipe output, else the last produced item; only
+        // Output port item first, else the inferred recipe output, else the last produced item; only
         // the first is really in the port, so only it renders as present.
         const present = event.outputItem !== null;
         let outputItem = 0;
@@ -188,11 +188,11 @@ function workerRowColor(staffed) {
 /**
  * The hold counter after a tick: an input item recharges it, an empty port spends one tick of it.
  * @param {number} hold
- * @param {boolean} inPort
+ * @param {boolean} inputPort
  * @returns {number}
  */
-function holdAfter(hold, inPort) {
-    if (inPort) {
+function holdAfter(hold, inputPort) {
+    if (inputPort) {
         return PRESENCE_HOLD_TICKS;
     }
     return Math.max(0, hold - 1);

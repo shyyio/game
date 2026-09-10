@@ -38,21 +38,21 @@ function placeObject(engine, type, x, y) {
  * Runs `ticks` whole ticks with the input port kept fed and the output port drained, counting
  * cooked items — the machine's sustained production rate.
  * @param {GameEngine} engine
- * @param {number} inPort
- * @param {number} outPort
+ * @param {number} inputPort
+ * @param {number} outputPort
  * @param {number} ticks
  * @returns {number}
  */
-function producedOver(engine, inPort, outPort, ticks) {
+function producedOver(engine, inputPort, outputPort, ticks) {
     let produced = 0;
     for (let i = 0; i < ticks; i += 1) {
-        if (engine.ports.item(inPort) === EMPTY) {
-            engine.ports.setItem(inPort, ITEM_TYPE_TEST_MACHINE_INPUT);
+        if (engine.ports.item(inputPort) === EMPTY) {
+            engine.ports.setItem(inputPort, ITEM_TYPE_TEST_MACHINE_INPUT);
         }
         engine.tick();
-        if (engine.ports.item(outPort) === ITEM_TYPE_TEST_MACHINE_OUTPUT) {
+        if (engine.ports.item(outputPort) === ITEM_TYPE_TEST_MACHINE_OUTPUT) {
             produced += 1;
-            engine.ports.setItem(outPort, EMPTY);
+            engine.ports.setItem(outputPort, EMPTY);
         }
     }
     return produced;
@@ -106,22 +106,22 @@ test("a machine road-connected to housing is manned and sustains a faster rate",
 
 test("fractional progress banks past a craft and shortens the next", async () => {
     const {engine, nearId} = await mannedSetup();
-    const inPort = engine.ports.at(5, 4, Direction.UP);
-    const outPort = engine.ports.at(5, 3, Direction.UP);
+    const inputPort = engine.ports.at(5, 4, Direction.UP);
+    const outputPort = engine.ports.at(5, 3, Direction.UP);
 
     // First craft (processingTicks 2 at 1.3/tick) overshoots by 0.6, banked as carry.
-    engine.ports.setItem(inPort, ITEM_TYPE_TEST_MACHINE_INPUT);
+    engine.ports.setItem(inputPort, ITEM_TYPE_TEST_MACHINE_INPUT);
     let produced = false;
     for (let i = 0; i < 8 && !produced; i += 1) {
         engine.tick();
-        produced = engine.ports.item(outPort) === ITEM_TYPE_TEST_MACHINE_OUTPUT;
+        produced = engine.ports.item(outputPort) === ITEM_TYPE_TEST_MACHINE_OUTPUT;
     }
     assert.ok(produced, "first craft completed");
     assert.ok(Math.abs(carryOf(engine, nearId) - 0.6) < 1e-3, `carry ${carryOf(engine, nearId)}`);
 
     // The next craft consumes the bank: it loads with remaining 1.4, not 2.
-    engine.ports.setItem(outPort, EMPTY);
-    engine.ports.setItem(inPort, ITEM_TYPE_TEST_MACHINE_INPUT);
+    engine.ports.setItem(outputPort, EMPTY);
+    engine.ports.setItem(inputPort, ITEM_TYPE_TEST_MACHINE_INPUT);
     engine.tick();
     assert.equal(carryOf(engine, nearId), 0, "bank consumed at load");
     const def = engine.components.get("Machine");

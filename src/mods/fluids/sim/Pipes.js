@@ -24,10 +24,10 @@ class PipeNetwork {
      * @param {number} fluidType
      * @param {number} amount
      * @param {number} capacity
-     * @param {number[]} inPorts
+     * @param {number[]} inputPorts
      * @param {{x:number, y:number, direction:number, neighborKey:number}[]} outEdges
      */
-    constructor(netId, chunkKey, originX, originY, pipes, tiles, fluidType, amount, capacity, inPorts, outEdges) {
+    constructor(netId, chunkKey, originX, originY, pipes, tiles, fluidType, amount, capacity, inputPorts, outEdges) {
         this.netId = netId;
         this.chunkKey = chunkKey;
         this.originX = originX;
@@ -37,7 +37,7 @@ class PipeNetwork {
         this.fluidType = fluidType;
         this.amount = amount;
         this.capacity = capacity;
-        this.inPorts = inPorts;
+        this.inputPorts = inputPorts;
         this.outEdges = outEdges;
         // Last state synced to clients, so POST_RESOLVE emits only changes.
         this.lastType = fluidType;
@@ -50,7 +50,7 @@ class PipeNetwork {
 /**
  * Pipe fluid transport: a network is the same-chunk connected component of pipe tiles (never
  * crossing a seam) holding one uniform (fluidType, amount), so equalization is free. Boundary
- * edges reuse the port-transfer resolver: drain resting payloads at in-ports, create one
+ * edges reuse the port-transfer resolver: drain resting payloads at input ports, create one
  * one-unit payload per out-edge port.
  */
 export class Pipes extends AbstractSystem {
@@ -119,7 +119,7 @@ export class Pipes extends AbstractSystem {
 
     /**
      * Whether a pipe at (x, y) would join at most one fluid type (merged networks plus adopted
-     * producer out-ports).
+     * producer output ports).
      * @param {number} x
      * @param {number} y
      * @returns {boolean}
@@ -294,7 +294,7 @@ export class Pipes extends AbstractSystem {
     }
 
     /**
-     * A new indexed network over `pipes`: in-ports created per boundary edge, out-edges resolved
+     * A new indexed network over `pipes`: input ports created per boundary edge, out-edges resolved
      * lazily each tick; emits nothing.
      * @private
      * @param {object[]} pipes
@@ -304,7 +304,7 @@ export class Pipes extends AbstractSystem {
      */
     _buildNetwork(pipes, fluidType, amount) {
         const tiles = new Set(pipes.map(pipe => tileKeyAt(pipe.x, pipe.y)));
-        const inPorts = [];
+        const inputPorts = [];
         const outEdges = [];
         for (const pipe of pipes) {
             for (const direction of DIRECTIONS) {
@@ -313,9 +313,9 @@ export class Pipes extends AbstractSystem {
                 if (tiles.has(tileKeyAt(nx, ny))) {
                     continue;
                 }
-                const inPort = this.engine.ports.at(pipe.x, pipe.y, Direction.invert(direction));
-                this.engine.ports.markFluid(inPort);
-                inPorts.push(inPort);
+                const inputPort = this.engine.ports.at(pipe.x, pipe.y, Direction.invert(direction));
+                this.engine.ports.markFluid(inputPort);
+                inputPorts.push(inputPort);
                 outEdges.push({x: nx, y: ny, direction, neighborKey: tileKeyAt(nx, ny)});
             }
         }
@@ -330,7 +330,7 @@ export class Pipes extends AbstractSystem {
             fluidType,
             amount,
             pipes.length * PIPE_SEGMENT_CAPACITY,
-            inPorts,
+            inputPorts,
             outEdges,
         );
         this.networks.push(net);
@@ -338,7 +338,7 @@ export class Pipes extends AbstractSystem {
             this._networkByTile.set(key, net);
         }
         getOrCreate(this._networksByChunk, net.chunkKey, () => new Set()).add(net);
-        // An adopted producer out-port binds the type before the first payload.
+        // An adopted producer output port binds the type before the first payload.
         net.sourceGen = this.engine.ports.fluidSourceGeneration;
         if (net.fluidType === EMPTY) {
             const bound = this._boundarySourceType(net);
@@ -349,13 +349,13 @@ export class Pipes extends AbstractSystem {
     }
 
     /**
-     * The fluid type produced into one of the network's in-ports, or EMPTY.
+     * The fluid type produced into one of the network's input ports, or EMPTY.
      * @private
      * @param {PipeNetwork} net
      * @returns {number}
      */
     _boundarySourceType(net) {
-        for (const port of net.inPorts) {
+        for (const port of net.inputPorts) {
             const source = this.engine.ports.fluidSource(port);
             if (source !== EMPTY) {
                 return source;
@@ -375,7 +375,7 @@ export class Pipes extends AbstractSystem {
             this._networkByTile.delete(key);
         }
         removeFromGroup(this._networksByChunk, net.chunkKey, net);
-        for (const port of net.inPorts) {
+        for (const port of net.inputPorts) {
             this.engine.ports.unmarkFluid(port);
         }
     }
@@ -398,7 +398,7 @@ export class Pipes extends AbstractSystem {
     getPinnedPortEids() {
         const ports = [];
         for (const net of this.networks) {
-            for (const port of net.inPorts) {
+            for (const port of net.inputPorts) {
                 ports.push(port);
             }
         }
@@ -406,7 +406,7 @@ export class Pipes extends AbstractSystem {
     }
 
     /**
-     * SUBMIT_INTENTS: drain type-matching payloads at in-ports (a mismatch backs up), then create
+     * SUBMIT_INTENTS: drain type-matching payloads at input ports (a mismatch backs up), then create
      * one payload per out-edge port, capped by amount; seams push only strictly downhill into a
      * free or same-type network.
      * @private
@@ -418,7 +418,7 @@ export class Pipes extends AbstractSystem {
         this._emittedPorts.length = 0;
         this._emittedNets.length = 0;
         for (const net of this.networks) {
-            for (const port of net.inPorts) {
+            for (const port of net.inputPorts) {
                 const resting = P[port];
                 if (resting === EMPTY || net.amount === net.capacity) {
                     continue;

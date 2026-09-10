@@ -23,18 +23,18 @@ class LaneRecord {
     /**
      * @param {number[]} cellObjectRefs - head first
      * @param {Direction[]} cellParentEdges - the edge each cell is fed over, in its own frame
-     * @param {number} outPortRef
+     * @param {number} outputPortRef
      */
-    constructor(cellObjectRefs, cellParentEdges, outPortRef) {
+    constructor(cellObjectRefs, cellParentEdges, outputPortRef) {
         this.cellObjectRefs = cellObjectRefs;
         this.cellParentEdges = cellParentEdges;
-        this.outPortRef = outPortRef;
+        this.outputPortRef = outputPortRef;
         /**
          * Item id -> {gap, type}, in file order (output edge first).
          * @type {Map<number, {gap: number, type: number}>}
          */
         this.items = new Map();
-        // A lead was popped and its out-port sprite has yet to appear, so that one glides in.
+        // A lead was popped and its output port sprite has yet to appear, so that one glides in.
         this.popPending = false;
     }
 }
@@ -57,11 +57,11 @@ export class LaneItemDrawLayer extends AbstractDrawLayer {
          * @private
          */
         this._lanes = new Map();
-        // Lane id by the out-port ref it rests items in, so a port-item event finds its lane.
-        this._laneByOutPort = new Map();
+        // Lane id by the output port ref it rests items in, so a port-item event finds its lane.
+        this._laneByOutputPort = new Map();
         // Lane id by cell, so a cell cached after its lane's rows redraws them.
         this._laneByCell = new Map();
-        // The item resting in each port, by port ref: a rebuilt lane keeps its out-port's item
+        // The item resting in each port, by port ref: a rebuilt lane keeps its output port's item
         // without the sim resending it.
         this._portItems = new Map();
     }
@@ -129,9 +129,9 @@ export class LaneItemDrawLayer extends AbstractDrawLayer {
      */
     _setGeometry(event) {
         this._forget(event.laneRef);
-        const lane = new LaneRecord(event.cellObjectRefs, event.cellParentEdges, event.outPortRef);
+        const lane = new LaneRecord(event.cellObjectRefs, event.cellParentEdges, event.outputPortRef);
         this._lanes.set(event.laneRef, lane);
-        this._laneByOutPort.set(event.outPortRef, event.laneRef);
+        this._laneByOutputPort.set(event.outputPortRef, event.laneRef);
         for (const objectRef of event.cellObjectRefs) {
             this._laneByCell.set(objectRef, event.laneRef);
         }
@@ -152,8 +152,8 @@ export class LaneItemDrawLayer extends AbstractDrawLayer {
         for (const itemRef of lane.items.keys()) {
             this._itemLayer.removeItem(LANE_SPRITE_KEY(laneRef, itemRef));
         }
-        this._itemLayer.removeItem(LANE_PORT_SPRITE_KEY(lane.outPortRef));
-        this._laneByOutPort.delete(lane.outPortRef);
+        this._itemLayer.removeItem(LANE_PORT_SPRITE_KEY(lane.outputPortRef));
+        this._laneByOutputPort.delete(lane.outputPortRef);
         for (const objectRef of lane.cellObjectRefs) {
             this._laneByCell.delete(objectRef);
         }
@@ -187,13 +187,13 @@ export class LaneItemDrawLayer extends AbstractDrawLayer {
         }
         lane.items.delete(event.itemRef);
         this._itemLayer.removeItem(LANE_SPRITE_KEY(event.laneRef, event.itemRef));
-        // An item leaves a lane only by popping into its out-port.
+        // An item leaves a lane only by popping into its output port.
         lane.popPending = true;
         this._redraw(event.laneRef, lane, false);
     }
 
     /**
-     * The item resting in a lane's out-port: drawn one tile past the tail on the edge facing back
+     * The item resting in a lane's output port: drawn one tile past the tail on the edge facing back
      * at it, gliding in when a pop put it there, and a consumed one glides on into the consumer.
      * @private
      * @param {PortItemSetEvent|PortItemClearEvent} event
@@ -205,7 +205,7 @@ export class LaneItemDrawLayer extends AbstractDrawLayer {
         } else {
             this._portItems.delete(event.portRef);
         }
-        const laneRef = this._laneByOutPort.get(event.portRef);
+        const laneRef = this._laneByOutputPort.get(event.portRef);
         if (laneRef === undefined) {
             return;
         }
@@ -225,7 +225,7 @@ export class LaneItemDrawLayer extends AbstractDrawLayer {
     }
 
     /**
-     * Places the sprite of the item resting in a lane's out-port, if any; nothing while the tail
+     * Places the sprite of the item resting in a lane's output port, if any; nothing while the tail
      * cell is still missing from the object index.
      * @private
      * @param {LaneRecord} lane
@@ -233,7 +233,7 @@ export class LaneItemDrawLayer extends AbstractDrawLayer {
      * @returns {void}
      */
     _drawPortItem(lane, snap) {
-        const itemTypeId = this._portItems.get(lane.outPortRef);
+        const itemTypeId = this._portItems.get(lane.outputPortRef);
         if (itemTypeId === undefined) {
             return;
         }
@@ -243,7 +243,7 @@ export class LaneItemDrawLayer extends AbstractDrawLayer {
         }
         const direction = tail.data.direction;
         this._itemLayer.moveItem({
-            key: LANE_PORT_SPRITE_KEY(lane.outPortRef),
+            key: LANE_PORT_SPRITE_KEY(lane.outputPortRef),
             tileX: tail.tileX + Direction.dx(direction),
             tileY: tail.tileY + Direction.dy(direction),
             halfTile: true,
@@ -301,7 +301,7 @@ export class LaneItemDrawLayer extends AbstractDrawLayer {
 
     /**
      * A cell's slots run from its center to the edge it hands flow over, so a lane's file is drawn
-     * center, edge, center, edge... and its last slot is the out-port past the tail.
+     * center, edge, center, edge... and its last slot is the output port past the tail.
      * @private
      * @param {string} key
      * @param {LaneRecord} lane

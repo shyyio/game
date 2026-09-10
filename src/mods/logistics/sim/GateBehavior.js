@@ -132,7 +132,7 @@ export class GateBehavior extends AbstractBehavior {
     }
 
     /**
-     * Sets a gate's open state, keeping fluid mode's in-port claim in step.
+     * Sets a gate's open state, keeping fluid mode's input port claim in step.
      * @param {GameEngine} engine
      * @param {number} eid
      * @param {boolean} open
@@ -159,7 +159,7 @@ export class GateBehavior extends AbstractBehavior {
         }
         gate.open[row] = flag;
         engine.sync.markDirty(gates, eid);
-        // Unmarking the closed in-port makes the upstream network's out-edge skip it.
+        // Unmarking the closed input port makes the upstream network's out-edge skip it.
         if (gate.fluid[row] === 1) {
             if (flag === 1) {
                 engine.ports.markFluid(gate.in[row]);
@@ -318,7 +318,7 @@ export class GateBehavior extends AbstractBehavior {
     }
 
     /**
-     * Claims item mode's ports: a fresh internal port and the rendered out-port.
+     * Claims item mode's ports: a fresh internal port and the rendered output port.
      * @private
      * @param {GameEngine} engine
      * @param {object} gate - the Gate component store
@@ -332,7 +332,7 @@ export class GateBehavior extends AbstractBehavior {
     }
 
     /**
-     * Claims fluid mode's port flags; the closed in-port stays unmarked.
+     * Claims fluid mode's port flags; the closed input port stays unmarked.
      * @private
      * @param {GameEngine} engine
      * @param {object} gate - the Gate component store

@@ -10,14 +10,14 @@ class MarketQuote {
      * @param {number} eid
      * @param {number} itemTypeId
      * @param {number} price
-     * @param {number} outPort
+     * @param {number} outputPort
      * @param {number} sequence
      */
-    constructor(eid, itemTypeId, price, outPort, sequence) {
+    constructor(eid, itemTypeId, price, outputPort, sequence) {
         this.eid = eid;
         this.itemTypeId = itemTypeId;
         this.price = price;
-        this.outPort = outPort;
+        this.outputPort = outputPort;
         this.sequence = sequence;
     }
 }
@@ -47,13 +47,13 @@ class MarketMatch {
      * @param {boolean} npc
      * @param {number} price
      * @param {number} eid - NO_EID for an NPC match
-     * @param {number} outPort - EMPTY for an NPC match
+     * @param {number} outputPort - EMPTY for an NPC match
      */
-    constructor(npc, price, eid, outPort) {
+    constructor(npc, price, eid, outputPort) {
         this.npc = npc;
         this.price = price;
         this.eid = eid;
-        this.outPort = outPort;
+        this.outputPort = outputPort;
     }
 }
 
@@ -211,11 +211,11 @@ export class MarketBook {
      * @param {number} eid
      * @param {number} itemTypeId
      * @param {number} price
-     * @param {number} outPort
+     * @param {number} outputPort
      * @returns {void}
      */
-    postBuy(eid, itemTypeId, price, outPort) {
-        const quote = new MarketQuote(eid, itemTypeId, price, outPort, this._nextSequence);
+    postBuy(eid, itemTypeId, price, outputPort) {
+        const quote = new MarketQuote(eid, itemTypeId, price, outputPort, this._nextSequence);
         this._nextSequence += 1;
         this._buys.post(quote);
     }
@@ -320,7 +320,7 @@ export class MarketBook {
                 if (quote.price < floorPrice) {
                     continue;
                 }
-                if (!portIsEmpty(quote.outPort)) {
+                if (!portIsEmpty(quote.outputPort)) {
                     continue;
                 }
                 if (balanceOf(quote.eid) < quote.price) {
@@ -340,7 +340,7 @@ export class MarketBook {
         if (best === null) {
             return null;
         }
-        return new MarketMatch(false, best.price, best.eid, best.outPort);
+        return new MarketMatch(false, best.price, best.eid, best.outputPort);
     }
 
     /**

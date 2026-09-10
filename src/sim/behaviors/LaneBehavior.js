@@ -71,7 +71,7 @@ export class LaneBehavior extends AbstractBehavior {
     }
 
     /**
-     * The lane owns its tail's out-port, so a cell registers none of its own.
+     * The lane owns its tail's output port, so a cell registers none of its own.
      * @param {GameEngine} engine
      * @param {number} eid
      * @returns {void}

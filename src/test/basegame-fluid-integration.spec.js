@@ -72,13 +72,13 @@ test("a pipe delivers Water into a Greenhouse's fluid input, completing the reci
     const [eid] = engine.placed.eidsOf(GreenhouseType.objectTypeId);
     const def = engine.components.get("Machine");
     const row = def.row(eid);
-    const outPort = def.store.out[row];
+    const outputPort = def.store.out[row];
 
     let produced = false;
     for (let i = 0; i < 200 && !produced; i += 1) {
         engine.ports.setItem(def.store.in0[row], ITEM_TYPE_CABBAGE_SEED);
         engine.tick();
-        produced = engine.ports.item(outPort) !== EMPTY;
+        produced = engine.ports.item(outputPort) !== EMPTY;
     }
     assert.ok(produced, "Water reached the Greenhouse through the pipe and the craft completed");
 });
@@ -109,7 +109,7 @@ test("Brew produces both Basic Potion Base and Overload Mix, one machine", async
     const row = def.row(eid);
     const in0Port = def.store.in0[row];
     const in1Port = def.store.in1[row];
-    const outPort = def.store.out[row];
+    const outputPort = def.store.out[row];
 
     // Only feed a port once it's actually empty (gathered): feeding on every tick regardless would
     // let the machine pipeline-gather a second Mushroom+Water craft before this one's even read.
@@ -122,14 +122,14 @@ test("Brew produces both Basic Potion Base and Overload Mix, one machine", async
             engine.ports.setItem(in1Port, ITEM_TYPE_WATER);
         }
         engine.tick();
-        basicPotionBase = engine.ports.item(outPort) === ITEM_TYPE_BASIC_POTION_BASE;
+        basicPotionBase = engine.ports.item(outputPort) === ITEM_TYPE_BASIC_POTION_BASE;
     }
     assert.ok(basicPotionBase, "Brew produces Basic Potion Base from Mushroom + Water");
     // The machine pipeline-gathers its NEXT craft's inputs on the same tick this one completes (once
     // remaining hits 0, gathering starts even before idle formally flips) — by the time we observe
     // completion, a second Mushroom+Water set is already sitting in slot0/slot1, queued. Clearing the
     // ports alone doesn't touch that internal state, so reset it directly for a truly blank machine.
-    engine.ports.setItem(outPort, EMPTY);
+    engine.ports.setItem(outputPort, EMPTY);
     engine.ports.setItem(in0Port, EMPTY);
     engine.ports.setItem(in1Port, EMPTY);
     def.store.slot0[row] = EMPTY;
@@ -144,7 +144,7 @@ test("Brew produces both Basic Potion Base and Overload Mix, one machine", async
             engine.ports.setItem(in1Port, ITEM_TYPE_BASIC_POTION_BASE);
         }
         engine.tick();
-        overloadMix = engine.ports.item(outPort) === ITEM_TYPE_OVERLOAD_MIX;
+        overloadMix = engine.ports.item(outputPort) === ITEM_TYPE_OVERLOAD_MIX;
     }
     assert.ok(overloadMix, "the same Brew also produces Overload Mix from Adrenochrome + Basic Potion Base");
 });

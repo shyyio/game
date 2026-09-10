@@ -336,11 +336,11 @@ function connectEdges(engine, node, occupied) {
     const parentType = node.kind === "terminal" ? TradingTerminalType : node.type;
     for (const edge of node.children) {
         const child = edge.child;
-        const inPort = parentType.inputPorts[edge.portIndex];
-        const inTile = {x: node.x + inPort.x, y: node.y + inPort.y};
+        const inputPort = parentType.inputPorts[edge.portIndex];
+        const inTile = {x: node.x + inputPort.x, y: node.y + inputPort.y};
         const connectorTile = {x: inTile.x, y: inTile.y + 1};
         const outTile = {x: child.x + child.outputPort.x, y: child.y + child.outputPort.y};
-        const objectType = inPort.fluid ? PipeType : BeltType;
+        const objectType = inputPort.fluid ? PipeType : BeltType;
         layPath(engine, objectType, outTile, connectorTile, occupied);
         connectEdges(engine, child, occupied);
     }

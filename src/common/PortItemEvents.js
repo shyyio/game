@@ -1,12 +1,12 @@
 import {AbstractChunkRoutedEvent} from "@/common/AbstractChunkRoutedEvent.js";
 import {AbstractBatchEvent} from "@/common/AbstractBatchEvent.js";
 
-// Render deltas for the resting item drawn in a render-flagged out-port; the render tile is derived
+// Render deltas for the resting item drawn in a render-flagged output port; the render tile is derived
 // client-side from the port ref, so (x, y) only routes the event to its chunk topic and stays off the
 // wire. `chunk` is therefore meaningless on a decoded port-item event.
 
 /**
- * An item now rests in a render-flagged out-port.
+ * An item now rests in a render-flagged output port.
  */
 export class PortItemSetEvent extends AbstractChunkRoutedEvent {
 
@@ -29,7 +29,7 @@ export class PortItemSetEvent extends AbstractChunkRoutedEvent {
 }
 
 /**
- * A render-flagged out-port's resting item was removed.
+ * A render-flagged output port's resting item was removed.
  */
 export class PortItemClearEvent extends AbstractChunkRoutedEvent {
 

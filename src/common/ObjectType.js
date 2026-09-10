@@ -10,7 +10,7 @@ export class PortDefinition {
      *     The edge is "flow entering tile (x, y) going direction", so a back input is
      *     {0, 0, UP} and a front output {0, -1, UP}; `engine.portFor` rotates it by the placement.
      *     null for an internal port.
-     * @param [render] {boolean} the engine draws this out-port's resting item, and the object's
+     * @param [render] {boolean} the engine draws this output port's resting item, and the object's
      *     insert/sync events carry its ref (renderedPortEids, in outputPorts order); off for a
      *     virtual port or one the behavior draws itself
      * @param [fluid] {boolean} an adjacent pipe network may deliver into this input port; the

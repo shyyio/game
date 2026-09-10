@@ -17,7 +17,7 @@ import {BeltType} from "@/mods/logistics/common/objectTypes.js";
 import {LaneItemDrawLayer} from "@/client/layers/LaneItemDrawLayer.js";
 
 const RED = 1;
-// What blocks an out-port so a lane packs solid behind it.
+// What blocks an output port so a lane packs solid behind it.
 const PLUG = 2;
 const COLUMN_X = 5;
 
@@ -168,7 +168,7 @@ function explode(event) {
 
 /**
  * The sprites the client must hold for the sim's current lanes: every item on a cell's center or
- * the edge into the next cell, and each out-port's resting item one tile past the tail.
+ * the edge into the next cell, and each output port's resting item one tile past the tail.
  * @param {GameEngine} engine
  * @returns {Map<string, {tileX: number, tileY: number, halfTile: boolean, type: number}>}
  */
@@ -194,12 +194,12 @@ function expectedSprites(engine) {
             });
             filePos += 1;
         }
-        const outPort = engine.lanes.outPortOf(laneRef);
-        const resting = engine.ports.item(outPort);
+        const outputPort = engine.lanes.outputPortOf(laneRef);
+        const resting = engine.ports.item(outputPort);
         if (resting !== EMPTY) {
             const tail = cells[cells.length - 1];
             const direction = position.direction[tail];
-            sprites.set(`lanePort:${outPort}`, {
+            sprites.set(`lanePort:${outputPort}`, {
                 tileX: position.x[tail] + Direction.dx(direction),
                 tileY: position.y[tail] + Direction.dy(direction),
                 halfTile: true,
@@ -254,16 +254,16 @@ class Scenario {
     }
 
     /**
-     * Plugs a lane's out-port and feeds its in-port until every slot holds an item.
+     * Plugs a lane's output port and feeds its input port until every slot holds an item.
      * @param {number} laneRef
      * @returns {void}
      */
     saturate(laneRef) {
         const lanes = this.engine.lanes;
-        this.engine.ports.setItem(lanes.outPortOf(laneRef), PLUG);
+        this.engine.ports.setItem(lanes.outputPortOf(laneRef), PLUG);
         const slots = lanes.lengthOf(laneRef);
         for (let i = 0; i < slots + 2; i += 1) {
-            this.engine.ports.setItem(lanes.inPortOf(laneRef), RED);
+            this.engine.ports.setItem(lanes.inputPortOf(laneRef), RED);
             this.tick();
         }
         assert.equal(lanes.itemCountOf(laneRef), slots, "the lane is packed");
@@ -291,7 +291,7 @@ class Scenario {
         this.client.drain();
         assert.deepEqual(Array.from(this.client.items.glidedIn), [], `${label}: the rebuild glides no sprite in`);
         assert.deepEqual(sorted(this.client.items.sprites), sorted(expectedSprites(this.engine)), `${label}, before any tick`);
-        // A fresh out-port sprite glides in only when it is a pop, which deletes the lane's lead
+        // A fresh output port sprite glides in only when it is a pop, which deletes the lane's lead
         // the same tick.
         this.tick();
         const events = this.client.drain();
@@ -300,12 +300,12 @@ class Scenario {
             if (!key.startsWith("lanePort:")) {
                 continue;
             }
-            const laneRef = this.client.layer._laneByOutPort.get(Number(key.slice("lanePort:".length)));
-            assert.ok(popped.has(laneRef), `${label}: out-port sprite ${key} glides in without a pop`);
+            const laneRef = this.client.layer._laneByOutputPort.get(Number(key.slice("lanePort:".length)));
+            assert.ok(popped.has(laneRef), `${label}: output port sprite ${key} glides in without a pop`);
         }
         assert.deepEqual(sorted(this.client.items.sprites), sorted(expectedSprites(this.engine)), label);
         for (const laneRef of this.engine.lanes.ids()) {
-            this.engine.ports.setItem(this.engine.lanes.outPortOf(laneRef), EMPTY);
+            this.engine.ports.setItem(this.engine.lanes.outputPortOf(laneRef), EMPTY);
         }
         this.tick(3);
         this.client.drain();
@@ -313,7 +313,7 @@ class Scenario {
     }
 }
 
-// A three-cell line, packed solid with its out-port item resting past the tail.
+// A three-cell line, packed solid with its output port item resting past the tail.
 async function saturatedLine() {
     const scenario = await new Scenario().init();
     for (const tileY of [10, 9, 8]) {

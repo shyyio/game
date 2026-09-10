@@ -94,7 +94,7 @@ export class AbstractBehavior {
     }
 
     /**
-     * The entity's rendered out-port refs, in `outputPorts.filter(render)` order, for its insert and
+     * The entity's rendered output port refs, in `outputPorts.filter(render)` order, for its insert and
      * chunk-sync events.
      * @param {GameEngine} engine
      * @param {number} eid

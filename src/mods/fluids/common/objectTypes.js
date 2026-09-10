@@ -40,7 +40,7 @@ export function isTankType(type) {
     return type.behavior instanceof TankBehavior;
 }
 
-// Fed from below at its bottom-left tile, emitting above its top-right; the fluid out-port opts
+// Fed from below at its bottom-left tile, emitting above its top-right; the fluid output port opts
 // out of item rendering.
 export const TankType = new ObjectType({
     name: "Tank",

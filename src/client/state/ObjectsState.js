@@ -19,7 +19,7 @@ export const OBJECTS_SCHEMA = {
  * @property {number} tileY
  * @property {number} objectTypeId
  * @property {Direction} direction
- * @property {Object.<string, number>} ports rendered out-ports, by PortDefinition name
+ * @property {Object.<string, number>} ports rendered output ports, by PortDefinition name
  */
 
 /**
@@ -133,7 +133,7 @@ export class ObjectClientData {
 /**
  * One placed object in the ObjectsView: a primary tile (for by-tile / by-chunk lookups), the
  * cells it covers with their position layer (for collision / connection lookups), a `data` payload
- * carrying at least the ObjectType (`data.type`) and direction, and its rendered out-ports by
+ * carrying at least the ObjectType (`data.type`) and direction, and its rendered output ports by
  * PortDefinition name.
  */
 export class CacheEntry {
@@ -157,7 +157,7 @@ export class CacheEntry {
     }
 
     /**
-     * The PortDefinition name of one of this object's rendered out-port refs, or undefined.
+     * The PortDefinition name of one of this object's rendered output port refs, or undefined.
      * @param {number} portRef
      * @returns {string|undefined}
      */
@@ -250,7 +250,7 @@ export class ObjectsView extends AbstractCacheView {
          */
         this._layerCodes = new Map();
         /**
-         * Rendered out-port ref -> the owning CacheEntry, so the item layer resolves a port-item
+         * Rendered output port ref -> the owning CacheEntry, so the item layer resolves a port-item
          * event to its object and PortDefinition.
          * @type {Map<number, CacheEntry>}
          * @private
@@ -376,7 +376,7 @@ export class ObjectsView extends AbstractCacheView {
      * @param {number} tileX
      * @param {number} tileY
      * @param {{x: number, y: number, layer: string}[]} cells
-     * @param {Object.<string, number>} [ports] - rendered out-ports, by PortDefinition name
+     * @param {Object.<string, number>} [ports] - rendered output ports, by PortDefinition name
      * @param {object} [data]
      */
     set(id, tileX, tileY, cells, ports={}, data={}) {
@@ -488,7 +488,7 @@ export class ObjectsView extends AbstractCacheView {
     }
 
     /**
-     * The entry owning a rendered out-port ref, or null.
+     * The entry owning a rendered output port ref, or null.
      * @param {number} portRef
      * @returns {CacheEntry|null}
      */
@@ -611,7 +611,7 @@ export class ObjectsView extends AbstractCacheView {
      * @param {Direction} direction
      * @returns {{entry: CacheEntry, portName: string}|null}
      */
-    inPortAt(tileX, tileY, direction) {
+    inputPortAt(tileX, tileY, direction) {
         const entry = this.at(tileX, tileY, LAYER_SURFACE);
         if (entry === null) {
             return null;
@@ -627,7 +627,7 @@ export class ObjectsView extends AbstractCacheView {
      * @param {Direction} direction
      * @returns {{entry: CacheEntry, portName: string}|null}
      */
-    outPortAt(tileX, tileY, direction) {
+    outputPortAt(tileX, tileY, direction) {
         const sourceX = tileX - Direction.dx(direction);
         const sourceY = tileY - Direction.dy(direction);
         const entry = this.at(sourceX, sourceY, LAYER_SURFACE);
@@ -674,9 +674,9 @@ export class ObjectsView extends AbstractCacheView {
 
         for (const port of type.surfacePorts("outputPorts")) {
             const placed = portAt(port, record.tileX, record.tileY, direction);
-            const consumer = this.inPortAt(placed.x, placed.y, placed.direction);
+            const consumer = this.inputPortAt(placed.x, placed.y, placed.direction);
             if (consumer !== null) {
-                // An out-port's stub sits on the emitting tile; the cell it reaches is the neighbor's.
+                // An output port's stub sits on the emitting tile; the cell it reaches is the neighbor's.
                 connections.push({
                     key: port.name,
                     isOutput: true,
@@ -691,9 +691,9 @@ export class ObjectsView extends AbstractCacheView {
 
         for (const port of type.surfacePorts("inputPorts")) {
             const placed = portAt(port, record.tileX, record.tileY, direction);
-            const feeder = this.outPortAt(placed.x, placed.y, placed.direction);
+            const feeder = this.outputPortAt(placed.x, placed.y, placed.direction);
             if (feeder !== null) {
-                // An in-port's stub sits on its own cell; the feeder is the tile behind it.
+                // An input port's stub sits on its own cell; the feeder is the tile behind it.
                 connections.push({
                     key: port.name,
                     isOutput: false,

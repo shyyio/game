@@ -75,7 +75,7 @@ export class FluidsClientMod extends AbstractClientMod {
                     candidates.push(this._networkFluidType(pipe.id));
                 }
             }
-            const feeder = client.objects.outPortAt(tileX, tileY, Direction.invert(neighborDirection));
+            const feeder = client.objects.outputPortAt(tileX, tileY, Direction.invert(neighborDirection));
             if (feeder !== null) {
                 candidates.push(this._producedFluidType(client, feeder.entry));
             }
@@ -102,7 +102,7 @@ export class FluidsClientMod extends AbstractClientMod {
     }
 
     /**
-     * The fluid an object's out-port produces, or EMPTY: a tank's held type, else the synced last
+     * The fluid an object's output port produces, or EMPTY: a tank's held type, else the synced last
      * output of any producer that has one.
      * @private
      * @param {Client} client

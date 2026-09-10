@@ -138,8 +138,8 @@ export class TradingTerminalBehavior extends AbstractBehavior {
             if (terminal.mode[row] !== MARKET_MODE_SELL || terminal.sellEnabled[row] === 0) {
                 continue;
             }
-            const inPort = terminal.in[row];
-            if (item[inPort] !== terminal.itemTypeId[row]) {
+            const inputPort = terminal.in[row];
+            if (item[inputPort] !== terminal.itemTypeId[row]) {
                 continue;
             }
             const match = book.bestEligibleBuyer(
@@ -153,10 +153,10 @@ export class TradingTerminalBehavior extends AbstractBehavior {
             }
             terminal.pendingPrice[row] = match.price;
             if (match.npc) {
-                engine.transfers.submitDrain(inPort);
+                engine.transfers.submitDrain(inputPort);
                 terminal.pendingIsNpc[row] = 1;
             } else {
-                engine.transfers.submitTransfer(inPort, match.outPort, true, EMPTY, terminal.itemTypeId[row]);
+                engine.transfers.submitTransfer(inputPort, match.outputPort, true, EMPTY, terminal.itemTypeId[row]);
                 terminal.pendingBuyer[row] = match.eid;
                 const owner = terminal.owner[terminals.row(match.eid)];
                 const remaining = TradingTerminalBehavior._remainingBalance(terminals, terminal, match.eid, reservedBalance);
@@ -185,7 +185,7 @@ export class TradingTerminalBehavior extends AbstractBehavior {
         if (fixedPrice === undefined) {
             return;
         }
-        const outPort = terminal.out[row];
+        const outputPort = terminal.out[row];
         const owner = terminal.owner[row];
         let remaining = terminal.balance[row];
         if (reservedBalance.has(owner)) {
@@ -194,11 +194,11 @@ export class TradingTerminalBehavior extends AbstractBehavior {
         if (remaining < fixedPrice) {
             return;
         }
-        // Submitted even on an occupied out port (destEmpty is computed, as ExtractorBehavior does):
+        // Submitted even on an occupied output port (destEmpty is computed, as ExtractorBehavior does):
         // the resolver lands the create when that port drains this same tick, so a terminal feeding a
         // belt buys every tick instead of every other one. The spend is reserved here either way — a
         // create that loses its port for the tick only over-reserves this pass, never overspends.
-        engine.transfers.submitCreate(outPort, itemTypeId, item[outPort] === EMPTY);
+        engine.transfers.submitCreate(outputPort, itemTypeId, item[outputPort] === EMPTY);
         terminal.pendingPrice[row] = fixedPrice;
         terminal.pendingIsNpc[row] = 1;
         reservedBalance.set(owner, remaining - fixedPrice);
@@ -227,7 +227,7 @@ export class TradingTerminalBehavior extends AbstractBehavior {
      * POST_RESOLVE: a buy terminal whose output resolved records last_output (cosmetic) and, if it
      * had an NPC purchase pending (from _submitNpcPurchase), hands the confirmed purchase off to
      * MarketSimMod.onTick for currency settlement — wasResolvedDest is what confirms it, since a
-     * create submitted onto an occupied out port lands only if that port drains the same tick.
+     * create submitted onto an occupied output port lands only if that port drains the same tick.
      * A sell terminal whose attempted transfer actually landed this tick hands the confirmed trade off
      * to MarketSimMod.onTick the same way (an NPC drain always lands once submitted — no counterpart
      * contention — a real transfer may lose the engine's fan-in arbitration to a different seller

@@ -59,14 +59,14 @@ test("a generator with no input port produces its main output on its own cadence
     engine.applyMessage(new CreateObjectMessage(SingleOutputGeneratorType.objectTypeId, 5, 5, Direction.UP));
     const [eid] = engine.placed.eidsOf(SingleOutputGeneratorType.objectTypeId);
     const def = engine.components.get("Generator");
-    const outPort = def.store.out[def.row(eid)];
+    const outputPort = def.store.out[def.row(eid)];
 
     let produced = 0;
     for (let tick = 0; tick < 10; tick += 1) {
         engine.tick();
-        if (engine.ports.item(outPort) === ITEM_MAIN) {
+        if (engine.ports.item(outputPort) === ITEM_MAIN) {
             produced += 1;
-            engine.ports.setItem(outPort, EMPTY);
+            engine.ports.setItem(outputPort, EMPTY);
         }
     }
     assert.ok(produced >= 5, `expected repeated production with no input at all, got ${produced} over 10 ticks`);
@@ -78,7 +78,7 @@ test("main and secondary outputs run independent cadences into their own ports",
     const [eid] = engine.placed.eidsOf(DualOutputGeneratorType.objectTypeId);
     const def = engine.components.get("Generator");
     const row = def.row(eid);
-    const outPort = def.store.out[row];
+    const outputPort = def.store.out[row];
     const secondaryPort = def.store.out2[row];
 
     // Main is processingTicks=1 (fires nearly every tick); secondary is processingTicks=4 (rarer).
@@ -86,9 +86,9 @@ test("main and secondary outputs run independent cadences into their own ports",
     let secondaryDelivered = 0;
     for (let tick = 0; tick < 10; tick += 1) {
         engine.tick();
-        if (engine.ports.item(outPort) === ITEM_MAIN) {
+        if (engine.ports.item(outputPort) === ITEM_MAIN) {
             mainDelivered += 1;
-            engine.ports.setItem(outPort, EMPTY);
+            engine.ports.setItem(outputPort, EMPTY);
         }
         if (engine.ports.item(secondaryPort) === ITEM_SECONDARY) {
             secondaryDelivered += 1;

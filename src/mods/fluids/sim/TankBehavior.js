@@ -27,8 +27,8 @@ class TankSystem extends AbstractSystem {
 }
 
 /**
- * A fluid buffer: drains type-matching in-port payloads into an amount counter and creates one
- * out-port payload per tick while holding fluid.
+ * A fluid buffer: drains type-matching input port payloads into an amount counter and creates one
+ * output port payload per tick while holding fluid.
  */
 export class TankBehavior extends AbstractBehavior {
 
@@ -117,7 +117,7 @@ export class TankBehavior extends AbstractBehavior {
     }
 
     /**
-     * SUBMIT_INTENTS: drain a type-matching in-port payload; create an out-port payload while
+     * SUBMIT_INTENTS: drain a type-matching input port payload; create an output port payload while
      * fluid is held.
      * @private
      * @param {GameEngine} engine
@@ -148,7 +148,7 @@ export class TankBehavior extends AbstractBehavior {
     }
 
     /**
-     * POST_RESOLVE: debit a delivered out-port payload; a drained tank frees its type.
+     * POST_RESOLVE: debit a delivered output port payload; a drained tank frees its type.
      * @private
      * @param {GameEngine} engine
      * @returns {void}

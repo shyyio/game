@@ -61,15 +61,15 @@ test("a chance=1 byproduct lands in the second output port alongside the main ou
     const [eid] = engine.placed.eidsOf(AlwaysByproductType.objectTypeId);
     const def = engine.components.get("Machine");
     const row = def.row(eid);
-    const inPort = def.store.in0[row];
-    const outPort = def.store.out[row];
+    const inputPort = def.store.in0[row];
+    const outputPort = def.store.out[row];
     const byproductPort = def.store.out2[row];
 
-    engine.ports.setItem(inPort, ITEM_INPUT);
+    engine.ports.setItem(inputPort, ITEM_INPUT);
     let delivered = false;
     for (let i = 0; i < 8 && !delivered; i += 1) {
         engine.tick();
-        delivered = engine.ports.item(outPort) === ITEM_OUTPUT && engine.ports.item(byproductPort) === ITEM_BYPRODUCT;
+        delivered = engine.ports.item(outputPort) === ITEM_OUTPUT && engine.ports.item(byproductPort) === ITEM_BYPRODUCT;
     }
     assert.ok(delivered, "both the main output and the byproduct landed");
 });
@@ -80,20 +80,20 @@ test("a chance=0 recipe never produces a byproduct", async () => {
     const [eid] = engine.placed.eidsOf(NeverByproductType.objectTypeId);
     const def = engine.components.get("Machine");
     const row = def.row(eid);
-    const inPort = def.store.in0[row];
-    const outPort = def.store.out[row];
+    const inputPort = def.store.in0[row];
+    const outputPort = def.store.out[row];
     const byproductPort = def.store.out2[row];
 
     for (let craft = 0; craft < 10; craft += 1) {
-        engine.ports.setItem(inPort, ITEM_INPUT);
+        engine.ports.setItem(inputPort, ITEM_INPUT);
         let delivered = false;
         for (let i = 0; i < 8 && !delivered; i += 1) {
             engine.tick();
-            delivered = engine.ports.item(outPort) === ITEM_OUTPUT;
+            delivered = engine.ports.item(outputPort) === ITEM_OUTPUT;
         }
         assert.ok(delivered, `craft ${craft}: main output delivered`);
         assert.equal(engine.ports.item(byproductPort), EMPTY, `craft ${craft}: byproduct port stayed empty`);
-        engine.ports.setItem(outPort, EMPTY);
+        engine.ports.setItem(outputPort, EMPTY);
     }
 });
 

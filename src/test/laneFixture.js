@@ -30,7 +30,7 @@ export const ITEM_TYPE_TEST_FLUID = 952;
 const PORT_INPUT_LEFT = new PortDefinition("in_left", {x: 0, y: 0, direction: Direction.RIGHT});
 const PORT_INPUT_BACK = new PortDefinition("in_back", {x: 0, y: 0, direction: Direction.UP});
 const PORT_INPUT_RIGHT = new PortDefinition("in_right", {x: 0, y: 0, direction: Direction.LEFT});
-// The lane registers its tail's out-port for rendering itself, so the definition does not.
+// The lane registers its tail's output port for rendering itself, so the definition does not.
 const PORT_OUTPUT = new PortDefinition("out", {x: 0, y: -1, direction: Direction.UP}, false);
 
 export const TestLaneType = new ObjectType({

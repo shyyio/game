@@ -58,28 +58,28 @@ async function setup() {
 
     return {
         engine,
-        sellerInPort: terminal.in[sellerRow],
-        buyerOutPort: terminal.out[buyerRow],
+        sellerInputPort: terminal.in[sellerRow],
+        buyerOutputPort: terminal.out[buyerRow],
     };
 }
 
 test("a single seller and a single buyer trade every tick, at full throughput", async () => {
-    const {engine, sellerInPort, buyerOutPort} = await setup();
+    const {engine, sellerInputPort, buyerOutputPort} = await setup();
     for (let tick = 0; tick < 10; tick += 1) {
-        engine.ports.setItem(sellerInPort, ITEM);
+        engine.ports.setItem(sellerInputPort, ITEM);
         engine.tick();
-        assert.equal(engine.ports.item(buyerOutPort), ITEM, `tick ${tick}: the buyer received a unit this tick`);
+        assert.equal(engine.ports.item(buyerOutputPort), ITEM, `tick ${tick}: the buyer received a unit this tick`);
         // A belt would pull it away immediately; simulate that so the next tick isn't blocked.
-        engine.ports.setItem(buyerOutPort, EMPTY);
+        engine.ports.setItem(buyerOutputPort, EMPTY);
     }
 });
 
 test("a sell terminal never drains the wrong item type", async () => {
-    const {engine, sellerInPort, buyerOutPort} = await setup();
-    engine.ports.setItem(sellerInPort, ITEM + 1);
+    const {engine, sellerInputPort, buyerOutputPort} = await setup();
+    engine.ports.setItem(sellerInputPort, ITEM + 1);
     engine.tick();
-    assert.equal(engine.ports.item(sellerInPort), ITEM + 1, "the wrong-type item is left resting");
-    assert.equal(engine.ports.item(buyerOutPort), EMPTY);
+    assert.equal(engine.ports.item(sellerInputPort), ITEM + 1, "the wrong-type item is left resting");
+    assert.equal(engine.ports.item(buyerOutputPort), EMPTY);
 });
 
 test("a sell terminal does not drain without a matching buyer", async () => {
@@ -100,27 +100,27 @@ test("a sell terminal does not drain without a matching buyer", async () => {
 });
 
 test("a terminal whose item a loadout change emptied trades nothing", async () => {
-    const {engine, sellerInPort, buyerOutPort} = await setup();
+    const {engine, sellerInputPort, buyerOutputPort} = await setup();
     const terminals = engine.components.get("MarketTerminal");
     for (const eid of engine.placed.eidsOf(TradingTerminalType.objectTypeId)) {
         terminals.store.itemTypeId[terminals.row(eid)] = EMPTY;
     }
 
-    engine.ports.setItem(sellerInPort, EMPTY);
+    engine.ports.setItem(sellerInputPort, EMPTY);
     engine.tick();
-    assert.equal(engine.ports.item(buyerOutPort), EMPTY, "an item type no mod declares is not tradable");
+    assert.equal(engine.ports.item(buyerOutputPort), EMPTY, "an item type no mod declares is not tradable");
 });
 
 test("a sell terminal with sellEnabled=0 never sells, even with an eligible buyer", async () => {
-    const {engine, sellerInPort, buyerOutPort} = await setup();
+    const {engine, sellerInputPort, buyerOutputPort} = await setup();
     const terminals = engine.components.get("MarketTerminal");
     const [sellerEid] = engine.placed.eidsOf(TradingTerminalType.objectTypeId);
     terminals.store.sellEnabled[terminals.row(sellerEid)] = 0;
 
-    engine.ports.setItem(sellerInPort, ITEM);
+    engine.ports.setItem(sellerInputPort, ITEM);
     engine.tick();
-    assert.equal(engine.ports.item(sellerInPort), ITEM, "an unowned chunk's terminal must not sell");
-    assert.equal(engine.ports.item(buyerOutPort), EMPTY);
+    assert.equal(engine.ports.item(sellerInputPort), ITEM, "an unowned chunk's terminal must not sell");
+    assert.equal(engine.ports.item(buyerOutputPort), EMPTY);
 });
 
 test("an NPC-priced sell terminal always has a counterparty, no buy terminal needed", async () => {
@@ -151,12 +151,12 @@ test("an NPC-priced buy terminal purchases every tick, at full throughput", asyn
     terminal.itemTypeId[row] = ITEM;
     terminal.balance[row] = 1_000_000;
 
-    const outPort = terminal.out[row];
+    const outputPort = terminal.out[row];
     for (let tick = 0; tick < 10; tick += 1) {
         engine.tick();
-        assert.equal(engine.ports.item(outPort), ITEM, `tick ${tick}: the NPC purchase landed this tick`);
+        assert.equal(engine.ports.item(outputPort), ITEM, `tick ${tick}: the NPC purchase landed this tick`);
         // A belt would pull it away immediately; simulate that so the next tick isn't blocked.
-        engine.ports.setItem(outPort, EMPTY);
+        engine.ports.setItem(outputPort, EMPTY);
     }
 });
 
@@ -173,12 +173,12 @@ test("an NPC-priced buy terminal keeps buying while a consumer drains its port t
 
     // A belt takes the resting item in the same phase the terminal submits its purchase, so the port
     // is never observed empty at submit time — the terminal has to ride that drain, not wait a tick.
-    const outPort = terminal.out[row];
+    const outputPort = terminal.out[row];
     let drained = 0;
     engine.registerSystem(new ProbeSystem({submitIntents: () => {
-        if (engine.ports.item(outPort) !== EMPTY) {
+        if (engine.ports.item(outputPort) !== EMPTY) {
             drained += 1;
-            engine.transfers.submitDrain(outPort);
+            engine.transfers.submitDrain(outputPort);
         }
     }}));
 

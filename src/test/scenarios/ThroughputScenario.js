@@ -139,13 +139,13 @@ class SinkBehavior extends AbstractBehavior {
         const sink = sinks.store;
         const count = sinks.count;
         for (let row = 0; row < count; row += 1) {
-            const inPort = sink.in[row];
-            if (item[inPort] === EMPTY) {
+            const inputPort = sink.in[row];
+            if (item[inputPort] === EMPTY) {
                 continue;
             }
-            sink.lastConsumed[row] = item[inPort];
+            sink.lastConsumed[row] = item[inputPort];
             sink.consumed[row] += 1;
-            engine.transfers.submitDrain(inPort);
+            engine.transfers.submitDrain(inputPort);
         }
     }
 }

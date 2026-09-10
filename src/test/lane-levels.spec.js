@@ -82,13 +82,13 @@ test("a buried lane passes under a surface lane on the same tile", async () => {
     const buried = buriedLaneAt(engine, 5, 5);
     assert.notEqual(surface, buried, "both lanes stand on the tile");
 
-    engine.ports.setItem(engine.lanes.inPortOf(buried), CARGO);
+    engine.ports.setItem(engine.lanes.inputPortOf(buried), CARGO);
     let delivered = 0;
     for (let i = 0; i < 12; i += 1) {
         engine.tick();
-        if (engine.ports.item(engine.lanes.outPortOf(buried)) === CARGO) {
+        if (engine.ports.item(engine.lanes.outputPortOf(buried)) === CARGO) {
             delivered += 1;
-            engine.ports.setItem(engine.lanes.outPortOf(buried), EMPTY);
+            engine.ports.setItem(engine.lanes.outputPortOf(buried), EMPTY);
         }
     }
 
@@ -96,9 +96,9 @@ test("a buried lane passes under a surface lane on the same tile", async () => {
     assert.equal(engine.lanes.itemCountOf(surface), 0, "the surface lane never copied it");
 });
 
-// A buried lane crossing a chunk seam takes that edge as its own in-port; a surface lane head whose
+// A buried lane crossing a chunk seam takes that edge as its own input port; a surface lane head whose
 // flank is the same edge must leave it alone, or the one item would be ingested twice.
-test("a buried lane crossing a seam keeps its own in-port", async () => {
+test("a buried lane crossing a seam keeps its own input port", async () => {
     const engine = await setup();
     const seam = CHUNK_SIZE;
     // A surface lane flowing UP off the seam tile, placed first, so its flank is that tile's RIGHT edge.
@@ -113,23 +113,23 @@ test("a buried lane crossing a seam keeps its own in-port", async () => {
     const buried = buriedLaneAt(engine, seam, 5);
     const surface = laneAt(engine, seam, 5, LAYER_SURFACE);
     assert.equal(
-        engine.lanes.inPortOf(buried),
+        engine.lanes.inputPortOf(buried),
         engine.ports.at(seam, 5, Direction.RIGHT),
-        "the seam edge is the buried lane's in-port",
+        "the seam edge is the buried lane's input port",
     );
 
-    engine.ports.setItem(engine.lanes.inPortOf(buried), CARGO);
+    engine.ports.setItem(engine.lanes.inputPortOf(buried), CARGO);
     let delivered = 0;
     let stolen = 0;
     for (let i = 0; i < 12; i += 1) {
         engine.tick();
-        if (engine.ports.item(engine.lanes.outPortOf(buried)) === CARGO) {
+        if (engine.ports.item(engine.lanes.outputPortOf(buried)) === CARGO) {
             delivered += 1;
-            engine.ports.setItem(engine.lanes.outPortOf(buried), EMPTY);
+            engine.ports.setItem(engine.lanes.outputPortOf(buried), EMPTY);
         }
-        if (engine.ports.item(engine.lanes.outPortOf(surface)) === CARGO) {
+        if (engine.ports.item(engine.lanes.outputPortOf(surface)) === CARGO) {
             stolen += 1;
-            engine.ports.setItem(engine.lanes.outPortOf(surface), EMPTY);
+            engine.ports.setItem(engine.lanes.outputPortOf(surface), EMPTY);
         }
     }
 
@@ -146,7 +146,7 @@ test("deleting a buried cell keeps the item on the surviving upstream piece", as
     placeLane(engine, 3, 1, Direction.RIGHT, TestLaneBuriedType);
     placeLane(engine, 4, 1, Direction.RIGHT, TestLaneUpType);
     const lane = laneAt(engine, 1, 1);
-    engine.ports.setItem(engine.lanes.inPortOf(lane), CARGO);
+    engine.ports.setItem(engine.lanes.inputPortOf(lane), CARGO);
     engine.tick();
     assert.equal(itemCells(engine), 1, "the item is in the buried run");
 
@@ -193,13 +193,13 @@ test("an elevated lane passes over a surface lane on the same tile", async () =>
     const elevated = elevatedLaneAt(engine, 5, 5);
     assert.notEqual(surface, elevated, "both lanes stand on the tile");
 
-    engine.ports.setItem(engine.lanes.inPortOf(elevated), CARGO);
+    engine.ports.setItem(engine.lanes.inputPortOf(elevated), CARGO);
     let delivered = 0;
     for (let i = 0; i < 12; i += 1) {
         engine.tick();
-        if (engine.ports.item(engine.lanes.outPortOf(elevated)) === CARGO) {
+        if (engine.ports.item(engine.lanes.outputPortOf(elevated)) === CARGO) {
             delivered += 1;
-            engine.ports.setItem(engine.lanes.outPortOf(elevated), EMPTY);
+            engine.ports.setItem(engine.lanes.outputPortOf(elevated), EMPTY);
         }
     }
 

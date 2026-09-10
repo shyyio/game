@@ -169,13 +169,13 @@ export class GeneratorBehavior extends AbstractBehavior {
      * @param {ArrayLike<number>} remaining
      * @param {ArrayLike<number>} carry
      * @param {ArrayLike<number>} output
-     * @param {ArrayLike<number>} outPort
+     * @param {ArrayLike<number>} outputPort
      * @param {ArrayLike<number>} processingTicks
      * @param {number} itemTypeId
      * @param {number} row
      * @returns {void}
      */
-    static _advanceCycle(engine, remaining, carry, output, outPort, processingTicks, itemTypeId, row) {
+    static _advanceCycle(engine, remaining, carry, output, outputPort, processingTicks, itemTypeId, row) {
         if (remaining[row] > 0) {
             const next = remaining[row] - 1;
             if (next > 0) {
@@ -200,7 +200,7 @@ export class GeneratorBehavior extends AbstractBehavior {
         }
         if (remaining[row] === 0) {
             const item = engine.Port.item;
-            engine.transfers.submitCreate(outPort[row], output[row], item[outPort[row]] === EMPTY);
+            engine.transfers.submitCreate(outputPort[row], output[row], item[outputPort[row]] === EMPTY);
         }
     }
 

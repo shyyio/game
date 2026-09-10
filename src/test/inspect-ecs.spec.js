@@ -24,7 +24,7 @@ function createMachine(game, x, y) {
     const eids = placed.eidsOf(BlenderType.objectTypeId);
     const eid = eids[eids.length - 1];
     const machine = game.simEngine.components.get("Machine");
-    return {id: placed.objectRefOf(eid), inPort: machine.store.in0[machine.row(eid)]};
+    return {id: placed.objectRefOf(eid), inputPort: machine.store.in0[machine.row(eid)]};
 }
 
 function heartbeats(session) {
@@ -99,7 +99,7 @@ test("heartbeat tracks the processing countdown, consumed batch, and output", as
         return heartbeats(session)[0];
     };
 
-    game.simEngine.ports.setItem(machine.inPort, ITEM_TYPE_CABBAGE);
+    game.simEngine.ports.setItem(machine.inputPort, ITEM_TYPE_CABBAGE);
     const started = tick();
     assert.equal(started.processingRemaining, 2);
     assert.deepEqual(started.inputMemory, [ITEM_TYPE_CABBAGE]);

@@ -68,12 +68,12 @@ test("the Stimpack factory actually produces a Stimpack when ticked", async () =
     const engine = game.simEngine;
     const def = engine.components.get("Machine");
     const row = def.row(engine.placed.eidsOf(FillType.objectTypeId)[0]);
-    const outPort = def.store.out[row];
+    const outputPort = def.store.out[row];
 
     let produced = false;
     for (let i = 0; i < 2000 && !produced; i += 1) {
         game.runTick();
-        produced = engine.ports.item(outPort) === ITEM_TYPE_STIMPACK;
+        produced = engine.ports.item(outputPort) === ITEM_TYPE_STIMPACK;
     }
     assert.ok(produced, "a Stimpack came out of Fill within the tick budget");
 });

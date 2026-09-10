@@ -31,7 +31,7 @@ export {ObjectClientData} from "@/client/state/ObjectsState.js";
 // The base-case object sprite (static, geometry-centered); the derived layers build it from a texture.
 export {ObjectSprite} from "@/client/layers/ObjectSprite.js";
 // The single shared item layer; mods that compute item positions (belts) drive it via
-// `client.itemLayer`. PORT_SPRITE_KEY namespaces resting out-port item sprites.
+// `client.itemLayer`. PORT_SPRITE_KEY namespaces resting output port item sprites.
 export {ItemDrawLayer, PORT_SPRITE_KEY} from "@/client/layers/ItemDrawLayer.js";
 // The single shared connection-stub layer; a mod opts in via ObjectType.renderConnections.
 export {ConnectionDrawLayer} from "@/client/layers/ConnectionDrawLayer.js";

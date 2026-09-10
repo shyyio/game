@@ -14,7 +14,7 @@
 // Stamps out identical production lines - each 3 independent lanes (Quartz deposit -> Extractor ->
 // belt climb -> Bake, Sand into Glass) - and reports which tick phase costs the most.
 //
-// Each lane's Bake has no consumer, so by default the run drains each line's final out-port every
+// Each lane's Bake has no consumer, so by default the run drains each line's final output port every
 // tick to keep lines flowing. Pass --jammed for the deadlocked world instead (intents submitted,
 // none resolvable). Report prints intents/resolved per tick either way.
 

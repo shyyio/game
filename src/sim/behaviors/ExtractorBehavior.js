@@ -76,7 +76,7 @@ export class ExtractorBehavior extends AbstractBehavior {
         const resource = engine.space.userDataAt(message.x, message.y, LAYER_RESOURCE);
         extractor.resourceType[row] = resource;
         // The product is fixed by the bound resource, so show it before the first cycle delivers;
-        // a fluid product also types the out-port so an adopting pipe network binds immediately.
+        // a fluid product also types the output port so an adopting pipe network binds immediately.
         const product = this.recipes.get(resource);
         if (product !== undefined) {
             extractor.lastOutput[row] = product;

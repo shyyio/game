@@ -32,18 +32,18 @@ test("a vertical tunnel and a horizontal belt cross on the same tile and flow in
     assert.equal(beltLaneAt(engine, 2, 3).laneRef, horizontal.laneRef);
 
     // Feed both; each output receives its own item, uncrossed.
-    engine.ports.setItem(tunnel.inPort, RED);
-    engine.ports.setItem(horizontal.inPort, BLUE);
+    engine.ports.setItem(tunnel.inputPort, RED);
+    engine.ports.setItem(horizontal.inputPort, BLUE);
     let tunnelOut = false;
     let horizOut = false;
     for (let i = 0; i < 20; i += 1) {
-        engine.ports.setItem(tunnel.outPort, EMPTY);
-        engine.ports.setItem(horizontal.outPort, EMPTY);
+        engine.ports.setItem(tunnel.outputPort, EMPTY);
+        engine.ports.setItem(horizontal.outputPort, EMPTY);
         engine.tick();
-        if (engine.ports.item(tunnel.outPort) === RED) {
+        if (engine.ports.item(tunnel.outputPort) === RED) {
             tunnelOut = true;
         }
-        if (engine.ports.item(horizontal.outPort) === BLUE) {
+        if (engine.ports.item(horizontal.outputPort) === BLUE) {
             horizOut = true;
         }
     }

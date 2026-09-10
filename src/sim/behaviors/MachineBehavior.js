@@ -60,7 +60,7 @@ class MachineSystem extends AbstractSystem {
 
 /**
  * A recipe machine: each input port gathers one item (consumed via a managed sink), a full slot set
- * matches a recipe (fallback when none), and the output lands in the out-port `processingTicks`
+ * matches a recipe (fallback when none), and the output lands in the output port `processingTicks`
  * later (a managed source-less create).
  */
 export class MachineBehavior extends AbstractBehavior {
@@ -134,10 +134,10 @@ export class MachineBehavior extends AbstractBehavior {
         machine.inputCount[row] = this.inputCount;
         machine.processingTicks[row] = this.processingTicks;
         for (const [i, port] of type.inputPorts.entries()) {
-            const inPort = engine.portFor(port, message.x, message.y, message.direction).port;
-            machine[IN_COLS[i]][row] = inPort;
+            const inputPort = engine.portFor(port, message.x, message.y, message.direction).port;
+            machine[IN_COLS[i]][row] = inputPort;
             if (port.fluid) {
-                engine.ports.markFluid(inPort);
+                engine.ports.markFluid(inputPort);
             }
         }
         const output = engine.portFor(type.outputPorts[0], message.x, message.y, message.direction);
@@ -480,10 +480,10 @@ export class MachineBehavior extends AbstractBehavior {
                 const slotCol = slotCols[i];
                 let slot = slotCol[row];
                 if (gathering && slot === EMPTY) {
-                    const inPort = inCols[i][row];
-                    const resting = item[inPort];
+                    const inputPort = inCols[i][row];
+                    const resting = item[inputPort];
                     if (resting !== EMPTY) {
-                        engine.transfers.submitDrain(inPort);
+                        engine.transfers.submitDrain(inputPort);
                         slot = resting;
                         slotCol[row] = resting;
                     }

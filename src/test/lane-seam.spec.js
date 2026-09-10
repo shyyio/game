@@ -29,21 +29,21 @@ test("a run splits at the chunk border and items flow across the seam", async ()
     const downstream = laneAt(engine, 0, 63);
     assert.notEqual(upstream, downstream, "the run is two per-chunk lanes");
     assert.equal(
-        engine.lanes.outPortOf(upstream),
-        engine.lanes.inPortOf(downstream),
+        engine.lanes.outputPortOf(upstream),
+        engine.lanes.inputPortOf(downstream),
         "they are joined by one shared seam port",
     );
 
-    const inPort = engine.lanes.inPortOf(upstream);
-    const outPort = engine.lanes.outPortOf(downstream);
+    const inputPort = engine.lanes.inputPortOf(upstream);
+    const outputPort = engine.lanes.outputPortOf(downstream);
     const outStream = [];
     for (let i = 0; i < 24; i += 1) {
-        engine.ports.setItem(outPort, EMPTY);
+        engine.ports.setItem(outputPort, EMPTY);
         if (i < 3) {
-            engine.ports.setItem(inPort, CARGO);
+            engine.ports.setItem(inputPort, CARGO);
         }
         engine.tick();
-        outStream.push(engine.ports.item(outPort));
+        outStream.push(engine.ports.item(outputPort));
     }
 
     assert.equal(outStream.filter(item => item === CARGO).length, 3, "all three items crossed the seam");
@@ -62,7 +62,7 @@ test("a run bending on a chunk seam carries items across it", async () => {
     const downstream = laneAt(engine, seam, 5);
     assert.notEqual(upstream, downstream, "the seam split the run in two");
 
-    engine.ports.setItem(engine.lanes.inPortOf(upstream), CARGO);
+    engine.ports.setItem(engine.lanes.inputPortOf(upstream), CARGO);
     let carried = false;
     for (let i = 0; i < 16 && !carried; i += 1) {
         engine.tick();
@@ -82,27 +82,27 @@ test("a packed chain across a seam shifts in one tick", async () => {
     }
     const upstream = laneAt(engine, 0, 65);
     const downstream = laneAt(engine, 0, 63);
-    const inPort = engine.lanes.inPortOf(upstream);
-    const outPort = engine.lanes.outPortOf(downstream);
+    const inputPort = engine.lanes.inputPortOf(upstream);
+    const outputPort = engine.lanes.outputPortOf(downstream);
 
-    // Fill both lanes solid against a blocked out-port.
-    engine.ports.setItem(outPort, CARGO);
+    // Fill both lanes solid against a blocked output port.
+    engine.ports.setItem(outputPort, CARGO);
     for (let i = 0; i < 16; i += 1) {
-        engine.ports.setItem(inPort, CARGO);
+        engine.ports.setItem(inputPort, CARGO);
         engine.tick();
     }
     // The seam port is one slot of the chain, so an item resting there is packed like any other.
-    const seam = engine.lanes.outPortOf(upstream);
+    const seam = engine.lanes.outputPortOf(upstream);
     const packed = engine.lanes.itemCountOf(upstream) + engine.lanes.itemCountOf(downstream)
         + (engine.ports.item(seam) === CARGO ? 1 : 0);
 
-    // Drain the out-port every tick: the whole chain advances, one item per tick, none lost.
+    // Drain the output port every tick: the whole chain advances, one item per tick, none lost.
     let delivered = 0;
     for (let i = 0; i < 24; i += 1) {
-        engine.ports.setItem(outPort, EMPTY);
-        engine.ports.setItem(inPort, EMPTY);
+        engine.ports.setItem(outputPort, EMPTY);
+        engine.ports.setItem(inputPort, EMPTY);
         engine.tick();
-        if (engine.ports.item(outPort) === CARGO) {
+        if (engine.ports.item(outputPort) === CARGO) {
             delivered += 1;
         }
     }

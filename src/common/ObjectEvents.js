@@ -2,7 +2,7 @@ import {AbstractChunkRoutedEvent} from "@/common/AbstractChunkRoutedEvent.js";
 import {AbstractBatchEvent} from "@/common/AbstractBatchEvent.js";
 
 // Generic object lifecycle events, tagged with the object type's `objectTypeId`. `portRefs` are the rendered
-// out-port refs in `outputPorts.filter(render)` order (the client zips them back to names).
+// output port refs in `outputPorts.filter(render)` order (the client zips them back to names).
 
 /**
  * An object the player just placed.

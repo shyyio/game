@@ -102,12 +102,12 @@ test("a pipe network drains into a tank through the shared edge port", async () 
 
     const def = engine.components.get("Tank");
     const row = def.row(engine.placed.eidsOf(TankType.objectTypeId)[0]);
-    const outPort = engine.ports.at(1, -1, Direction.UP);
+    const outputPort = engine.ports.at(1, -1, Direction.UP);
     assert.equal(pipes.networkAt(0, 2).amount, 0, "the network drained fully");
     assert.equal(def.store.fluidType[row], FLUID_TYPE_WATER);
-    // One payload rests in the tank's out-port (its unconsumed output).
-    assert.equal(engine.ports.item(outPort), FLUID_TYPE_WATER);
-    assert.equal(def.store.amount[row] + 1, 4, "everything the network lost the tank (plus its out-port) holds");
+    // One payload rests in the tank's output port (its unconsumed output).
+    assert.equal(engine.ports.item(outputPort), FLUID_TYPE_WATER);
+    assert.equal(def.store.amount[row] + 1, 4, "everything the network lost the tank (plus its output port) holds");
 });
 
 test("an extractor pumps its produce into an adjacent pipe network", async () => {
@@ -143,7 +143,7 @@ test("a resting fluid output never renders as a port item; a solid one does", as
     assert.ok(!sets.some(event => event.itemTypeId === ITEM_TYPE_WATER), "the fluid product does not");
 });
 
-test("a pipe adopting a fluid producer's out-port binds its type at placement", async () => {
+test("a pipe adopting a fluid producer's output port binds its type at placement", async () => {
     const engine = await makeGameEngine();
     engine.applyMessage(new CreateObjectMessage(WaterResourceType.objectTypeId, 0, 5, Direction.UP));
     engine.applyMessage(new CreateObjectMessage(ExtractorType.objectTypeId, 0, 5, Direction.UP));
@@ -166,7 +166,7 @@ test("a producer placed after the pipes types the empty network", async () => {
     assert.equal(pipes.networkAt(0, 4).fluidType, ITEM_TYPE_WATER, "the drained network re-binds to the producer");
 });
 
-test("a pipe cannot connect a producer's out-port to a different fluid", async () => {
+test("a pipe cannot connect a producer's output port to a different fluid", async () => {
     const engine = await makeGameEngine();
     engine.applyMessage(new CreateObjectMessage(WaterResourceType.objectTypeId, 0, 5, Direction.UP));
     engine.applyMessage(new CreateObjectMessage(ExtractorType.objectTypeId, 0, 5, Direction.UP));
@@ -174,7 +174,7 @@ test("a pipe cannot connect a producer's out-port to a different fluid", async (
     const pipes = pipesOf(engine);
     pipes.addFluid(1, 4, FLUID_TYPE_OIL, 30);
 
-    // (0, 4) touches both the oil network and the water extractor's out-port.
+    // (0, 4) touches both the oil network and the water extractor's output port.
     engine.applyMessage(new CreateObjectMessage(PipeType.objectTypeId, 0, 4, Direction.UP));
     assert.equal(pipes.networkAt(0, 4), null, "the conflicting placement is rejected");
     assert.equal(pipes.pipeCount, 1);
@@ -186,11 +186,11 @@ test("a pipe binds brine from a deep extractor and cannot bridge to a water sour
     engine.applyMessage(new CreateObjectMessage(TestDeepExtractorType.objectTypeId, 6, 4, Direction.UP));
     const pipes = pipesOf(engine);
 
-    // The deep extractor's out-port edge is at (6, 3): the adopting pipe binds brine at placement.
+    // The deep extractor's output port edge is at (6, 3): the adopting pipe binds brine at placement.
     engine.applyMessage(new CreateObjectMessage(PipeType.objectTypeId, 6, 3, Direction.UP));
     assert.equal(pipes.networkAt(6, 3).fluidType, ITEM_TYPE_TEST_BRINE, "typed before any payload");
 
-    // A water extractor facing DOWN puts its out-port edge at (5, 3); a pipe there would join the
+    // A water extractor facing DOWN puts its output port edge at (5, 3); a pipe there would join the
     // brine network to a water source.
     engine.applyMessage(new CreateObjectMessage(WaterResourceType.objectTypeId, 5, 2, Direction.UP));
     engine.applyMessage(new CreateObjectMessage(ExtractorType.objectTypeId, 5, 2, Direction.DOWN));
@@ -199,7 +199,7 @@ test("a pipe binds brine from a deep extractor and cannot bridge to a water sour
     assert.equal(pipes.pipeCount, 1);
 });
 
-test("a belt refuses a fluid payload resting in its in-port", async () => {
+test("a belt refuses a fluid payload resting in its input port", async () => {
     const engine = await makeGameEngine();
     engine.applyMessage(new CreateObjectMessage(WaterResourceType.objectTypeId, 0, 5, Direction.UP));
     engine.applyMessage(new CreateObjectMessage(ExtractorType.objectTypeId, 0, 5, Direction.UP));
@@ -220,13 +220,13 @@ test("a belt never pops an item into a fluid port", async () => {
     engine.applyMessage(new CreateObjectMessage(PipeType.objectTypeId, 0, 0, Direction.UP));
     const pipes = pipesOf(engine);
     const path = beltLaneAt(engine, 0, 1);
-    engine.ports.setItem(path.inPort, ITEM_TYPE_IRON_ORE);
+    engine.ports.setItem(path.inputPort, ITEM_TYPE_IRON_ORE);
 
     for (let i = 0; i < 20; i += 1) {
         engine.tick();
     }
 
     assert.equal(pipes.networkAt(0, 0).amount, 0, "no solid item enters the network");
-    assert.equal(engine.ports.item(path.outPort), EMPTY, "the shared edge port stays untouched");
+    assert.equal(engine.ports.item(path.outputPort), EMPTY, "the shared edge port stays untouched");
     assert.equal(laneItemCount(engine), 1, "the item waits at the belt's end");
 });

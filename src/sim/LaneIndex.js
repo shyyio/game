@@ -192,7 +192,7 @@ export class LaneIndex extends AbstractSystem {
      * @returns {number} port eid
      */
     // getInputPortByEid()
-    inPortOf(laneRef) {
+    inputPortOf(laneRef) {
         return this.lanes.store.inputPort[this._laneRow(laneRef)];
     }
 
@@ -200,7 +200,7 @@ export class LaneIndex extends AbstractSystem {
      * @param {number} laneRef
      * @returns {number} port eid
      */
-    outPortOf(laneRef) {
+    outputPortOf(laneRef) {
         return this.lanes.store.outputPort[this._laneRow(laneRef)];
     }
 
@@ -275,7 +275,7 @@ export class LaneIndex extends AbstractSystem {
      * @param {number} eid
      * @returns {number} port eid
      */
-    _outPortOfCell(eid) {
+    _outputPortOfCell(eid) {
         const position = this.engine.Position;
         const direction = position.direction[eid];
         return this.engine.ports.at(
@@ -286,12 +286,12 @@ export class LaneIndex extends AbstractSystem {
     }
 
     /**
-     * The shared edge behind a cell, which is its lane's in-port when it heads one.
+     * The shared edge behind a cell, which is its lane's input port when it heads one.
      * @private
      * @param {number} eid
      * @returns {number} port eid
      */
-    _inPortOfCell(eid) {
+    _inputPortOfCell(eid) {
         const position = this.engine.Position;
         return this.engine.ports.at(position.x[eid], position.y[eid], position.direction[eid]);
     }
@@ -308,7 +308,7 @@ export class LaneIndex extends AbstractSystem {
         const position = this.engine.Position;
         const direction = position.direction[eid];
         const outLevel = this._behavior(eid).outLevel;
-        for (const candidate of this.engine.ports.consumersOf(this._outPortOfCell(eid))) {
+        for (const candidate of this.engine.ports.consumersOf(this._outputPortOfCell(eid))) {
             if (this.cells.row(candidate) < 0) {
                 continue;
             }
@@ -373,7 +373,7 @@ export class LaneIndex extends AbstractSystem {
         const direction = position.direction[eid];
         const candidates = this._parentCandidates(eid);
         if (candidates.eids.length === 0) {
-            return {edge: Direction.UP, portEid: this._inPortOfCell(eid), parent: NO_EID};
+            return {edge: Direction.UP, portEid: this._inputPortOfCell(eid), parent: NO_EID};
         }
         // A lane cell outranks any other object, so a machine beside a head never cuts the line behind it.
         let contenders = candidates.eids.filter(candidate => this.cells.row(candidate) >= 0);
@@ -431,7 +431,7 @@ export class LaneIndex extends AbstractSystem {
 
     /**
      * Re-derives the lanes an object's output edges feed, so a machine placed or taken away beside a
-     * lane head moves that head's parent edge and in-port with it. Lane cells come through
+     * lane head moves that head's parent edge and input port with it. Lane cells come through
      * {@link addCell} and {@link removeCell} instead, and a lane whose feed is unchanged is left
      * alone rather than rebuilt.
      * @param {number} eid - the object spawned or being despawned
@@ -657,7 +657,7 @@ export class LaneIndex extends AbstractSystem {
             slots += this._behavior(cells[i]).slotsPerTile;
         }
         lanes.headCell[laneRow] = cells[0];
-        lanes.outputPort[laneRow] = this._outPortOfCell(tail);
+        lanes.outputPort[laneRow] = this._outputPortOfCell(tail);
         lanes.inputPort[laneRow] = this._parentLinkOf(cells[0]).portEid;
         lanes.slotCount[laneRow] = slots - 1;
         lanes.itemCount[laneRow] = 0;
@@ -672,7 +672,7 @@ export class LaneIndex extends AbstractSystem {
             this._lanesByChunk.set(chunkKey, chunkLanes);
         }
         chunkLanes.add(laneEid);
-        // The out-port is the tail cell's last slot, so its in-port item item draws on the tail's tile
+        // The output port is the tail cell's last slot, so its input port item item draws on the tail's tile
         // and routes to the lane's own chunk.
         const position = engine.Position;
         engine.render.registerPort(lanes.outputPort[laneRow], position.x[tail], position.y[tail]);
@@ -795,7 +795,7 @@ export class LaneIndex extends AbstractSystem {
                 }
                 items[slot] = NO_EID;
                 if (slotFromOutput < 0) {
-                    // The tail cell's last slot is the out-port itself.
+                    // The tail cell's last slot is the output port itself.
                     this.engine.ports.setItem(lanes.outputPort[laneRow], this.items.store.itemTypeId[this.items.row(itemEid)]);
                     this.items.destroy(itemEid);
                     continue;
@@ -819,7 +819,7 @@ export class LaneIndex extends AbstractSystem {
      * @returns {void}
      */
     _absorbEdge(heldByCell, cells, slots, index) {
-        const portEid = this._outPortOfCell(cells[index - 1]);
+        const portEid = this._outputPortOfCell(cells[index - 1]);
         const portItem = this.engine.ports.item(portEid);
         if (portItem === EMPTY || this.engine.isFluid(portItem)) {
             return;
@@ -893,17 +893,17 @@ export class LaneIndex extends AbstractSystem {
         for (let laneRow = 0; laneRow < laneCount; laneRow += 1) {
             this._popIntent[laneRow] = NO_INTENT;
             this._drainIntent[laneRow] = NO_INTENT;
-            const inPort = lanes.inputPort[laneRow];
-            const inPortItem = engine.ports.item(inPort);
+            const inputPort = lanes.inputPort[laneRow];
+            const inputPortItemTypeId = engine.ports.item(inputPort);
             // A lane has one input; a resting fluid is refused, so its producer backs up.
-            const inPortTakeable = inPortItem !== EMPTY && !engine.isFluid(inPortItem);
+            const inputPortTakeable = inputPortItemTypeId !== EMPTY && !engine.isFluid(inputPortItemTypeId);
             const leadItem = lanes.firstItem[laneRow];
             if (leadItem !== NO_EID && items.gap[this.items.row(leadItem)] === 0 && this._canPop(laneRow)) {
-                this._submitPop(laneRow, inPortItem, items.itemTypeId[this.items.row(leadItem)]);
+                this._submitPop(laneRow, inputPortItemTypeId, items.itemTypeId[this.items.row(leadItem)]);
             }
-            if (inPortTakeable && lanes.itemCount[laneRow] < lanes.slotCount[laneRow]) {
-                this._drainItem[laneRow] = inPortItem;
-                this._drainIntent[laneRow] = engine.transfers.submitDrain(inPort);
+            if (inputPortTakeable && lanes.itemCount[laneRow] < lanes.slotCount[laneRow]) {
+                this._drainItem[laneRow] = inputPortItemTypeId;
+                this._drainIntent[laneRow] = engine.transfers.submitDrain(inputPort);
             }
         }
     }
@@ -912,26 +912,26 @@ export class LaneIndex extends AbstractSystem {
      * pop leadItem in output port, shift input port's item into lane
      * @private
      * @param {number} laneRow
-     * @param {number} inputPortItem // Should this be inputPortItemTypeId?
+     * @param {number} inputPortItemTypeId
      * @param {number} leadTypeId
      * @returns {void}
      */
-    _submitPop(laneRow, inPortItem, leadTypeId) {
+    _submitPop(laneRow, inputPortItemTypeId, leadTypeId) {
         const lanes = this.lanes.store;
         const transfers = this.engine.transfers;
-        const outPort = lanes.outputPort[laneRow];
-        const outPortEmpty = this.engine.ports.item(outPort) === EMPTY;
-        if (this.engine.isFluid(inPortItem)) {
+        const outputPort = lanes.outputPort[laneRow];
+        const outputPortEmpty = this.engine.ports.item(outputPort) === EMPTY;
+        if (this.engine.isFluid(inputPortItemTypeId)) {
             this._popSourceItem[laneRow] = EMPTY;
-            this._popIntent[laneRow] = transfers.submitCreate(outPort, leadTypeId, outPortEmpty);
+            this._popIntent[laneRow] = transfers.submitCreate(outputPort, leadTypeId, outputPortEmpty);
             return;
         }
-        this._popSourceItem[laneRow] = inPortItem;
-        this._popIntent[laneRow] = transfers.submitTransfer(lanes.inputPort[laneRow], outPort, outPortEmpty, EMPTY, leadTypeId);
+        this._popSourceItem[laneRow] = inputPortItemTypeId;
+        this._popIntent[laneRow] = transfers.submitTransfer(lanes.inputPort[laneRow], outputPort, outputPortEmpty, EMPTY, leadTypeId);
     }
 
     /**
-     * Whether the lead may leave this tick: never into a fluid port. Whether the out-port empties,
+     * Whether the lead may leave this tick: never into a fluid port. Whether the output port empties,
      * by being empty or by whatever is past it taking its item, is the resolver's question.
      * @private
      * @param {number} laneRow
@@ -969,7 +969,7 @@ export class LaneIndex extends AbstractSystem {
     }
 
     /**
-     * Drops the lead item, which the pop moved into the out-port; the rest of the file advances with
+     * Drops the lead item, which the pop moved into the output port; the rest of the file advances with
      * it, their stored gaps already correct.
      * @private
      * @param {number} laneEid

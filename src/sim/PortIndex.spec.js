@@ -20,20 +20,20 @@ test("placing an object binds it to its ports' endpoints, deleting it unbinds", 
     const engine = await setup();
     engine.applyMessage(new CreateObjectMessage(TestMachineType.objectTypeId, 5, 5, Direction.UP));
     const machine = engine.placed.eidsOf(TestMachineType.objectTypeId)[0];
-    const inPort = engine.ports.at(5, 5, Direction.UP);
-    const outPort = engine.ports.at(5, 4, Direction.UP);
+    const inputPort = engine.ports.at(5, 5, Direction.UP);
+    const outputPort = engine.ports.at(5, 4, Direction.UP);
 
-    assert.deepEqual(engine.ports.consumersOf(inPort), [machine], "the machine consumes its input edge");
-    assert.deepEqual(engine.ports.producersOf(outPort), [machine], "and produces into its output edge");
-    assert.deepEqual(engine.ports.producersOf(inPort), [], "nothing produces into its input yet");
+    assert.deepEqual(engine.ports.consumersOf(inputPort), [machine], "the machine consumes its input edge");
+    assert.deepEqual(engine.ports.producersOf(outputPort), [machine], "and produces into its output edge");
+    assert.deepEqual(engine.ports.producersOf(inputPort), [], "nothing produces into its input yet");
 
     engine.applyMessage(new CreateObjectMessage(TestLaneType.objectTypeId, 5, 4, Direction.UP));
     const cell = engine.placed.eidsOf(TestLaneType.objectTypeId)[0];
-    assert.deepEqual(engine.ports.consumersOf(outPort), [cell], "the cell across the edge consumes the machine's output");
+    assert.deepEqual(engine.ports.consumersOf(outputPort), [cell], "the cell across the edge consumes the machine's output");
 
     engine.applyMessage(new DeleteObjectMessage(engine.placed.objectRefOf(machine)));
-    assert.deepEqual(engine.ports.producersOf(outPort), [], "the deleted machine is unbound");
-    assert.deepEqual(engine.ports.consumersOf(outPort), [cell], "the cell is still bound");
+    assert.deepEqual(engine.ports.producersOf(outputPort), [], "the deleted machine is unbound");
+    assert.deepEqual(engine.ports.consumersOf(outputPort), [cell], "the cell is still bound");
 });
 
 test("endpoints are rebuilt after a load", async () => {

@@ -3,7 +3,7 @@ import {AbstractEvent} from "@/common/AbstractEvent.js";
 /**
  * A machine's inspect snapshot (on-open and per-tick). Per input port: `inputPorts` = item resting in
  * the port (0 = empty, shown full opacity), `inputMemory` = gathered/consumed item (0 = none, shown
- * half opacity). `outputItem` is the out-port item; `recipeOutput` the inferred product (null = nothing
+ * half opacity). `outputItem` is the output port item; `recipeOutput` the inferred product (null = nothing
  * gathered). Processing progress via processingRemaining/processingTotal (remaining null = idle).
  */
 export class InspectHeartbeatEvent extends AbstractEvent {
