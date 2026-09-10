@@ -51,7 +51,7 @@ const GLOSSARY_VERBS = new Set([
     "deserialize", "parse", "init", "install", "uninstall", "mount", "unmount", "open", "close",
     "start", "stop", "boot", "shutdown", "draw", "layout", "restyle", "show", "hide", "toggle",
     "apply", "resolve", "on", "validate", "assert", "verify", "mark", "invalidate", "flush", "reset",
-    "grow", "submit", "collect", "request", "move", "glide", "select",
+    "grow", "submit", "collect", "request", "move", "glide", "select", "sync", "resync",
 ]);
 
 const ENGINE_HOOKS = new Set([

@@ -73,7 +73,7 @@ export class MarketSimMod extends AbstractSimMod {
         const owners = new Map();
         this._settle(book, engine, game, owners);
         this._settlePurchases(book, engine, game, owners);
-        this._refreshBalances(engine, game, owners);
+        this._applyBalances(engine, game, owners);
         book.advanceTick();
     }
 
@@ -179,7 +179,7 @@ export class MarketSimMod extends AbstractSimMod {
      * @param {GameEngine} engine
      * @param {Game} game
      * @param {Map<number, number>} owners this tick's eid -> playerRef cache, shared across both
-     *     _settle and _refreshBalances so a terminal touched by both is only looked up once
+     *     _settle and _applyBalances so a terminal touched by both is only looked up once
      * @private
      * @returns {number} the chunk owner's playerRef, or PLAYER_REF_NONE
      */
@@ -289,7 +289,7 @@ export class MarketSimMod extends AbstractSimMod {
      * @private
      * @returns {void}
      */
-    _refreshBalances(engine, game, owners) {
+    _applyBalances(engine, game, owners) {
         const terminals = engine.components.getComponentByName("MarketTerminal");
         const terminal = terminals.store;
         const eids = terminals.eids;
