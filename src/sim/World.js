@@ -1,14 +1,11 @@
 // Entity ids and component membership. Component *data* lives in the caller's own SoA columns
 // (see GameEngine.defineComponent), so a world only answers "which entities carry which component".
-import {AbstractComponent} from "@/sim/AbstractComponent.js";
+import {AbstractComponent, NO_ROW} from "@/sim/AbstractComponent.js";
 
 const BITS_PER_MASK = 32;
 
 // eid 0 stays unused, so a falsy eid is never a live entity.
 const FIRST_EID = 1;
-
-// Sparse-set slot for an entity the set does not hold.
-const NOT_IN_SET = -1;
 
 /**
  * A component's membership set: dense eids for iteration, sparse eid -> dense slot for O(1) removal.
@@ -22,7 +19,7 @@ export class ComponentSet {
     constructor(capacity) {
         this.dense = new Int32Array(AbstractComponent.INITIAL_CAPACITY);
         this.count = 0;
-        this.sparse = new Int32Array(capacity).fill(NOT_IN_SET);
+        this.sparse = new Int32Array(capacity).fill(NO_ROW);
 
         /**
          * Fired when a removal swaps the last row down, so a row-indexed data owner can follow.
@@ -36,7 +33,7 @@ export class ComponentSet {
      * @returns {void}
      */
     add(eid) {
-        if (this.sparse[eid] !== NOT_IN_SET) {
+        if (this.sparse[eid] !== NO_ROW) {
             return;
         }
         if (this.count === this.dense.length) {
@@ -55,14 +52,14 @@ export class ComponentSet {
      */
     remove(eid) {
         const slot = this.sparse[eid];
-        if (slot === NOT_IN_SET) {
+        if (slot === NO_ROW) {
             return;
         }
         this.count -= 1;
         const moved = this.dense[this.count];
         this.dense[slot] = moved;
         this.sparse[moved] = slot;
-        this.sparse[eid] = NOT_IN_SET;
+        this.sparse[eid] = NO_ROW;
         if (this.onMove !== null && moved !== eid) {
             this.onMove(this.count, slot);
         }
@@ -73,7 +70,7 @@ export class ComponentSet {
      * @returns {void}
      */
     grow(capacity) {
-        const grown = new Int32Array(capacity).fill(NOT_IN_SET);
+        const grown = new Int32Array(capacity).fill(NO_ROW);
         grown.set(this.sparse);
         this.sparse = grown;
     }
