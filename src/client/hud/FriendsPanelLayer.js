@@ -211,8 +211,8 @@ export class FriendsPanelLayer extends Container {
         } else {
             ownCode = "(connecting...)";
         }
-        stack.row((row) => this._fillOwnCodeRow(row, ownCode));
-        stack.row((row) => this._fillCodeRow(row));
+        stack.row((row) => this._buildOwnCodeRow(row, ownCode));
+        stack.row((row) => this._buildCodeRow(row));
     }
 
     /**
@@ -245,7 +245,7 @@ export class FriendsPanelLayer extends Container {
      * @param {PanelRow} row
      * @returns {void}
      */
-    _fillCodeRow(row) {
+    _buildCodeRow(row) {
         const submit = () => this._submitCode(this._codeInput);
         row.pushRight(buildPanelButton(this.textureCache, "Add", ACTIVE_ACCENT, submit), INPUT_GAP);
         // Sized against the button actually built, so a relabeled button can never crowd the input.
@@ -269,7 +269,7 @@ export class FriendsPanelLayer extends Container {
      * @param {string} ownCode
      * @returns {void}
      */
-    _fillOwnCodeRow(row, ownCode) {
+    _buildOwnCodeRow(row, ownCode) {
         // The label carries its own trailing space, so the two sit flush.
         row.pushLeft(panelText("Your code: ", TextRole.BODY), 0);
         const code = row.pushLeft(panelText(ownCode, TextRole.BODY));

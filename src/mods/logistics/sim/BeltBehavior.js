@@ -62,7 +62,7 @@ export class BeltBehavior extends LaneBehavior {
 
     onSpawn(engine, eid, type, message) {
         if (isTunnelMouth(this.beltKind)) {
-            this._fillTunnel(engine, message);
+            this._spawnTunnelBelts(engine, message);
         }
         super.onSpawn(engine, eid, type, message);
     }
@@ -84,7 +84,7 @@ export class BeltBehavior extends LaneBehavior {
      * @param {CreateObjectMessage} message
      * @returns {void}
      */
-    _fillTunnel(engine, message) {
+    _spawnTunnelBelts(engine, message) {
         const partner = findTunnelPartner(
             message.x, message.y, message.direction, this.beltKind,
             (x, y) => BeltBehavior._getBeltsAt(engine, x, y),

@@ -205,7 +205,7 @@ export class NotePanelLayer extends ConnectedPanelLayer {
             stack.row(row => row.pushLeft(this._input));
         }
         stack.gap();
-        stack.row(row => this._fillButtons(row, target));
+        stack.row(row => this._buildButtons(row, target));
     }
 
     /**
@@ -214,7 +214,7 @@ export class NotePanelLayer extends ConnectedPanelLayer {
      * @param {NoteEditorTarget} target
      * @returns {void}
      */
-    _fillButtons(row, target) {
+    _buildButtons(row, target) {
         row.pushLeft(buildPanelButton(this.textureCache, "Back", PANEL_TINT, () => this._notes.closeEditor()));
         if (target.mode !== NOTE_EDITOR_MODE_PLACE) {
             row.pushLeft(buildPanelButton(this.textureCache, "Delete", PANEL_TINT, () => {

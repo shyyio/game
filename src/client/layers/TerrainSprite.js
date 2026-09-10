@@ -144,10 +144,10 @@ export class TerrainPalette {
         }
         this._bytes = new Uint8Array((biomes.length + throughBiomes.length) * SHADE_COUNT * BYTES_PER_PIXEL);
         for (const [index, biome] of biomes.entries()) {
-            this._fillEntry(index, biome.color, biome.shadeStrength);
+            this._setPaletteEntry(index, biome.color, biome.shadeStrength);
         }
         for (const [index, biome] of throughBiomes.entries()) {
-            this._fillEntry(biomes.length + index, biome.blendColor, biome.shadeStrength);
+            this._setPaletteEntry(biomes.length + index, biome.blendColor, biome.shadeStrength);
         }
     }
 
@@ -158,7 +158,7 @@ export class TerrainPalette {
      * @param {number} strength the biome's shade multiplier
      * @returns {void}
      */
-    _fillEntry(entry, color, strength) {
+    _setPaletteEntry(entry, color, strength) {
         for (let shade = 0; shade < SHADE_COUNT; shade++) {
             const at = (entry * SHADE_COUNT + shade) * BYTES_PER_PIXEL;
             this._bytes[at] = shadeChannel((color >> 16) & COLOR_CHANNEL_MASK, shade, strength);

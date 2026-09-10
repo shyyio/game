@@ -215,7 +215,7 @@ export class TradingTerminalConfigLayer extends ConnectedPanelLayer {
         }
 
         stack.header("Mode");
-        stack.row((row) => this._fillModeRow(row));
+        stack.row((row) => this._buildModeRow(row));
         stack.gap();
 
         stack.header("Item");
@@ -228,10 +228,10 @@ export class TradingTerminalConfigLayer extends ConnectedPanelLayer {
         stack.gap();
 
         stack.header("Price");
-        stack.row((row) => this._fillPriceRow(row, snapshot));
+        stack.row((row) => this._buildPriceRow(row, snapshot));
         stack.gap();
 
-        stack.row((row) => this._fillConfirmRow(row, objectRef, snapshot));
+        stack.row((row) => this._buildConfirmRow(row, objectRef, snapshot));
     }
 
     /**
@@ -253,7 +253,7 @@ export class TradingTerminalConfigLayer extends ConnectedPanelLayer {
      * @param {Container} row
      * @returns {void}
      */
-    _fillModeRow(row) {
+    _buildModeRow(row) {
         const options = [
             {value: MARKET_MODE_SELL, label: "Sell"},
             {value: MARKET_MODE_BUY, label: "Buy"},
@@ -300,7 +300,7 @@ export class TradingTerminalConfigLayer extends ConnectedPanelLayer {
      * @param {MarketSnapshotEvent} snapshot
      * @returns {void}
      */
-    _fillPriceRow(row, snapshot) {
+    _buildPriceRow(row, snapshot) {
         const npcSelected = snapshot.itemTypeIds.length > 0 && snapshot.npcPrices[this._itemIndex] !== MARKET_SNAPSHOT_NONE;
         this._priceText = panelText(this._priceLabel(npcSelected), TextRole.BODY);
         row.pushLeft(this._priceText);
@@ -341,7 +341,7 @@ export class TradingTerminalConfigLayer extends ConnectedPanelLayer {
      * @param {MarketSnapshotEvent} snapshot
      * @returns {void}
      */
-    _fillConfirmRow(row, objectRef, snapshot) {
+    _buildConfirmRow(row, objectRef, snapshot) {
         const canConfirm = snapshot.itemTypeIds.length > 0;
         const confirm = buildPanelButton(this.textureCache, "Confirm", ACTIVE_ACCENT, () => {
             const itemTypeId = snapshot.itemTypeIds[this._itemIndex];
