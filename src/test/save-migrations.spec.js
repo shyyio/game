@@ -438,3 +438,40 @@ test("a format-11 save renames the Lane port columns to inputPort and outputPort
     assert.doesNotThrow(() => restored.snapshots.deserialize(migrated));
     assert.equal(restored.lanes.getCellEidsByLaneRef(restored.lanes.getLaneRefs()[0]).length, 3);
 });
+
+test("a format-12 save spells out every port column", async () => {
+    const engine = await makeGameEngine();
+    engine.applyMessage(new CreateObjectMessage(BlenderType.objectTypeId, 3, 3, Direction.UP));
+    engine.applyMessage(new CreateObjectMessage(GateType.objectTypeId, 8, 8, Direction.UP));
+    engine.applyMessage(new CreateObjectMessage(TankType.objectTypeId, 12, 12, Direction.UP));
+    const snapshot = engine.snapshots.serialize();
+    snapshot.saveFormat = 12;
+    for (const [name, from, to] of [
+        ["Machine", "outputPort", "out"], ["Machine", "outputPort2", "out2"],
+        ["Machine", "inputPort0", "in0"], ["Machine", "inputPort1", "in1"], ["Machine", "inputPort2", "in2"],
+        ["Gate", "inputPort", "in"], ["Gate", "outputPort", "out"], ["Gate", "internalPort", "int"],
+        ["Tank", "inputPort", "in"], ["Tank", "outputPort", "out"],
+        ["MarketTerminal", "inputPort", "in"], ["MarketTerminal", "outputPort", "out"],
+        ["Generator", "outputPort", "out"], ["Generator", "outputPort2", "out2"],
+        ["Extractor", "outputPort", "out"],
+        ["Splitter", "inputPortA", "in_a"], ["Splitter", "inputPortB", "in_b"],
+        ["Splitter", "outputPortA", "out_a"], ["Splitter", "outputPortB", "out_b"],
+        ["Splitter", "internalPortA", "int_a"], ["Splitter", "internalPortB", "int_b"],
+    ]) {
+        renameRowsBack(snapshot, name, from, to);
+    }
+
+    const migrated = migrateSnapshot(snapshot);
+
+    assert.equal(migrated.saveFormat, SAVE_FORMAT);
+    const gate = migrated.components.find(component => component.name === "Gate");
+    assert.deepEqual(gate.fields.map(field => field.name).slice(0, 3), ["inputPort", "outputPort", "internalPort"]);
+    assert.equal(gate.rows[0].in, undefined);
+    assert.ok(gate.rows[0].outputPort >= 0);
+    const machine = migrated.components.find(component => component.name === "Machine");
+    assert.ok(machine.rows[0].inputPort0 >= 0);
+
+    const restored = await makeGameEngine();
+    assert.doesNotThrow(() => restored.snapshots.deserialize(migrated));
+    assert.equal(restored.placed.getEidsByTypeId(GateType.objectTypeId).length, 1);
+});

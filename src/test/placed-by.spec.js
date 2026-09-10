@@ -64,7 +64,7 @@ test("production is credited to the chunk owner, not to the friend who built the
     const def = engine.components.getComponentByName("Machine");
     const row = def.getRowByEid(eid);
     for (let i = 0; i < 10; i += 1) {
-        engine.ports.setItem(def.store.in0[row], ITEM_TYPE_CABBAGE);
+        engine.ports.setItem(def.store.inputPort0[row], ITEM_TYPE_CABBAGE);
         engine.tick();
     }
 

@@ -55,21 +55,21 @@ export class TankBehavior extends AbstractBehavior {
         tanks.attach(eid);
         const tank = tanks.store;
         const row = tanks.getRowByEid(eid);
-        tank.in[row] = engine.getPortAt(type.inputPorts[0], message.x, message.y, message.direction).port;
-        tank.out[row] = engine.getPortAt(type.outputPorts[0], message.x, message.y, message.direction).port;
+        tank.inputPort[row] = engine.getPortAt(type.inputPorts[0], message.x, message.y, message.direction).port;
+        tank.outputPort[row] = engine.getPortAt(type.outputPorts[0], message.x, message.y, message.direction).port;
         tank.capacity[row] = this.capacity;
-        engine.ports.markFluid(tank.in[row]);
-        engine.ports.markFluid(tank.out[row]);
+        engine.ports.markFluid(tank.inputPort[row]);
+        engine.ports.markFluid(tank.outputPort[row]);
     }
 
     onDespawn(engine, eid) {
         const tanks = engine.components.getComponentByName("Tank");
         const row = tanks.getRowByEid(eid);
         const tank = tanks.store;
-        engine.ports.unmarkFluid(tank.in[row]);
-        engine.ports.unmarkFluid(tank.out[row]);
+        engine.ports.unmarkFluid(tank.inputPort[row]);
+        engine.ports.unmarkFluid(tank.outputPort[row]);
         // The port may outlive the tank (an adjacent pipe pins it); it no longer produces.
-        engine.ports.setFluidSource(tank.out[row], EMPTY);
+        engine.ports.setFluidSource(tank.outputPort[row], EMPTY);
     }
 
     logicRead(engine, eid, key) {
@@ -106,12 +106,12 @@ export class TankBehavior extends AbstractBehavior {
         const eids = tanks.eids;
         for (let row = 0; row < tanks.count; row += 1) {
             tank.capacity[row] = placed.getBehaviorByTypeId(placed.getObjectTypeIdByEid(eids[row])).capacity;
-            engine.ports.markFluid(tank.in[row]);
-            engine.ports.markFluid(tank.out[row]);
+            engine.ports.markFluid(tank.inputPort[row]);
+            engine.ports.markFluid(tank.outputPort[row]);
             if (tank.fluidType[row] === EMPTY) {
                 tank.amount[row] = 0;
             } else {
-                engine.ports.setFluidSource(tank.out[row], tank.fluidType[row]);
+                engine.ports.setFluidSource(tank.outputPort[row], tank.fluidType[row]);
             }
         }
     }
@@ -129,20 +129,20 @@ export class TankBehavior extends AbstractBehavior {
         const tank = tanks.store;
         const count = tanks.count;
         for (let row = 0; row < count; row += 1) {
-            const resting = item[tank.in[row]];
+            const resting = item[tank.inputPort[row]];
             if (resting !== EMPTY
                 && tank.amount[row] < tank.capacity[row]
                 && (tank.amount[row] === 0 || resting === tank.fluidType[row])) {
-                engine.transfers.submitDrain(tank.in[row]);
+                engine.transfers.submitDrain(tank.inputPort[row]);
                 if (tank.fluidType[row] !== resting) {
                     tank.fluidType[row] = resting;
                     engine.sync.markDirty(tanks, tanks.eids[row]);
                 }
                 tank.amount[row] += 1;
-                engine.ports.setFluidSource(tank.out[row], resting);
+                engine.ports.setFluidSource(tank.outputPort[row], resting);
             }
             if (tank.amount[row] > 0) {
-                engine.transfers.submitCreate(tank.out[row], tank.fluidType[row], item[tank.out[row]] === EMPTY);
+                engine.transfers.submitCreate(tank.outputPort[row], tank.fluidType[row], item[tank.outputPort[row]] === EMPTY);
             }
         }
     }
@@ -158,13 +158,13 @@ export class TankBehavior extends AbstractBehavior {
         const tank = tanks.store;
         const count = tanks.count;
         for (let row = 0; row < count; row += 1) {
-            if (!engine.transfers.isDest(tank.out[row])) {
+            if (!engine.transfers.isDest(tank.outputPort[row])) {
                 continue;
             }
             tank.amount[row] -= 1;
             if (tank.amount[row] === 0) {
                 tank.fluidType[row] = EMPTY;
-                engine.ports.setFluidSource(tank.out[row], EMPTY);
+                engine.ports.setFluidSource(tank.outputPort[row], EMPTY);
                 engine.sync.markDirty(tanks, tanks.eids[row]);
             }
         }

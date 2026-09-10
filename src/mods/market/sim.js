@@ -115,7 +115,7 @@ export class MarketSimMod extends AbstractSimMod {
         if (message.mode === MARKET_MODE_SELL) {
             book.postSell(eid, message.itemTypeId, message.price);
         } else {
-            book.postBuy(eid, message.itemTypeId, message.price, terminal.out[row]);
+            book.postBuy(eid, message.itemTypeId, message.price, terminal.outputPort[row]);
         }
     }
 

@@ -41,7 +41,7 @@ export class SplitterBehavior extends AbstractBehavior {
         const inB = engine.getPortAt(type.inputPorts[1], message.x, message.y, message.direction);
         const outA = engine.getPortAt(type.outputPorts[0], message.x, message.y, message.direction);
         const outB = engine.getPortAt(type.outputPorts[1], message.x, message.y, message.direction);
-        this._wire(engine, eid, {in_a: inA.port, in_b: inB.port, out_a: outA.port, out_b: outB.port});
+        this._wire(engine, eid, {inputPortA: inA.port, inputPortB: inB.port, outputPortA: outA.port, outputPortB: outB.port});
         engine.render.registerPort(outA.port, outA.tile.x, outA.tile.y);
         engine.render.registerPort(outB.port, outB.tile.x, outB.tile.y);
     }
@@ -49,20 +49,20 @@ export class SplitterBehavior extends AbstractBehavior {
     onDespawn(engine, eid) {
         const splitters = engine.components.getComponentByName("Splitter");
         const row = splitters.getRowByEid(eid);
-        engine.render.unregisterPort(splitters.store.out_a[row]);
-        engine.render.unregisterPort(splitters.store.out_b[row]);
+        engine.render.unregisterPort(splitters.store.outputPortA[row]);
+        engine.render.unregisterPort(splitters.store.outputPortB[row]);
     }
 
     getRenderedPortEids(engine, eid) {
         const splitters = engine.components.getComponentByName("Splitter");
         const row = splitters.getRowByEid(eid);
-        return [splitters.store.out_a[row], splitters.store.out_b[row]];
+        return [splitters.store.outputPortA[row], splitters.store.outputPortB[row]];
     }
 
     resyncRenderedPorts(engine, eid) {
         const splitters = engine.components.getComponentByName("Splitter");
         const row = splitters.getRowByEid(eid);
-        for (const out of [splitters.store.out_a[row], splitters.store.out_b[row]]) {
+        for (const out of [splitters.store.outputPortA[row], splitters.store.outputPortB[row]]) {
             engine.render.registerPort(out, engine.Position.x[out], engine.Position.y[out]);
         }
     }
@@ -72,40 +72,40 @@ export class SplitterBehavior extends AbstractBehavior {
      * @private
      * @param {GameEngine} engine
      * @param {number} eid
-     * @param {{in_a:number, in_b:number, out_a:number, out_b:number}} ports
-     * @returns {{id:number, in_a:number, in_b:number, out_a:number, out_b:number, int_a:number, int_b:number}}
+     * @param {{inputPortA:number, inputPortB:number, outputPortA:number, outputPortB:number}} ports
+     * @returns {{id:number, inputPortA:number, inputPortB:number, outputPortA:number, outputPortB:number, internalPortA:number, internalPortB:number}}
      */
     _wire(engine, eid, ports) {
-        const int_a = engine.ports.create();
-        const int_b = engine.ports.create();
+        const internalPortA = engine.ports.create();
+        const internalPortB = engine.ports.create();
         const splitters = engine.components.getComponentByName("Splitter");
         splitters.attach(eid);
         const splitter = splitters.store;
         const row = splitters.getRowByEid(eid);
-        splitter.in_a[row] = ports.in_a;
-        splitter.in_b[row] = ports.in_b;
-        splitter.out_a[row] = ports.out_a;
-        splitter.out_b[row] = ports.out_b;
-        splitter.int_a[row] = int_a;
-        splitter.int_b[row] = int_b;
+        splitter.inputPortA[row] = ports.inputPortA;
+        splitter.inputPortB[row] = ports.inputPortB;
+        splitter.outputPortA[row] = ports.outputPortA;
+        splitter.outputPortB[row] = ports.outputPortB;
+        splitter.internalPortA[row] = internalPortA;
+        splitter.internalPortB[row] = internalPortB;
         splitter.state[row] = 0;
-        return {id: eid, in_a: ports.in_a, in_b: ports.in_b, out_a: ports.out_a, out_b: ports.out_b, int_a, int_b};
+        return {id: eid, inputPortA: ports.inputPortA, inputPortB: ports.inputPortB, outputPortA: ports.outputPortA, outputPortB: ports.outputPortB, internalPortA, internalPortB};
     }
 
     /**
      * Creates a sim-only splitter for specs and debugging; ports fresh unless given in `wiring`.
      * @param {GameEngine} engine
-     * @param {{in_a?:number, in_b?:number, out_a?:number, out_b?:number}} [wiring]
-     * @returns {{id:number, in_a:number, in_b:number, out_a:number, out_b:number, int_a:number, int_b:number}}
+     * @param {{inputPortA?:number, inputPortB?:number, outputPortA?:number, outputPortB?:number}} [wiring]
+     * @returns {{id:number, inputPortA:number, inputPortB:number, outputPortA:number, outputPortB:number, internalPortA:number, internalPortB:number}}
      */
     addSplitter(engine, wiring={}) {
         const port = given => given === undefined ? engine.ports.create() : given;
         // Ports first so their eids stay contiguous from 1.
         const ports = {
-            in_a: port(wiring.in_a),
-            in_b: port(wiring.in_b),
-            out_a: port(wiring.out_a),
-            out_b: port(wiring.out_b),
+            inputPortA: port(wiring.inputPortA),
+            inputPortB: port(wiring.inputPortB),
+            outputPortA: port(wiring.outputPortA),
+            outputPortB: port(wiring.outputPortB),
         };
         const eid = engine.components.getComponentByName("Splitter").create();
         return this._wire(engine, eid, ports);
@@ -116,14 +116,14 @@ export class SplitterBehavior extends AbstractBehavior {
      * @param {GameEngine} engine
      * @param {number} x
      * @param {number} y
-     * @returns {{id:number, in_a:number, in_b:number, out_a:number, out_b:number, int_a:number, int_b:number}}
+     * @returns {{id:number, inputPortA:number, inputPortB:number, outputPortA:number, outputPortB:number, internalPortA:number, internalPortB:number}}
      */
     placeSplitter(engine, x, y) {
         return this.addSplitter(engine, {
-            in_a: engine.ports.getPortEidAt(x, y, Direction.UP),
-            in_b: engine.ports.getPortEidAt(x + 1, y, Direction.UP),
-            out_a: engine.ports.getPortEidAt(x, y - 1, Direction.UP),
-            out_b: engine.ports.getPortEidAt(x + 1, y - 1, Direction.UP),
+            inputPortA: engine.ports.getPortEidAt(x, y, Direction.UP),
+            inputPortB: engine.ports.getPortEidAt(x + 1, y, Direction.UP),
+            outputPortA: engine.ports.getPortEidAt(x, y - 1, Direction.UP),
+            outputPortB: engine.ports.getPortEidAt(x + 1, y - 1, Direction.UP),
         });
     }
 
@@ -139,21 +139,21 @@ export class SplitterBehavior extends AbstractBehavior {
         const splitters = engine.components.getComponentByName("Splitter");
         const splitter = splitters.store;
         for (let row = 0; row < splitters.count; row += 1) {
-            if (item[splitter.in_a[row]] !== EMPTY) {
-                engine.transfers.submitTransfer(splitter.in_a[row], splitter.int_a[row], item[splitter.int_a[row]] === EMPTY);
+            if (item[splitter.inputPortA[row]] !== EMPTY) {
+                engine.transfers.submitTransfer(splitter.inputPortA[row], splitter.internalPortA[row], item[splitter.internalPortA[row]] === EMPTY);
             }
-            if (item[splitter.in_b[row]] !== EMPTY) {
-                engine.transfers.submitTransfer(splitter.in_b[row], splitter.int_b[row], item[splitter.int_b[row]] === EMPTY);
+            if (item[splitter.inputPortB[row]] !== EMPTY) {
+                engine.transfers.submitTransfer(splitter.inputPortB[row], splitter.internalPortB[row], item[splitter.internalPortB[row]] === EMPTY);
             }
             const preferA = splitter.state[row] === 0 ? 1 : 2;
             const preferB = splitter.state[row] === 0 ? 2 : 1;
-            if (item[splitter.int_a[row]] !== EMPTY) {
-                engine.transfers.submitTransfer(splitter.int_a[row], splitter.out_a[row], item[splitter.out_a[row]] === EMPTY, preferA);
-                engine.transfers.submitTransfer(splitter.int_a[row], splitter.out_b[row], item[splitter.out_b[row]] === EMPTY, preferB);
+            if (item[splitter.internalPortA[row]] !== EMPTY) {
+                engine.transfers.submitTransfer(splitter.internalPortA[row], splitter.outputPortA[row], item[splitter.outputPortA[row]] === EMPTY, preferA);
+                engine.transfers.submitTransfer(splitter.internalPortA[row], splitter.outputPortB[row], item[splitter.outputPortB[row]] === EMPTY, preferB);
             }
-            if (item[splitter.int_b[row]] !== EMPTY) {
-                engine.transfers.submitTransfer(splitter.int_b[row], splitter.out_b[row], item[splitter.out_b[row]] === EMPTY, preferA);
-                engine.transfers.submitTransfer(splitter.int_b[row], splitter.out_a[row], item[splitter.out_a[row]] === EMPTY, preferB);
+            if (item[splitter.internalPortB[row]] !== EMPTY) {
+                engine.transfers.submitTransfer(splitter.internalPortB[row], splitter.outputPortB[row], item[splitter.outputPortB[row]] === EMPTY, preferA);
+                engine.transfers.submitTransfer(splitter.internalPortB[row], splitter.outputPortA[row], item[splitter.outputPortA[row]] === EMPTY, preferB);
             }
         }
     }
@@ -168,7 +168,7 @@ export class SplitterBehavior extends AbstractBehavior {
         const splitters = engine.components.getComponentByName("Splitter");
         const splitter = splitters.store;
         for (let row = 0; row < splitters.count; row += 1) {
-            if (engine.transfers.getDestByPortEid(splitter.int_a[row]) !== EMPTY || engine.transfers.getDestByPortEid(splitter.int_b[row]) !== EMPTY) {
+            if (engine.transfers.getDestByPortEid(splitter.internalPortA[row]) !== EMPTY || engine.transfers.getDestByPortEid(splitter.internalPortB[row]) !== EMPTY) {
                 splitter.state[row] = 1 - splitter.state[row];
             }
         }

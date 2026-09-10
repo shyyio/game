@@ -15,7 +15,7 @@ const ITEM_SECONDARY = 911;
 const DualOutputGeneratorType = new ObjectType({
     name: "DualOutputGenerator",
     outputPorts: [
-        new PortDefinition("out", {x: 0, y: -1, direction: Direction.UP}),
+        new PortDefinition("outputPort", {x: 0, y: -1, direction: Direction.UP}),
         new PortDefinition("secondary", {x: 0, y: 1, direction: Direction.DOWN}),
     ],
     geometry: "1x1",
@@ -31,7 +31,7 @@ const DualOutputGeneratorType = new ObjectType({
 
 const SingleOutputGeneratorType = new ObjectType({
     name: "SingleOutputGenerator",
-    outputPorts: [new PortDefinition("out", {x: 0, y: -1, direction: Direction.UP})],
+    outputPorts: [new PortDefinition("outputPort", {x: 0, y: -1, direction: Direction.UP})],
     geometry: "1x1",
     textureName: "demo-machine/0",
     label: "SingleOutputGenerator",
@@ -59,7 +59,7 @@ test("a generator with no input port produces its main output on its own cadence
     engine.applyMessage(new CreateObjectMessage(SingleOutputGeneratorType.objectTypeId, 5, 5, Direction.UP));
     const [eid] = engine.placed.getEidsByTypeId(SingleOutputGeneratorType.objectTypeId);
     const def = engine.components.getComponentByName("Generator");
-    const outputPort = def.store.out[def.getRowByEid(eid)];
+    const outputPort = def.store.outputPort[def.getRowByEid(eid)];
 
     let produced = 0;
     for (let tick = 0; tick < 10; tick += 1) {
@@ -78,8 +78,8 @@ test("main and secondary outputs run independent cadences into their own ports",
     const [eid] = engine.placed.getEidsByTypeId(DualOutputGeneratorType.objectTypeId);
     const def = engine.components.getComponentByName("Generator");
     const row = def.getRowByEid(eid);
-    const outputPort = def.store.out[row];
-    const secondaryPort = def.store.out2[row];
+    const outputPort = def.store.outputPort[row];
+    const secondaryPort = def.store.outputPort2[row];
 
     // Main is processingTicks=1 (fires nearly every tick); secondary is processingTicks=4 (rarer).
     let mainDelivered = 0;
@@ -105,8 +105,8 @@ test("a generator with a single output port never wires or touches the second po
     const [eid] = engine.placed.getEidsByTypeId(SingleOutputGeneratorType.objectTypeId);
     const def = engine.components.getComponentByName("Generator");
     const row = def.getRowByEid(eid);
-    assert.equal(def.store.out2[row], EMPTY, "no second port was wired");
+    assert.equal(def.store.outputPort2[row], EMPTY, "no second port was wired");
     engine.tick();
     engine.tick();
-    assert.equal(def.store.out2[row], EMPTY, "still untouched after ticking");
+    assert.equal(def.store.outputPort2[row], EMPTY, "still untouched after ticking");
 });

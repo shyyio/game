@@ -27,11 +27,11 @@ export const ITEM_TYPE_TEST_CARGO_B = 951;
 export const ITEM_TYPE_TEST_FLUID = 952;
 
 // A lane cell's own edges: the two flanks and the straight back input, and the output past the tile.
-const PORT_INPUT_LEFT = new PortDefinition("in_left", {x: 0, y: 0, direction: Direction.RIGHT});
-const PORT_INPUT_BACK = new PortDefinition("in_back", {x: 0, y: 0, direction: Direction.UP});
-const PORT_INPUT_RIGHT = new PortDefinition("in_right", {x: 0, y: 0, direction: Direction.LEFT});
+const PORT_INPUT_LEFT = new PortDefinition("inputPortLeft", {x: 0, y: 0, direction: Direction.RIGHT});
+const PORT_INPUT_BACK = new PortDefinition("inputPortBack", {x: 0, y: 0, direction: Direction.UP});
+const PORT_INPUT_RIGHT = new PortDefinition("inputPortRight", {x: 0, y: 0, direction: Direction.LEFT});
 // The lane registers its tail's output port for rendering itself, so the definition does not.
-const PORT_OUTPUT = new PortDefinition("out", {x: 0, y: -1, direction: Direction.UP}, false);
+const PORT_OUTPUT = new PortDefinition("outputPort", {x: 0, y: -1, direction: Direction.UP}, false);
 
 export const TestLaneType = new ObjectType({
     name: "TestLane",

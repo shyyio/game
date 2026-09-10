@@ -68,7 +68,7 @@ test("the Stimpack factory actually produces a Stimpack when ticked", async () =
     const engine = game.simEngine;
     const def = engine.components.getComponentByName("Machine");
     const row = def.getRowByEid(engine.placed.getEidsByTypeId(FillType.objectTypeId)[0]);
-    const outputPort = def.store.out[row];
+    const outputPort = def.store.outputPort[row];
 
     let produced = false;
     for (let i = 0; i < 2000 && !produced; i += 1) {

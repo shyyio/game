@@ -71,7 +71,7 @@ export class ExtractorBehavior extends AbstractBehavior {
         const extractor = extractors.store;
         const row = extractors.getRowByEid(eid);
         const output = engine.getPortAt(type.outputPorts[0], message.x, message.y, message.direction);
-        extractor.out[row] = output.port;
+        extractor.outputPort[row] = output.port;
         extractor.processingTicks[row] = this.processingTicks;
         const resource = engine.space.getUserDataAt(message.x, message.y, LAYER_RESOURCE);
         extractor.resourceType[row] = resource;
@@ -91,7 +91,7 @@ export class ExtractorBehavior extends AbstractBehavior {
 
     onDespawn(engine, eid) {
         const extractors = engine.components.getComponentByName("Extractor");
-        const out = extractors.store.out[extractors.getRowByEid(eid)];
+        const out = extractors.store.outputPort[extractors.getRowByEid(eid)];
         engine.render.unregisterPort(out);
         // The port may outlive the extractor (an adjacent pipe pins it); it no longer produces.
         engine.ports.setFluidSource(out, EMPTY);
@@ -102,7 +102,7 @@ export class ExtractorBehavior extends AbstractBehavior {
             return [];
         }
         const extractors = engine.components.getComponentByName("Extractor");
-        return [extractors.store.out[extractors.getRowByEid(eid)]];
+        return [extractors.store.outputPort[extractors.getRowByEid(eid)]];
     }
 
     resyncRenderedPorts(engine, eid) {
@@ -110,7 +110,7 @@ export class ExtractorBehavior extends AbstractBehavior {
             return;
         }
         const extractors = engine.components.getComponentByName("Extractor");
-        const out = extractors.store.out[extractors.getRowByEid(eid)];
+        const out = extractors.store.outputPort[extractors.getRowByEid(eid)];
         engine.render.registerPort(out, engine.Position.x[out], engine.Position.y[out]);
     }
 
@@ -128,7 +128,7 @@ export class ExtractorBehavior extends AbstractBehavior {
         if (extractor.remaining[row] !== EMPTY) {
             remaining = Math.ceil(extractor.remaining[row]);
         }
-        const outItem = engine.Port.item[extractor.out[row]];
+        const outItem = engine.Port.item[extractor.outputPort[row]];
         let recipeOutput = null;
         if (resource !== EMPTY && this.recipes.has(resource)) {
             recipeOutput = this.recipes.get(resource);
@@ -167,7 +167,7 @@ export class ExtractorBehavior extends AbstractBehavior {
             extractor.processingTicks[row] = behavior.processingTicks;
             const product = behavior.recipes.get(extractor.resourceType[row]);
             if (product !== undefined && engine.isFluid(product)) {
-                engine.ports.setFluidSource(extractor.out[row], product);
+                engine.ports.setFluidSource(extractor.outputPort[row], product);
             }
         }
     }
@@ -215,7 +215,7 @@ export class ExtractorBehavior extends AbstractBehavior {
                 }
             }
             if (extractor.remaining[row] === 0) {
-                engine.transfers.submitCreate(extractor.out[row], extractor.output[row], item[extractor.out[row]] === EMPTY);
+                engine.transfers.submitCreate(extractor.outputPort[row], extractor.output[row], item[extractor.outputPort[row]] === EMPTY);
             }
         }
     }
@@ -233,7 +233,7 @@ export class ExtractorBehavior extends AbstractBehavior {
         const eids = extractors.eids;
         const count = extractors.count;
         for (let row = 0; row < count; row += 1) {
-            if (engine.transfers.isDest(extractor.out[row])) {
+            if (engine.transfers.isDest(extractor.outputPort[row])) {
                 const eid = eids[row];
                 engine.itemProduced.notify(placed.getClaimOwnerByEid(eid), extractor.output[row], 1);
                 if (extractor.lastOutput[row] !== extractor.output[row]) {

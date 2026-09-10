@@ -43,7 +43,7 @@ export const TestVolcanoResourceType = new ObjectType({
 
 export const TestExtractorType = new ObjectType({
     name: "TestExtractor",
-    outputPorts: [new PortDefinition("out", {x: 0, y: -1, direction: Direction.UP})],
+    outputPorts: [new PortDefinition("outputPort", {x: 0, y: -1, direction: Direction.UP})],
     geometry: "1x1",
     renderConnections: true,
     textureName: "demo-machine/0",
@@ -58,7 +58,7 @@ export const TestExtractorType = new ObjectType({
 
 export const TestDeepExtractorType = new ObjectType({
     name: "TestDeepExtractor",
-    outputPorts: [new PortDefinition("out", {x: 0, y: -1, direction: Direction.UP})],
+    outputPorts: [new PortDefinition("outputPort", {x: 0, y: -1, direction: Direction.UP})],
     geometry: "1x1",
     renderConnections: true,
     textureName: "demo-machine/0",

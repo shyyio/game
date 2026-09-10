@@ -1,7 +1,7 @@
 import {Direction} from "@/common/constants.js";
 
 // The snapshot shape a save carries. Bump on any shape change, with a SAVE_MIGRATIONS entry.
-export const SAVE_FORMAT = 12;
+export const SAVE_FORMAT = 13;
 
 // What a save written before the stamp counts as.
 const UNSTAMPED_FORMAT = 0;
@@ -108,7 +108,41 @@ export const SAVE_MIGRATIONS = new Map([
         saveFormat: 12,
         components: renameField(renameField(snapshot.components, "Lane", "inPort", "inputPort"), "Lane", "outPort", "outputPort"),
     })],
+    // Format 13 spells out every port column.
+    [12, snapshot => ({
+        ...snapshot,
+        saveFormat: 13,
+        components: PORT_COLUMN_RENAMES.reduce(
+            (components, [componentName, from, to]) => renameField(components, componentName, from, to),
+            snapshot.components,
+        ),
+    })],
 ]);
+
+// The port columns format 13 spells out, as [component, old name, new name].
+const PORT_COLUMN_RENAMES = [
+    ["Machine", "out", "outputPort"],
+    ["Machine", "out2", "outputPort2"],
+    ["Machine", "in0", "inputPort0"],
+    ["Machine", "in1", "inputPort1"],
+    ["Machine", "in2", "inputPort2"],
+    ["Gate", "in", "inputPort"],
+    ["Gate", "out", "outputPort"],
+    ["Gate", "int", "internalPort"],
+    ["Tank", "in", "inputPort"],
+    ["Tank", "out", "outputPort"],
+    ["MarketTerminal", "in", "inputPort"],
+    ["MarketTerminal", "out", "outputPort"],
+    ["Generator", "out", "outputPort"],
+    ["Generator", "out2", "outputPort2"],
+    ["Extractor", "out", "outputPort"],
+    ["Splitter", "in_a", "inputPortA"],
+    ["Splitter", "in_b", "inputPortB"],
+    ["Splitter", "out_a", "outputPortA"],
+    ["Splitter", "out_b", "outputPortB"],
+    ["Splitter", "int_a", "internalPortA"],
+    ["Splitter", "int_b", "internalPortB"],
+];
 
 // The belt path engine's components, dropped by format 11.
 const BELT_PATH_COMPONENTS = new Set(["BeltPath", "BeltPathMember", "BeltItem"]);

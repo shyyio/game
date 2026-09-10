@@ -54,12 +54,12 @@ async function setup() {
     terminal.balance[buyerRow] = 1_000_000;
 
     const book = engine.resolve(MarketBook);
-    book.postBuy(buyerEid, ITEM, PRICE, terminal.out[buyerRow]);
+    book.postBuy(buyerEid, ITEM, PRICE, terminal.outputPort[buyerRow]);
 
     return {
         engine,
-        sellerInputPort: terminal.in[sellerRow],
-        buyerOutputPort: terminal.out[buyerRow],
+        sellerInputPort: terminal.inputPort[sellerRow],
+        buyerOutputPort: terminal.outputPort[buyerRow],
     };
 }
 
@@ -94,9 +94,9 @@ test("a sell terminal does not drain without a matching buyer", async () => {
     terminal.price[row] = PRICE;
     terminal.sellEnabled[row] = 1;
 
-    engine.ports.setItem(terminal.in[row], ITEM);
+    engine.ports.setItem(terminal.inputPort[row], ITEM);
     engine.tick();
-    assert.equal(engine.ports.getItemByPortEid(terminal.in[row]), ITEM, "nothing to sell to, so the item stays resting");
+    assert.equal(engine.ports.getItemByPortEid(terminal.inputPort[row]), ITEM, "nothing to sell to, so the item stays resting");
 });
 
 test("a terminal whose item a loadout change emptied trades nothing", async () => {
@@ -135,9 +135,9 @@ test("an NPC-priced sell terminal always has a counterparty, no buy terminal nee
     terminal.price[row] = PRICE;
     terminal.sellEnabled[row] = 1;
 
-    engine.ports.setItem(terminal.in[row], ITEM);
+    engine.ports.setItem(terminal.inputPort[row], ITEM);
     engine.tick();
-    assert.equal(engine.ports.getItemByPortEid(terminal.in[row]), EMPTY, "the NPC always buys, no player counterparty posted");
+    assert.equal(engine.ports.getItemByPortEid(terminal.inputPort[row]), EMPTY, "the NPC always buys, no player counterparty posted");
 });
 
 test("an NPC-priced buy terminal purchases every tick, at full throughput", async () => {
@@ -151,7 +151,7 @@ test("an NPC-priced buy terminal purchases every tick, at full throughput", asyn
     terminal.itemTypeId[row] = ITEM;
     terminal.balance[row] = 1_000_000;
 
-    const outputPort = terminal.out[row];
+    const outputPort = terminal.outputPort[row];
     for (let tick = 0; tick < 10; tick += 1) {
         engine.tick();
         assert.equal(engine.ports.getItemByPortEid(outputPort), ITEM, `tick ${tick}: the NPC purchase landed this tick`);
@@ -173,7 +173,7 @@ test("an NPC-priced buy terminal keeps buying while a consumer drains its port t
 
     // A belt takes the resting item in the same phase the terminal submits its purchase, so the port
     // is never observed empty at submit time — the terminal has to ride that drain, not wait a tick.
-    const outputPort = terminal.out[row];
+    const outputPort = terminal.outputPort[row];
     let drained = 0;
     engine.registerSystem(new ProbeSystem({submitIntents: () => {
         if (engine.ports.getItemByPortEid(outputPort) !== EMPTY) {
@@ -211,14 +211,14 @@ test("two sellers racing for one buyer: the loser's item stays resting, no doubl
     terminal.itemTypeId[buyerRow] = ITEM;
     terminal.price[buyerRow] = PRICE;
     terminal.balance[buyerRow] = 1_000_000;
-    engine.resolve(MarketBook).postBuy(buyerEid, ITEM, PRICE, terminal.out[buyerRow]);
+    engine.resolve(MarketBook).postBuy(buyerEid, ITEM, PRICE, terminal.outputPort[buyerRow]);
 
-    engine.ports.setItem(terminal.in[sellerARow], ITEM);
-    engine.ports.setItem(terminal.in[sellerBRow], ITEM);
+    engine.ports.setItem(terminal.inputPort[sellerARow], ITEM);
+    engine.ports.setItem(terminal.inputPort[sellerBRow], ITEM);
     engine.tick();
 
-    const aDrained = engine.ports.getItemByPortEid(terminal.in[sellerARow]) === EMPTY;
-    const bDrained = engine.ports.getItemByPortEid(terminal.in[sellerBRow]) === EMPTY;
+    const aDrained = engine.ports.getItemByPortEid(terminal.inputPort[sellerARow]) === EMPTY;
+    const bDrained = engine.ports.getItemByPortEid(terminal.inputPort[sellerBRow]) === EMPTY;
     assert.notEqual(aDrained, bDrained, "exactly one seller wins the buyer's single port this tick");
-    assert.equal(engine.ports.getItemByPortEid(terminal.out[buyerRow]), ITEM, "the buyer received exactly one unit");
+    assert.equal(engine.ports.getItemByPortEid(terminal.outputPort[buyerRow]), ITEM, "the buyer received exactly one unit");
 });

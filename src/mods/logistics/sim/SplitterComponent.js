@@ -7,12 +7,12 @@ export class SplitterComponent extends AbstractComponent {
 
     constructor() {
         super("Splitter", [
-            {name: "in_a", kind: "eid", defaultValue: NO_EID},
-            {name: "in_b", kind: "eid", defaultValue: NO_EID},
-            {name: "out_a", kind: "eid", defaultValue: NO_EID},
-            {name: "out_b", kind: "eid", defaultValue: NO_EID},
-            {name: "int_a", kind: "eid", defaultValue: NO_EID},
-            {name: "int_b", kind: "eid", defaultValue: NO_EID},
+            {name: "inputPortA", kind: "eid", defaultValue: NO_EID},
+            {name: "inputPortB", kind: "eid", defaultValue: NO_EID},
+            {name: "outputPortA", kind: "eid", defaultValue: NO_EID},
+            {name: "outputPortB", kind: "eid", defaultValue: NO_EID},
+            {name: "internalPortA", kind: "eid", defaultValue: NO_EID},
+            {name: "internalPortB", kind: "eid", defaultValue: NO_EID},
             {name: "state"},
         ], {sparse: true});
     }

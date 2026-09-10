@@ -42,9 +42,9 @@ test("a belt-fed seller loses no items when a pop and a sale share a tick", asyn
     terminal.itemTypeId[buyerRow] = ITEM;
     terminal.price[buyerRow] = PRICE;
     terminal.balance[buyerRow] = 1_000_000;
-    engine.resolve(MarketBook).postBuy(buyerEid, ITEM, PRICE, terminal.out[buyerRow]);
-    const sellerInputPort = terminal.in[sellerRow];
-    const buyerOutputPort = terminal.out[buyerRow];
+    engine.resolve(MarketBook).postBuy(buyerEid, ITEM, PRICE, terminal.outputPort[buyerRow]);
+    const sellerInputPort = terminal.inputPort[sellerRow];
+    const buyerOutputPort = terminal.outputPort[buyerRow];
 
     // Belt line (5,7)->(5,6) facing UP feeds tile (5,5): the seller adopts the shared port.
     placeBelt(engine, 5, 7, Direction.UP);

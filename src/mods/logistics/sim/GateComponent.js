@@ -10,10 +10,10 @@ export class GateComponent extends AbstractComponent {
 
     constructor() {
         super("Gate", [
-            {name: "in", kind: "eid", defaultValue: NO_EID},
-            {name: "out", kind: "eid", defaultValue: NO_EID},
+            {name: "inputPort", kind: "eid", defaultValue: NO_EID},
+            {name: "outputPort", kind: "eid", defaultValue: NO_EID},
             // Item mode's internal port; NO_EID in fluid mode.
-            {name: "int", kind: "eid", defaultValue: NO_EID},
+            {name: "internalPort", kind: "eid", defaultValue: NO_EID},
             {name: "open", defaultValue: 1},
             // Current mode, adopted from coupled transports (see _review).
             {name: "fluid"},

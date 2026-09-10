@@ -46,10 +46,10 @@ export const TankType = new ObjectType({
     name: "Tank",
     toolId: 8,
     inputPorts: [
-        new PortDefinition("in", {x: 0, y: 1, direction: Direction.UP}),
+        new PortDefinition("inputPort", {x: 0, y: 1, direction: Direction.UP}),
     ],
     outputPorts: [
-        new PortDefinition("out", {x: 1, y: -1, direction: Direction.UP}, false),
+        new PortDefinition("outputPort", {x: 1, y: -1, direction: Direction.UP}, false),
     ],
     geometry: "2x2",
     renderConnections: true,

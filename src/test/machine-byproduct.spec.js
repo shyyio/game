@@ -20,9 +20,9 @@ const ITEM_BYPRODUCT = 903;
 function fixtureMachineType(name, chance) {
     return new ObjectType({
         name,
-        inputPorts: [new PortDefinition("in", {x: 0, y: 0, direction: Direction.UP})],
+        inputPorts: [new PortDefinition("inputPort", {x: 0, y: 0, direction: Direction.UP})],
         outputPorts: [
-            new PortDefinition("out", {x: 0, y: -1, direction: Direction.UP}),
+            new PortDefinition("outputPort", {x: 0, y: -1, direction: Direction.UP}),
             new PortDefinition("byproduct", {x: 0, y: 1, direction: Direction.DOWN}),
         ],
         geometry: "1x1",
@@ -61,9 +61,9 @@ test("a chance=1 byproduct lands in the second output port alongside the main ou
     const [eid] = engine.placed.getEidsByTypeId(AlwaysByproductType.objectTypeId);
     const def = engine.components.getComponentByName("Machine");
     const row = def.getRowByEid(eid);
-    const inputPort = def.store.in0[row];
-    const outputPort = def.store.out[row];
-    const byproductPort = def.store.out2[row];
+    const inputPort = def.store.inputPort0[row];
+    const outputPort = def.store.outputPort[row];
+    const byproductPort = def.store.outputPort2[row];
 
     engine.ports.setItem(inputPort, ITEM_INPUT);
     let delivered = false;
@@ -80,9 +80,9 @@ test("a chance=0 recipe never produces a byproduct", async () => {
     const [eid] = engine.placed.getEidsByTypeId(NeverByproductType.objectTypeId);
     const def = engine.components.getComponentByName("Machine");
     const row = def.getRowByEid(eid);
-    const inputPort = def.store.in0[row];
-    const outputPort = def.store.out[row];
-    const byproductPort = def.store.out2[row];
+    const inputPort = def.store.inputPort0[row];
+    const outputPort = def.store.outputPort[row];
+    const byproductPort = def.store.outputPort2[row];
 
     for (let craft = 0; craft < 10; craft += 1) {
         engine.ports.setItem(inputPort, ITEM_INPUT);
@@ -103,5 +103,5 @@ test("a machine with no byproduct-configured recipe never touches the second por
     const [eid] = engine.placed.getEidsByTypeId(NeverByproductType.objectTypeId);
     const def = engine.components.getComponentByName("Machine");
     const row = def.getRowByEid(eid);
-    assert.notEqual(def.store.out2[row], EMPTY, "the second port was still wired (declared on the object type)");
+    assert.notEqual(def.store.outputPort2[row], EMPTY, "the second port was still wired (declared on the object type)");
 });

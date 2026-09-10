@@ -21,7 +21,7 @@ const MANNED_SPEED_MULTIPLIER = 1.3;
 // Per-slot column names, indexed 0..RECIPE_SLOTS-1.
 const SYNCED_FIELDS = new SyncedFields("Machine", [new SyncedField("lastOutput", EMPTY)]);
 
-const IN_COLS = ["in0", "in1", "in2"];
+const IN_COLS = ["inputPort0", "inputPort1", "inputPort2"];
 const SLOT_COLS = ["slot0", "slot1", "slot2"];
 const PROCESSING_COLS = ["processing0", "processing1", "processing2"];
 
@@ -141,10 +141,10 @@ export class MachineBehavior extends AbstractBehavior {
             }
         }
         const output = engine.getPortAt(type.outputPorts[0], message.x, message.y, message.direction);
-        machine.out[row] = output.port;
+        machine.outputPort[row] = output.port;
         if (this.hasByproductPort) {
             const byproductOutput = engine.getPortAt(type.outputPorts[1], message.x, message.y, message.direction);
-            machine.out2[row] = byproductOutput.port;
+            machine.outputPort2[row] = byproductOutput.port;
             engine.render.registerPort(byproductOutput.port, byproductOutput.tile.x, byproductOutput.tile.y);
         }
         // Explicit: a recycled row may hold stale state from a previous occupant.
@@ -165,11 +165,11 @@ export class MachineBehavior extends AbstractBehavior {
                 engine.ports.unmarkFluid(machine[IN_COLS[i]][row]);
             }
         }
-        engine.render.unregisterPort(machines.store.out[row]);
-        engine.ports.setFluidSource(machines.store.out[row], EMPTY);
+        engine.render.unregisterPort(machines.store.outputPort[row]);
+        engine.ports.setFluidSource(machines.store.outputPort[row], EMPTY);
         if (this.hasByproductPort) {
-            engine.render.unregisterPort(machines.store.out2[row]);
-            engine.ports.setFluidSource(machines.store.out2[row], EMPTY);
+            engine.render.unregisterPort(machines.store.outputPort2[row]);
+            engine.ports.setFluidSource(machines.store.outputPort2[row], EMPTY);
         }
         if (this.workerCost > 0) {
             const position = engine.Position;
@@ -185,9 +185,9 @@ export class MachineBehavior extends AbstractBehavior {
     getRenderedPortEids(engine, eid) {
         const machines = engine.components.getComponentByName("Machine");
         const row = machines.getRowByEid(eid);
-        const portEids = [machines.store.out[row]];
+        const portEids = [machines.store.outputPort[row]];
         if (this.hasByproductPort) {
-            portEids.push(machines.store.out2[row]);
+            portEids.push(machines.store.outputPort2[row]);
         }
         return portEids;
     }
@@ -195,10 +195,10 @@ export class MachineBehavior extends AbstractBehavior {
     resyncRenderedPorts(engine, eid) {
         const machines = engine.components.getComponentByName("Machine");
         const row = machines.getRowByEid(eid);
-        const out = machines.store.out[row];
+        const out = machines.store.outputPort[row];
         engine.render.registerPort(out, engine.Position.x[out], engine.Position.y[out]);
         if (this.hasByproductPort) {
-            const out2 = machines.store.out2[row];
+            const out2 = machines.store.outputPort2[row];
             engine.render.registerPort(out2, engine.Position.x[out2], engine.Position.y[out2]);
         }
     }
@@ -241,7 +241,7 @@ export class MachineBehavior extends AbstractBehavior {
         if (machine.remaining[row] !== EMPTY) {
             remaining = Math.ceil(machine.remaining[row]);
         }
-        const outItem = item[machine.out[row]];
+        const outItem = item[machine.outputPort[row]];
         let displayOutItem = outItem;
         if (outItem === EMPTY) {
             displayOutItem = null;
@@ -300,9 +300,9 @@ export class MachineBehavior extends AbstractBehavior {
             const behavior = placed.getBehaviorByTypeId(placed.getObjectTypeIdByEid(eids[row]));
             machine.inputCount[row] = behavior.inputCount;
             machine.processingTicks[row] = behavior.processingTicks;
-            syncFluidSource(engine, machine.out[row], machine.output[row]);
+            syncFluidSource(engine, machine.outputPort[row], machine.output[row]);
             if (behavior.hasByproductPort) {
-                syncFluidSource(engine, machine.out2[row], machine.byproduct[row]);
+                syncFluidSource(engine, machine.outputPort2[row], machine.byproduct[row]);
             }
         }
     }
@@ -434,8 +434,8 @@ export class MachineBehavior extends AbstractBehavior {
         const remaining = machine.remaining;
         const carry = machine.carry;
         const output = machine.output;
-        const out = machine.out;
-        const out2 = machine.out2;
+        const out = machine.outputPort;
+        const out2 = machine.outputPort2;
         const byproduct = machine.byproduct;
         const inputCounts = machine.inputCount;
         const processingTicks = machine.processingTicks;
@@ -545,8 +545,8 @@ export class MachineBehavior extends AbstractBehavior {
         const eids = machines.eids;
         for (let row = 0; row < count; row += 1) {
             const byproductPending = machine.byproduct[row] !== EMPTY;
-            const byproductDelivered = !byproductPending || engine.transfers.isDest(machine.out2[row]);
-            if (engine.transfers.isDest(machine.out[row]) && byproductDelivered) {
+            const byproductDelivered = !byproductPending || engine.transfers.isDest(machine.outputPort2[row]);
+            if (engine.transfers.isDest(machine.outputPort[row]) && byproductDelivered) {
                 const eid = eids[row];
                 engine.itemProduced.notify(placed.getClaimOwnerByEid(eid), machine.output[row], 1);
                 if (machine.lastOutput[row] !== machine.output[row]) {

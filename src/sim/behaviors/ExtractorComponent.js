@@ -8,7 +8,7 @@ export class ExtractorComponent extends AbstractComponent {
 
     constructor() {
         super("Extractor", [
-            {name: "out", kind: "eid", defaultValue: NO_EID},
+            {name: "outputPort", kind: "eid", defaultValue: NO_EID},
             {name: "resourceType", defaultValue: EMPTY},
             {name: "remaining", kind: "f32", defaultValue: EMPTY},
             // Overshot progress banked past a finished cycle; the next cycle starts this far along.

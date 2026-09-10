@@ -8,7 +8,7 @@ export class ThroughputSinkComponent extends AbstractComponent {
 
     constructor() {
         super("ThroughputSink", [
-            {name: "in", kind: "eid", defaultValue: NO_EID},
+            {name: "inputPort", kind: "eid", defaultValue: NO_EID},
             {name: "consumed"},
             {name: "lastConsumed", defaultValue: EMPTY},
         ], {sparse: true});

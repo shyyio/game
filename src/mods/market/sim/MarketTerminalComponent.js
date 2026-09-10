@@ -20,8 +20,8 @@ export class MarketTerminalComponent extends AbstractComponent {
             {name: "pendingPrice", defaultValue: EMPTY},
             {name: "pendingBuyer", kind: "eid", defaultValue: NO_EID},
             {name: "pendingIsNpc", defaultValue: 0},
-            {name: "in", kind: "eid", defaultValue: NO_EID},
-            {name: "out", kind: "eid", defaultValue: NO_EID},
+            {name: "inputPort", kind: "eid", defaultValue: NO_EID},
+            {name: "outputPort", kind: "eid", defaultValue: NO_EID},
             {name: "lastOutput", kind: "item", defaultValue: EMPTY},
         ], {sparse: true});
     }

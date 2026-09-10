@@ -42,12 +42,12 @@ class BeltObjectType extends ObjectType {
             conveys: CONVEYS_ITEM,
             placement: new PlacementRule({conveyor: beltKind === BELT_NORMAL}),
             inputPorts: [
-                new PortDefinition("virtual_left", {x: 0, y: 0, direction: Direction.RIGHT}),
-                new PortDefinition("virtual_down", {x: 0, y: 0, direction: Direction.UP}),
-                new PortDefinition("virtual_right", {x: 0, y: 0, direction: Direction.LEFT}),
+                new PortDefinition("virtualLeft", {x: 0, y: 0, direction: Direction.RIGHT}),
+                new PortDefinition("virtualDown", {x: 0, y: 0, direction: Direction.UP}),
+                new PortDefinition("virtualRight", {x: 0, y: 0, direction: Direction.LEFT}),
             ],
             outputPorts: [
-                new PortDefinition("virtual_up", {x: 0, y: -1, direction: Direction.UP}, false),
+                new PortDefinition("virtualUp", {x: 0, y: -1, direction: Direction.UP}, false),
             ],
         });
         this.beltKind = beltKind;
@@ -123,16 +123,16 @@ export const SplitterType = new ObjectType({
     name: "Splitter",
     toolId: 4,
     inputPorts: [
-        new PortDefinition("in_a", {x: 0, y: 0, direction: Direction.UP}),
-        new PortDefinition("in_b", {x: 1, y: 0, direction: Direction.UP}),
+        new PortDefinition("inputPortA", {x: 0, y: 0, direction: Direction.UP}),
+        new PortDefinition("inputPortB", {x: 1, y: 0, direction: Direction.UP}),
     ],
     outputPorts: [
-        new PortDefinition("out_a", {x: 0, y: -1, direction: Direction.UP}),
-        new PortDefinition("out_b", {x: 1, y: -1, direction: Direction.UP}),
+        new PortDefinition("outputPortA", {x: 0, y: -1, direction: Direction.UP}),
+        new PortDefinition("outputPortB", {x: 1, y: -1, direction: Direction.UP}),
     ],
     internalPorts: [
-        new PortDefinition("int_a"),
-        new PortDefinition("int_b"),
+        new PortDefinition("internalPortA"),
+        new PortDefinition("internalPortB"),
     ],
     geometry: "1x2",
     renderConnections: true,
@@ -195,8 +195,8 @@ class GateObjectType extends ObjectType {
 export const GateType = new GateObjectType({
     name: "Gate",
     toolId: 28,
-    inputPorts: [new PortDefinition("in", {x: 0, y: 0, direction: Direction.UP})],
-    outputPorts: [new PortDefinition("out", {x: 0, y: -1, direction: Direction.UP})],
+    inputPorts: [new PortDefinition("inputPort", {x: 0, y: 0, direction: Direction.UP})],
+    outputPorts: [new PortDefinition("outputPort", {x: 0, y: -1, direction: Direction.UP})],
     geometry: "1x1",
     renderConnections: true,
     textureName: "gate/open",

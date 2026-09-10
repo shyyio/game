@@ -36,13 +36,13 @@ test("a Blender pumps Nutrient Slop into an adjacent pipe network", async () => 
     const [eid] = engine.placed.getEidsByTypeId(BlenderType.objectTypeId);
     const def = engine.components.getComponentByName("Machine");
     const row = def.getRowByEid(eid);
-    engine.ports.setItem(def.store.in0[row], ITEM_TYPE_CABBAGE);
+    engine.ports.setItem(def.store.inputPort0[row], ITEM_TYPE_CABBAGE);
     engine.applyMessage(new CreateObjectMessage(PipeType.objectTypeId, 5, 4, Direction.UP));
     const pipes = pipesOf(engine);
 
     for (let i = 0; i < 40; i += 1) {
         engine.tick();
-        engine.ports.setItem(def.store.in0[row], ITEM_TYPE_CABBAGE);
+        engine.ports.setItem(def.store.inputPort0[row], ITEM_TYPE_CABBAGE);
     }
 
     const net = pipes.findNetworkAt(5, 4);
@@ -72,11 +72,11 @@ test("a pipe delivers Water into a Greenhouse's fluid input, completing the reci
     const [eid] = engine.placed.getEidsByTypeId(GreenhouseType.objectTypeId);
     const def = engine.components.getComponentByName("Machine");
     const row = def.getRowByEid(eid);
-    const outputPort = def.store.out[row];
+    const outputPort = def.store.outputPort[row];
 
     let produced = false;
     for (let i = 0; i < 200 && !produced; i += 1) {
-        engine.ports.setItem(def.store.in0[row], ITEM_TYPE_CABBAGE_SEED);
+        engine.ports.setItem(def.store.inputPort0[row], ITEM_TYPE_CABBAGE_SEED);
         engine.tick();
         produced = engine.ports.getItemByPortEid(outputPort) !== EMPTY;
     }
@@ -92,11 +92,11 @@ test("Blast Furnace produces Raw Steel from Iron Ore + Coke + Oxygen in one craf
 
     let produced = false;
     for (let i = 0; i < 40 && !produced; i += 1) {
-        engine.ports.setItem(def.store.in0[row], ITEM_TYPE_IRON_ORE);
-        engine.ports.setItem(def.store.in1[row], ITEM_TYPE_COKE);
-        engine.ports.setItem(def.store.in2[row], ITEM_TYPE_OXYGEN);
+        engine.ports.setItem(def.store.inputPort0[row], ITEM_TYPE_IRON_ORE);
+        engine.ports.setItem(def.store.inputPort1[row], ITEM_TYPE_COKE);
+        engine.ports.setItem(def.store.inputPort2[row], ITEM_TYPE_OXYGEN);
         engine.tick();
-        produced = engine.ports.getItemByPortEid(def.store.out[row]) === ITEM_TYPE_RAW_STEEL;
+        produced = engine.ports.getItemByPortEid(def.store.outputPort[row]) === ITEM_TYPE_RAW_STEEL;
     }
     assert.ok(produced, "Blast Furnace produces Raw Steel from Iron Ore + Coke + Oxygen");
 });
@@ -107,9 +107,9 @@ test("Brew produces both Basic Potion Base and Overload Mix, one machine", async
     const [eid] = engine.placed.getEidsByTypeId(BrewType.objectTypeId);
     const def = engine.components.getComponentByName("Machine");
     const row = def.getRowByEid(eid);
-    const in0Port = def.store.in0[row];
-    const in1Port = def.store.in1[row];
-    const outputPort = def.store.out[row];
+    const in0Port = def.store.inputPort0[row];
+    const in1Port = def.store.inputPort1[row];
+    const outputPort = def.store.outputPort[row];
 
     // Only feed a port once it's actually empty (gathered): feeding on every tick regardless would
     // let the machine pipeline-gather a second Mushroom+Water craft before this one's even read.

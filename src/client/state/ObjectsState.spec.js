@@ -14,8 +14,8 @@ function cell(x, y, layer=0) {
 // A 1x1 object with one input on its tile and one output one tile ahead, both facing UP.
 const machineType = new ObjectType({
     name: "Machine",
-    inputPorts: [new PortDefinition("in", {x: 0, y: 0, direction: Direction.UP})],
-    outputPorts: [new PortDefinition("out", {x: 0, y: -1, direction: Direction.UP})],
+    inputPorts: [new PortDefinition("inputPort", {x: 0, y: 0, direction: Direction.UP})],
+    outputPorts: [new PortDefinition("outputPort", {x: 0, y: -1, direction: Direction.UP})],
     internalPorts: [],
     geometry: "1x1",
 });
@@ -141,11 +141,11 @@ test("findInputPortAt / findOutputPortAt resolve a feeder-consumer pair facing e
 
     const consumer = cache.findInputPortAt(5, 5, Direction.UP);
     assert.strictEqual(consumer.entry.id, 2);
-    assert.strictEqual(consumer.portName, "in");
+    assert.strictEqual(consumer.portName, "inputPort");
 
     const feeder = cache.findOutputPortAt(5, 5, Direction.UP);
     assert.strictEqual(feeder.entry.id, 1);
-    assert.strictEqual(feeder.portName, "out");
+    assert.strictEqual(feeder.portName, "outputPort");
 
     // Wrong facing and an empty tile resolve to nothing.
     assert.strictEqual(cache.findInputPortAt(5, 5, Direction.DOWN), null);
@@ -159,7 +159,7 @@ test("connectedPorts reports a record's live output connection", () => {
 
     const connections = cache.connectedPorts(cache.get(1));
     assert.strictEqual(connections.length, 1);
-    assert.strictEqual(connections[0].key, "out");
+    assert.strictEqual(connections[0].key, "outputPort");
     assert.strictEqual(connections[0].isOutput, true);
     assert.strictEqual(connections[0].neighbor.id, 2);
 

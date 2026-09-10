@@ -59,16 +59,16 @@ export class TradingTerminalBehavior extends AbstractBehavior {
         terminals.attach(eid);
         const terminal = terminals.store;
         const row = terminals.getRowByEid(eid);
-        terminal.in[row] = engine.getPortAt(type.inputPorts[0], message.x, message.y, message.direction).port;
+        terminal.inputPort[row] = engine.getPortAt(type.inputPorts[0], message.x, message.y, message.direction).port;
         const output = engine.getPortAt(type.outputPorts[0], message.x, message.y, message.direction);
-        terminal.out[row] = output.port;
+        terminal.outputPort[row] = output.port;
         engine.render.registerPort(output.port, output.tile.x, output.tile.y);
     }
 
     onDespawn(engine, eid) {
         const terminals = engine.components.getComponentByName("MarketTerminal");
         const row = terminals.getRowByEid(eid);
-        engine.render.unregisterPort(terminals.store.out[row]);
+        engine.render.unregisterPort(terminals.store.outputPort[row]);
         const book = engine.resolve(MarketBook);
         book.removeBuy(eid);
         book.removeSell(eid);
@@ -93,12 +93,12 @@ export class TradingTerminalBehavior extends AbstractBehavior {
 
     getRenderedPortEids(engine, eid) {
         const terminals = engine.components.getComponentByName("MarketTerminal");
-        return [terminals.store.out[terminals.getRowByEid(eid)]];
+        return [terminals.store.outputPort[terminals.getRowByEid(eid)]];
     }
 
     resyncRenderedPorts(engine, eid) {
         const terminals = engine.components.getComponentByName("MarketTerminal");
-        const out = terminals.store.out[terminals.getRowByEid(eid)];
+        const out = terminals.store.outputPort[terminals.getRowByEid(eid)];
         engine.render.registerPort(out, engine.Position.x[out], engine.Position.y[out]);
     }
 
@@ -138,7 +138,7 @@ export class TradingTerminalBehavior extends AbstractBehavior {
             if (terminal.mode[row] !== MARKET_MODE_SELL || terminal.sellEnabled[row] === 0) {
                 continue;
             }
-            const inputPort = terminal.in[row];
+            const inputPort = terminal.inputPort[row];
             if (item[inputPort] !== terminal.itemTypeId[row]) {
                 continue;
             }
@@ -185,7 +185,7 @@ export class TradingTerminalBehavior extends AbstractBehavior {
         if (fixedPrice === undefined) {
             return;
         }
-        const outputPort = terminal.out[row];
+        const outputPort = terminal.outputPort[row];
         const owner = terminal.owner[row];
         let remaining = terminal.balance[row];
         if (reservedBalance.has(owner)) {
@@ -244,7 +244,7 @@ export class TradingTerminalBehavior extends AbstractBehavior {
         const count = terminals.count;
         for (let row = 0; row < count; row += 1) {
             if (terminal.mode[row] === MARKET_MODE_BUY) {
-                if (engine.transfers.isDest(terminal.out[row])) {
+                if (engine.transfers.isDest(terminal.outputPort[row])) {
                     TradingTerminalBehavior._recordOutput(engine, terminals, row);
                     if (terminal.pendingPrice[row] !== EMPTY) {
                         book.recordPurchase(eids[row], terminal.itemTypeId[row], terminal.pendingPrice[row]);
@@ -256,7 +256,7 @@ export class TradingTerminalBehavior extends AbstractBehavior {
                 continue;
             }
             const npc = terminal.pendingIsNpc[row] === 1;
-            const confirmed = npc || engine.transfers.getDestByPortEid(terminal.in[row]) !== EMPTY;
+            const confirmed = npc || engine.transfers.getDestByPortEid(terminal.inputPort[row]) !== EMPTY;
             if (!confirmed) {
                 continue;
             }

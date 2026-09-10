@@ -77,7 +77,7 @@ export const RESOURCE_TYPES = [
 export const ExtractorType = new ObjectType({
     name: "Extractor",
     toolId: 15,
-    outputPorts: [new PortDefinition("out", {x: 0, y: -1, direction: Direction.UP})],
+    outputPorts: [new PortDefinition("outputPort", {x: 0, y: -1, direction: Direction.UP})],
     geometry: "1x1",
     renderConnections: true,
     textureName: "demo-machine/0",
@@ -99,28 +99,28 @@ export const ExtractorType = new ObjectType({
 // Ports face bottom (inputs) or top (outputs), never a side. Single port at column x=0 on 1x1;
 // second port widens footprint to "1x2" at column x=1.
 
-const IN_A = new PortDefinition("in_a", {x: 0, y: 0, direction: Direction.UP});
-const IN_B = new PortDefinition("in_b", {x: 1, y: 0, direction: Direction.UP});
-const IN_B_FLUID = new PortDefinition("in_b", {x: 1, y: 0, direction: Direction.UP}, true, true);
-const OUT_A = new PortDefinition("out_a", {x: 0, y: -1, direction: Direction.UP});
-const OUT_B = new PortDefinition("out_b", {x: 1, y: -1, direction: Direction.UP});
+const IN_A = new PortDefinition("inputPortA", {x: 0, y: 0, direction: Direction.UP});
+const IN_B = new PortDefinition("inputPortB", {x: 1, y: 0, direction: Direction.UP});
+const IN_B_FLUID = new PortDefinition("inputPortB", {x: 1, y: 0, direction: Direction.UP}, true, true);
+const OUT_A = new PortDefinition("outputPortA", {x: 0, y: -1, direction: Direction.UP});
+const OUT_B = new PortDefinition("outputPortB", {x: 1, y: -1, direction: Direction.UP});
 
 // 2x2 footprint: bottom row is y=1. `fluid` flag (4th PortDefinition arg) opts a port into
 // engine.ports.markFluid (see MachineBehavior.onSpawn/onDespawn).
-const IN2_A = new PortDefinition("in_a", {x: 0, y: 1, direction: Direction.UP});
-const IN2_B = new PortDefinition("in_b", {x: 1, y: 1, direction: Direction.UP});
-const IN2_B_FLUID = new PortDefinition("in_b", {x: 1, y: 1, direction: Direction.UP}, true, true);
-const OUT2_A = new PortDefinition("out_a", {x: 0, y: -1, direction: Direction.UP});
-const OUT2_B = new PortDefinition("out_b", {x: 1, y: -1, direction: Direction.UP});
+const IN2_A = new PortDefinition("inputPortA", {x: 0, y: 1, direction: Direction.UP});
+const IN2_B = new PortDefinition("inputPortB", {x: 1, y: 1, direction: Direction.UP});
+const IN2_B_FLUID = new PortDefinition("inputPortB", {x: 1, y: 1, direction: Direction.UP}, true, true);
+const OUT2_A = new PortDefinition("outputPortA", {x: 0, y: -1, direction: Direction.UP});
+const OUT2_B = new PortDefinition("outputPortB", {x: 1, y: -1, direction: Direction.UP});
 
 // 3x3 footprint (Greenhouse/SpawningPool/BlastFurnace): bottom row is y=2, three columns available;
 // a single output centers at x=1.
-const IN3_A = new PortDefinition("in_a", {x: 0, y: 2, direction: Direction.UP});
-const IN3_A_FLUID = new PortDefinition("in_a", {x: 0, y: 2, direction: Direction.UP}, true, true);
-const IN3_MID = new PortDefinition("in_mid", {x: 1, y: 2, direction: Direction.UP});
-const IN3_B = new PortDefinition("in_b", {x: 2, y: 2, direction: Direction.UP});
-const IN3_B_FLUID = new PortDefinition("in_b", {x: 2, y: 2, direction: Direction.UP}, true, true);
-const OUT3_A = new PortDefinition("out_a", {x: 1, y: -1, direction: Direction.UP});
+const IN3_A = new PortDefinition("inputPortA", {x: 0, y: 2, direction: Direction.UP});
+const IN3_A_FLUID = new PortDefinition("inputPortA", {x: 0, y: 2, direction: Direction.UP}, true, true);
+const IN3_MID = new PortDefinition("inputPortMiddle", {x: 1, y: 2, direction: Direction.UP});
+const IN3_B = new PortDefinition("inputPortB", {x: 2, y: 2, direction: Direction.UP});
+const IN3_B_FLUID = new PortDefinition("inputPortB", {x: 2, y: 2, direction: Direction.UP}, true, true);
+const OUT3_A = new PortDefinition("outputPortA", {x: 1, y: -1, direction: Direction.UP});
 
 // Placeholder texture per footprint size. 1x2/3x3 frames are Housing's 2x2 art 9-sliced to size —
 // see src/mods/BaseTextures/sprites/main/housing/.

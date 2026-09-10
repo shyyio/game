@@ -73,13 +73,13 @@ export class GeneratorBehavior extends AbstractBehavior {
         const generator = generators.store;
         const row = generators.getRowByEid(eid);
         const output = engine.getPortAt(type.outputPorts[0], message.x, message.y, message.direction);
-        generator.out[row] = output.port;
+        generator.outputPort[row] = output.port;
         generator.processingTicks[row] = this.processingTicks;
         engine.render.registerPort(output.port, output.tile.x, output.tile.y);
         syncFluidSource(engine, output.port, this.output);
         if (this.hasSecondaryPort) {
             const secondary = engine.getPortAt(type.outputPorts[1], message.x, message.y, message.direction);
-            generator.out2[row] = secondary.port;
+            generator.outputPort2[row] = secondary.port;
             generator.processingTicks2[row] = this.secondaryOutput.processingTicks;
             engine.render.registerPort(secondary.port, secondary.tile.x, secondary.tile.y);
             syncFluidSource(engine, secondary.port, this.secondaryOutput.itemTypeId);
@@ -89,20 +89,20 @@ export class GeneratorBehavior extends AbstractBehavior {
     onDespawn(engine, eid) {
         const generators = engine.components.getComponentByName("Generator");
         const row = generators.getRowByEid(eid);
-        engine.render.unregisterPort(generators.store.out[row]);
-        engine.ports.setFluidSource(generators.store.out[row], EMPTY);
+        engine.render.unregisterPort(generators.store.outputPort[row]);
+        engine.ports.setFluidSource(generators.store.outputPort[row], EMPTY);
         if (this.hasSecondaryPort) {
-            engine.render.unregisterPort(generators.store.out2[row]);
-            engine.ports.setFluidSource(generators.store.out2[row], EMPTY);
+            engine.render.unregisterPort(generators.store.outputPort2[row]);
+            engine.ports.setFluidSource(generators.store.outputPort2[row], EMPTY);
         }
     }
 
     getRenderedPortEids(engine, eid) {
         const generators = engine.components.getComponentByName("Generator");
         const row = generators.getRowByEid(eid);
-        const portEids = [generators.store.out[row]];
+        const portEids = [generators.store.outputPort[row]];
         if (this.hasSecondaryPort) {
-            portEids.push(generators.store.out2[row]);
+            portEids.push(generators.store.outputPort2[row]);
         }
         return portEids;
     }
@@ -110,10 +110,10 @@ export class GeneratorBehavior extends AbstractBehavior {
     resyncRenderedPorts(engine, eid) {
         const generators = engine.components.getComponentByName("Generator");
         const row = generators.getRowByEid(eid);
-        const out = generators.store.out[row];
+        const out = generators.store.outputPort[row];
         engine.render.registerPort(out, engine.Position.x[out], engine.Position.y[out]);
         if (this.hasSecondaryPort) {
-            const out2 = generators.store.out2[row];
+            const out2 = generators.store.outputPort2[row];
             engine.render.registerPort(out2, engine.Position.x[out2], engine.Position.y[out2]);
         }
     }
@@ -132,7 +132,7 @@ export class GeneratorBehavior extends AbstractBehavior {
         if (generator.remaining[row] !== EMPTY) {
             remaining = Math.ceil(generator.remaining[row]);
         }
-        const outItem = engine.Port.item[generator.out[row]];
+        const outItem = engine.Port.item[generator.outputPort[row]];
         let displayOutItem = outItem;
         if (outItem === EMPTY) {
             displayOutItem = null;
@@ -153,10 +153,10 @@ export class GeneratorBehavior extends AbstractBehavior {
         for (let row = 0; row < generators.count; row += 1) {
             const behavior = placed.getBehaviorByTypeId(placed.getObjectTypeIdByEid(eids[row]));
             generator.processingTicks[row] = behavior.processingTicks;
-            syncFluidSource(engine, generator.out[row], behavior.output);
+            syncFluidSource(engine, generator.outputPort[row], behavior.output);
             if (behavior.hasSecondaryPort) {
                 generator.processingTicks2[row] = behavior.secondaryOutput.processingTicks;
-                syncFluidSource(engine, generator.out2[row], behavior.secondaryOutput.itemTypeId);
+                syncFluidSource(engine, generator.outputPort2[row], behavior.secondaryOutput.itemTypeId);
             }
         }
     }
@@ -223,10 +223,10 @@ export class GeneratorBehavior extends AbstractBehavior {
                 itemTypeId = placed.getBehaviorByTypeId(placed.getObjectTypeIdByEid(eids[row])).output;
             }
             GeneratorBehavior._advanceCycle(
-                engine, generator.remaining, generator.carry, generator.output, generator.out,
+                engine, generator.remaining, generator.carry, generator.output, generator.outputPort,
                 generator.processingTicks, itemTypeId, row,
             );
-            if (generator.out2[row] === NO_EID) {
+            if (generator.outputPort2[row] === NO_EID) {
                 continue;
             }
             let secondaryItemTypeId = generator.output2[row];
@@ -234,7 +234,7 @@ export class GeneratorBehavior extends AbstractBehavior {
                 secondaryItemTypeId = placed.getBehaviorByTypeId(placed.getObjectTypeIdByEid(eids[row])).secondaryOutput.itemTypeId;
             }
             GeneratorBehavior._advanceCycle(
-                engine, generator.remaining2, generator.carry2, generator.output2, generator.out2,
+                engine, generator.remaining2, generator.carry2, generator.output2, generator.outputPort2,
                 generator.processingTicks2, secondaryItemTypeId, row,
             );
         }
@@ -254,7 +254,7 @@ export class GeneratorBehavior extends AbstractBehavior {
         const count = generators.count;
         for (let row = 0; row < count; row += 1) {
             const eid = eids[row];
-            if (engine.transfers.isDest(generator.out[row])) {
+            if (engine.transfers.isDest(generator.outputPort[row])) {
                 engine.itemProduced.notify(placed.getClaimOwnerByEid(eid), generator.output[row], 1);
                 if (generator.lastOutput[row] !== generator.output[row]) {
                     generator.lastOutput[row] = generator.output[row];
@@ -263,7 +263,7 @@ export class GeneratorBehavior extends AbstractBehavior {
                 generator.output[row] = EMPTY;
                 generator.remaining[row] = EMPTY;
             }
-            if (generator.out2[row] !== NO_EID && engine.transfers.isDest(generator.out2[row])) {
+            if (generator.outputPort2[row] !== NO_EID && engine.transfers.isDest(generator.outputPort2[row])) {
                 engine.itemProduced.notify(placed.getClaimOwnerByEid(eid), generator.output2[row], 1);
                 generator.lastOutput2[row] = generator.output2[row];
                 generator.output2[row] = EMPTY;

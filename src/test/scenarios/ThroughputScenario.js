@@ -3,7 +3,7 @@
 // in one column, with `belts` (tiles of belt between stages) the main variable: 0 wires each
 // stage's output port straight into the next stage's input port, which is the same port entity, and
 // the belt-less variant falls out of the same layout code. When the Press->Pack run has room
-// (belts >= 2), a Splitter replaces its second belt tile and routes out_b onto a mirror column one
+// (belts >= 2), a Splitter replaces its second belt tile and routes outputPortB onto a mirror column one
 // tile east: its own belts, machine, and Sink, so the splitter itself sits under throughput load.
 // The whole chain is tiled `n` times in a near-square grid, one tile of gap between copies.
 //
@@ -47,8 +47,8 @@ export const ITEM_TYPE_THROUGHPUT_UNIT = 952;
 // Feed is bought one per tick for the whole run, so keep it cheap against the granted balance.
 export const NPC_PRICE_THROUGHPUT_FEED = 1;
 
-const IN = new PortDefinition("in", {x: 0, y: 0, direction: Direction.UP});
-const OUT = new PortDefinition("out", {x: 0, y: -1, direction: Direction.UP});
+const IN = new PortDefinition("inputPort", {x: 0, y: 0, direction: Direction.UP});
+const OUT = new PortDefinition("outputPort", {x: 0, y: -1, direction: Direction.UP});
 
 /**
  * A 1x1, single-recipe machine crafting in 0 ticks, so a fed line runs at full throughput.
@@ -123,7 +123,7 @@ class SinkBehavior extends AbstractBehavior {
         const sinks = engine.components.getComponentByName("ThroughputSink");
         sinks.attach(eid);
         const row = sinks.getRowByEid(eid);
-        sinks.store.in[row] = engine.getPortAt(type.inputPorts[0], message.x, message.y, message.direction).port;
+        sinks.store.inputPort[row] = engine.getPortAt(type.inputPorts[0], message.x, message.y, message.direction).port;
     }
 
     /**
@@ -139,7 +139,7 @@ class SinkBehavior extends AbstractBehavior {
         const sink = sinks.store;
         const count = sinks.count;
         for (let row = 0; row < count; row += 1) {
-            const inputPort = sink.in[row];
+            const inputPort = sink.inputPort[row];
             if (item[inputPort] === EMPTY) {
                 continue;
             }
@@ -302,7 +302,7 @@ function buildChain(engine, originX, originY, beltLength) {
     engine.applyMessage(new CreateObjectMessage(ThroughputSinkType.objectTypeId, originX, sinkY, Direction.UP));
 
     if (splitterFits) {
-        // Splitter out_b lands here; a second Press fed parts crafts its fallback unit.
+        // Splitter outputPortB lands here; a second Press fed parts crafts its fallback unit.
         const branchX = originX + 1;
         layBelts(engine, branchX, pressY - 2, beltLength - 2);
         engine.applyMessage(new CreateObjectMessage(ThroughputPressType.objectTypeId, branchX, packY, Direction.UP));

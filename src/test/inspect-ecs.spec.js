@@ -24,7 +24,7 @@ function createMachine(game, x, y) {
     const eids = placed.getEidsByTypeId(BlenderType.objectTypeId);
     const eid = eids[eids.length - 1];
     const machine = game.simEngine.components.getComponentByName("Machine");
-    return {id: placed.getObjectRefByEid(eid), inputPort: machine.store.in0[machine.getRowByEid(eid)]};
+    return {id: placed.getObjectRefByEid(eid), inputPort: machine.store.inputPort0[machine.getRowByEid(eid)]};
 }
 
 function heartbeats(session) {

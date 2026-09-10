@@ -16,7 +16,7 @@ test("inferBeltParent finds a splitter feeding a belt that bends out of it", () 
         {x: 13, y: 5, layer: LAYER_SURFACE},
         {x: 14, y: 5, layer: LAYER_SURFACE},
     ], {}, {type: SplitterType, direction: Direction.UP});
-    // Belt above the far cell, bending right — fed by the splitter's out_b.
+    // Belt above the far cell, bending right — fed by the splitter's outputPortB.
     surface(cache, 2, 14, 4, {type: BeltType, direction: Direction.RIGHT});
 
     const parent = inferBeltParent(cache, 14, 4, Direction.RIGHT);
@@ -43,8 +43,8 @@ test("inferBeltParent ignores a tunnel entrance (it does not feed forward) and e
 // A 1x1 machine facing UP: input on its tile, output one tile ahead.
 const machineType = new ObjectType({
     name: "Machine",
-    inputPorts: [new PortDefinition("in", {x: 0, y: 0, direction: Direction.UP})],
-    outputPorts: [new PortDefinition("out", {x: 0, y: -1, direction: Direction.UP})],
+    inputPorts: [new PortDefinition("inputPort", {x: 0, y: 0, direction: Direction.UP})],
+    outputPorts: [new PortDefinition("outputPort", {x: 0, y: -1, direction: Direction.UP})],
     internalPorts: [],
     geometry: "1x1",
 });

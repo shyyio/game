@@ -18,7 +18,7 @@ test("a machine's delivered output notifies the engine's itemProduced listeners"
     const row = def.getRowByEid(eid);
 
     for (let i = 0; i < 10; i += 1) {
-        engine.ports.setItem(def.store.in0[row], ITEM_TYPE_CABBAGE);
+        engine.ports.setItem(def.store.inputPort0[row], ITEM_TYPE_CABBAGE);
         engine.tick();
     }
 

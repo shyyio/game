@@ -18,19 +18,19 @@ test("a splitter round-robins a single input stream across both outputs", async 
     let toA = 0;
     let toB = 0;
     for (let i = 0; i < 24; i += 1) {
-        engine.ports.setItem(s.in_a, RED);
-        engine.ports.setItem(s.out_a, EMPTY);
-        engine.ports.setItem(s.out_b, EMPTY);
+        engine.ports.setItem(s.inputPortA, RED);
+        engine.ports.setItem(s.outputPortA, EMPTY);
+        engine.ports.setItem(s.outputPortB, EMPTY);
         engine.tick();
-        if (engine.ports.getItemByPortEid(s.out_a) === RED) {
+        if (engine.ports.getItemByPortEid(s.outputPortA) === RED) {
             toA += 1;
         }
-        if (engine.ports.getItemByPortEid(s.out_b) === RED) {
+        if (engine.ports.getItemByPortEid(s.outputPortB) === RED) {
             toB += 1;
         }
     }
 
-    assert.ok(toA > 0, "some items exit out_a");
-    assert.ok(toB > 0, "some items exit out_b");
-    assert.ok(Math.abs(toA - toB) <= 1, `balanced within one (out_a=${toA}, out_b=${toB})`);
+    assert.ok(toA > 0, "some items exit outputPortA");
+    assert.ok(toB > 0, "some items exit outputPortB");
+    assert.ok(Math.abs(toA - toB) <= 1, `balanced within one (outputPortA=${toA}, outputPortB=${toB})`);
 });

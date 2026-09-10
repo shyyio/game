@@ -8,12 +8,12 @@ export class MachineComponent extends AbstractComponent {
 
     constructor() {
         super("Machine", [
-            {name: "out", kind: "eid", defaultValue: NO_EID},
+            {name: "outputPort", kind: "eid", defaultValue: NO_EID},
             // Byproduct port; NO_EID unless the object type declares a second output port.
-            {name: "out2", kind: "eid", defaultValue: NO_EID},
-            {name: "in0", kind: "eid", defaultValue: NO_EID},
-            {name: "in1", kind: "eid", defaultValue: NO_EID},
-            {name: "in2", kind: "eid", defaultValue: NO_EID},
+            {name: "outputPort2", kind: "eid", defaultValue: NO_EID},
+            {name: "inputPort0", kind: "eid", defaultValue: NO_EID},
+            {name: "inputPort1", kind: "eid", defaultValue: NO_EID},
+            {name: "inputPort2", kind: "eid", defaultValue: NO_EID},
             {name: "slot0", kind: "item", defaultValue: EMPTY},
             {name: "slot1", kind: "item", defaultValue: EMPTY},
             {name: "slot2", kind: "item", defaultValue: EMPTY},

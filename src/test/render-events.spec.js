@@ -19,26 +19,26 @@ test("rendered output ports emit port-item set/clear deltas on change only", asy
     const splitter = new SplitterBehavior();
     splitter.install(engine);
     const s = splitter.addSplitter(engine);
-    engine.render.registerPort(s.out_a, 5, 4);
-    engine.render.registerPort(s.out_b, 6, 4);
+    engine.render.registerPort(s.outputPortA, 5, 4);
+    engine.render.registerPort(s.outputPortB, 6, 4);
 
-    engine.ports.setItem(s.out_a, ITEM);
+    engine.ports.setItem(s.outputPortA, ITEM);
     engine.tick();
     let events = collector.drain();
     assert.equal(events.length, 1);
     assert.ok(events[0] instanceof PortItemSetEvent);
-    assert.equal(events[0].portRef, s.out_a);
+    assert.equal(events[0].portRef, s.outputPortA);
     assert.equal(events[0].itemTypeId, ITEM);
 
     engine.tick();
     assert.deepEqual(collector.drain(), []);
 
-    engine.ports.setItem(s.out_a, EMPTY);
+    engine.ports.setItem(s.outputPortA, EMPTY);
     engine.tick();
     events = collector.drain();
     assert.equal(events.length, 1);
     assert.ok(events[0] instanceof PortItemClearEvent);
-    assert.equal(events[0].portRef, s.out_a);
+    assert.equal(events[0].portRef, s.outputPortA);
 });
 
 // The deltas leave the engine as one batch per chunk, not one event per port.
@@ -52,18 +52,18 @@ test("a render pass emits one port-item batch per chunk", async () => {
     const s = splitter.addSplitter(engine);
     const far = splitter.addSplitter(engine);
     // Two ports in one chunk, a third far enough out to land in another.
-    engine.render.registerPort(s.out_a, 5, 4);
-    engine.render.registerPort(s.out_b, 6, 4);
-    engine.render.registerPort(far.out_a, 5 + CHUNK_SIZE, 4);
+    engine.render.registerPort(s.outputPortA, 5, 4);
+    engine.render.registerPort(s.outputPortB, 6, 4);
+    engine.render.registerPort(far.outputPortA, 5 + CHUNK_SIZE, 4);
 
-    engine.ports.setItem(s.out_a, ITEM);
-    engine.ports.setItem(s.out_b, ITEM);
-    engine.ports.setItem(far.out_a, ITEM);
+    engine.ports.setItem(s.outputPortA, ITEM);
+    engine.ports.setItem(s.outputPortB, ITEM);
+    engine.ports.setItem(far.outputPortA, ITEM);
     engine.tick();
 
     assert.equal(emitted.length, 2, "one batch per chunk");
     const near = emitted.find(batch => batch.chunkKey === chunkKeyAt(5, 4));
-    assert.deepEqual(near.setPortRefs, [s.out_a, s.out_b]);
+    assert.deepEqual(near.setPortRefs, [s.outputPortA, s.outputPortB]);
     assert.deepEqual(near.setItemTypeIds, [ITEM, ITEM]);
     assert.deepEqual(near.clearPortRefs, []);
 });
@@ -161,21 +161,21 @@ test("a splitter draining its rendered input port emits a consumed clear", async
     const splitter = new SplitterBehavior();
     splitter.install(engine);
     const s = splitter.addSplitter(engine);
-    engine.render.registerPort(s.in_a, 5, 4);
+    engine.render.registerPort(s.inputPortA, 5, 4);
     // Jam the splitter so the fed item rests in the input port for a tick.
-    engine.ports.setItem(s.int_a, ITEM);
-    engine.ports.setItem(s.out_a, ITEM);
-    engine.ports.setItem(s.out_b, ITEM);
-    engine.ports.setItem(s.in_a, ITEM);
+    engine.ports.setItem(s.internalPortA, ITEM);
+    engine.ports.setItem(s.outputPortA, ITEM);
+    engine.ports.setItem(s.outputPortB, ITEM);
+    engine.ports.setItem(s.inputPortA, ITEM);
     engine.tick();
     collector.drain();
 
     // Unjam: the internal hop frees, the resting input port item transfers into it.
-    engine.ports.setItem(s.out_a, EMPTY);
+    engine.ports.setItem(s.outputPortA, EMPTY);
     engine.tick();
     const events = collector.drain();
     assert.equal(events.length, 1);
     assert.ok(events[0] instanceof PortItemClearEvent);
-    assert.equal(events[0].portRef, s.in_a);
+    assert.equal(events[0].portRef, s.inputPortA);
     assert.equal(events[0].consumed, 1);
 });

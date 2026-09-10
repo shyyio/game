@@ -10,7 +10,7 @@ import {placeBelt, beltLaneAt} from "@/test/beltFixture.js";
 const RED = 1;
 
 // A belt line feeding a splitter through the ordinary placement path; the splitter adopts the
-// shared edge port as in_a and the item stream reaches its outputs.
+// shared edge port as inputPortA and the item stream reaches its outputs.
 test("a belt line feeds a splitter through the shared edge port", async () => {
     const engine = await makeGameEngine();
     placeBelt(engine, 5, 7, Direction.UP);
@@ -19,10 +19,10 @@ test("a belt line feeds a splitter through the shared edge port", async () => {
     const feed = beltLaneAt(engine, 5, 7);
     const def = engine.components.getComponentByName("Splitter");
     const row = def.getRowByEid(def.eids[0]);
-    assert.equal(def.store.in_a[row], feed.outputPort, "splitter in_a adopted the belt's output port");
+    assert.equal(def.store.inputPortA[row], feed.outputPort, "splitter inputPortA adopted the belt's output port");
 
-    const outA = def.store.out_a[row];
-    const outB = def.store.out_b[row];
+    const outA = def.store.outputPortA[row];
+    const outB = def.store.outputPortB[row];
     let delivered = 0;
     for (let i = 0; i < 16; i += 1) {
         engine.ports.setItem(feed.inputPort, RED);
