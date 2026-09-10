@@ -17,7 +17,7 @@ export const CHUNK_CLAIM_TABLE = "ChunkClaim";
  * every claim after the first must touch an own chunk edge-on, and an unclaim that would split the
  * remainder is rejected.
  */
-export class ChunkClaims extends ChunkOwnerIndex {
+export class ChunkClaimIndex extends ChunkOwnerIndex {
 
     /**
      * @param {PlayerRegistry} players

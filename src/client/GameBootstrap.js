@@ -91,7 +91,7 @@ export class BootedClient {
      * @param {Client} parts.client
      * @param {AbstractSession} parts.session
      * @param {Game|null} parts.game
-     * @param {InputHandler} parts.inputHandler
+     * @param {InputDispatcher} parts.inputHandler
      * @param {function(): void} parts.destroy
      */
     constructor({client, session, game, inputHandler, destroy}) {

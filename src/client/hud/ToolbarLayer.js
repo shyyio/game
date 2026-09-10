@@ -11,7 +11,7 @@ import {addSlotHighlight} from "@/client/hud/slotHighlight.js";
 import {fitIcon, swallowClicks, trackTap, trackWindowDrag} from "@/client/layers/pixiUtils.js";
 import {TOOLBAR_SLOT_SIZE as SLOT_SIZE} from "@/client/hud/UiScale.js";
 import {ToolGrid} from "@/client/hud/ToolGrid.js";
-import {ToolReorderDrag} from "@/client/hud/ToolReorderDrag.js";
+import {ToolReorderMode} from "@/client/hud/ToolReorderMode.js";
 import {TapRecognizer} from "@/client/input/TapRecognizer.js";
 
 // Inset of the icon sprite from the slot's edges.
@@ -518,7 +518,7 @@ export class ToolbarLayer extends Container {
             this._moveDrag(originX + deltaX, originY + deltaY);
         }, () => this._endDrag());
 
-        this._drag = new ToolReorderDrag(tool, icon, this._modTools, detachDrag);
+        this._drag = new ToolReorderMode(tool, icon, this._modTools, detachDrag);
     }
 
     /**
@@ -574,7 +574,7 @@ export class ToolbarLayer extends Container {
      * Snaps every mod-tool cell, including the dragged one's now-icon-less slot, to its rest
      * position under the working order.
      * @private
-     * @param {ToolReorderDrag} drag
+     * @param {ToolReorderMode} drag
      */
     _layoutDragOrder(drag) {
         for (const [i, tool] of drag.order.entries()) {
@@ -589,7 +589,7 @@ export class ToolbarLayer extends Container {
      * Live-updates every mod-tool cell's number badge (including the dragged one) to match the
      * working order's current hotkey slots, so the badges track the drag in real time.
      * @private
-     * @param {ToolReorderDrag} drag
+     * @param {ToolReorderMode} drag
      */
     _resyncDragBadges(drag) {
         for (const [i, tool] of drag.order.entries()) {

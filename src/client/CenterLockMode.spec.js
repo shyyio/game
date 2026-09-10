@@ -1,7 +1,7 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
 
-import {CenterLock} from "@/client/CenterLock.js";
+import {CenterLockMode} from "@/client/CenterLockMode.js";
 import Mouse from "@/client/input/Mouse.js";
 import {TILE_SIZE, ViewMode} from "@/client/constants.js";
 import {Direction} from "@/common/constants.js";
@@ -57,14 +57,14 @@ class FakeClient {
 }
 
 /**
- * @returns {{centerLock: CenterLock, client: FakeClient}}
+ * @returns {{centerLock: CenterLockMode, client: FakeClient}}
  */
 function build() {
     const client = new FakeClient();
     // Center-lock drives the shared input singleton, which needs a viewport to read a center tile.
     Mouse.reset();
     Mouse.init(client.app, client.viewport);
-    return {centerLock: new CenterLock(client), client};
+    return {centerLock: new CenterLockMode(client), client};
 }
 
 test("center-lock starts off, with the marker hidden", () => {

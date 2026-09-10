@@ -4,7 +4,7 @@ import {GUIDE_PRICE_INTERVAL_TICKS, GUIDE_PRICE_MAX_STEP_FRACTION} from "../comm
 /**
  * One terminal's standing bid, indexed by item type.
  */
-class MarketQuote {
+class MarketQuoteEntry {
 
     /**
      * @param {number} eid
@@ -41,7 +41,7 @@ class GuidePrice {
 /**
  * The best current counterparty for a seller, or null when none qualify.
  */
-class MarketMatch {
+class MarketMatchEntry {
 
     /**
      * @param {boolean} isNpc
@@ -81,7 +81,7 @@ class MarketSettlement {
  * One confirmed NPC-sourced purchase, handed off from {@link TradingTerminalBehavior}'s
  * POST_RESOLVE to {@link MarketSimMod}'s onTick for currency settlement.
  */
-class MarketPurchase {
+class MarketPurchaseEntry {
 
     /**
      * @param {number} buyerEid
@@ -107,7 +107,7 @@ class QuoteIndex {
     }
 
     /**
-     * @param {MarketQuote} quote
+     * @param {MarketQuoteEntry} quote
      * @returns {void}
      */
     post(quote) {
@@ -140,7 +140,7 @@ class QuoteIndex {
 
     /**
      * @param {number} itemTypeId
-     * @returns {MarketQuote[]} empty when nothing is posted
+     * @returns {MarketQuoteEntry[]} empty when nothing is posted
      */
     getQuotesByItemTypeId(itemTypeId) {
         const quotes = this._byItem.get(itemTypeId);
@@ -225,7 +225,7 @@ export class MarketBook {
      * @returns {void}
      */
     postBuy(eid, itemTypeId, price, outputPort) {
-        const quote = new MarketQuote(eid, itemTypeId, price, outputPort, this._nextSequence);
+        const quote = new MarketQuoteEntry(eid, itemTypeId, price, outputPort, this._nextSequence);
         this._nextSequence += 1;
         this._buys.post(quote);
     }
@@ -249,7 +249,7 @@ export class MarketBook {
      * @returns {void}
      */
     postSell(eid, itemTypeId, price) {
-        const quote = new MarketQuote(eid, itemTypeId, price, EMPTY, this._nextSequence);
+        const quote = new MarketQuoteEntry(eid, itemTypeId, price, EMPTY, this._nextSequence);
         this._nextSequence += 1;
         this._sells.post(quote);
     }
@@ -320,7 +320,7 @@ export class MarketBook {
      * @param {number} floorPrice
      * @param {function(number): boolean} portIsEmpty
      * @param {function(number): number} getBalanceByEid
-     * @returns {MarketMatch|null}
+     * @returns {MarketMatchEntry|null}
      */
     getBestEligibleBuyerOrNull(itemTypeId, floorPrice, portIsEmpty, getBalanceByEid) {
         let best = null;
@@ -343,12 +343,12 @@ export class MarketBook {
         }
         const fixedPrice = this._fixedPrices.get(itemTypeId);
         if (fixedPrice !== undefined && fixedPrice >= floorPrice && (best === null || fixedPrice > best.price)) {
-            return new MarketMatch(true, fixedPrice, null, null);
+            return new MarketMatchEntry(true, fixedPrice, null, null);
         }
         if (best === null) {
             return null;
         }
-        return new MarketMatch(false, best.price, best.eid, best.outputPort);
+        return new MarketMatchEntry(false, best.price, best.eid, best.outputPort);
     }
 
     /**
@@ -390,12 +390,12 @@ export class MarketBook {
      * @returns {void}
      */
     addPurchase(buyerEid, itemTypeId, price) {
-        this._purchases.push(new MarketPurchase(buyerEid, itemTypeId, price));
+        this._purchases.push(new MarketPurchaseEntry(buyerEid, itemTypeId, price));
     }
 
     /**
      * Returns and clears this tick's confirmed NPC purchases.
-     * @returns {MarketPurchase[]}
+     * @returns {MarketPurchaseEntry[]}
      */
     drainPurchases() {
         const purchases = this._purchases;

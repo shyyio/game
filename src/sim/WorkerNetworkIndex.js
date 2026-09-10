@@ -1,8 +1,8 @@
 import {chunkOrigin} from "@/common/util.js";
 import {AbstractSystem} from "@/sim/AbstractSystem.js";
 import {RoadNetwork} from "@/sim/RoadNetwork.js";
-import {WorkerAllocation} from "@/sim/WorkerAllocation.js";
-import {WorkerAssignments} from "@/sim/WorkerAssignments.js";
+import {WorkerAllocator} from "@/sim/WorkerAllocator.js";
+import {WorkerAssignmentIndex} from "@/sim/WorkerAssignmentIndex.js";
 import {WorkerAssignmentEvent, WorkerAssignmentBatchEvent, NO_HOUSING} from "@/common/WorkerEvents.js";
 
 // Worker recompute runs before any machine countdown reads the manned flags.
@@ -23,11 +23,11 @@ const ORDER_WORKER_RECOMPUTE = -20;
  * Edits mark their cells dirty; the allocation recomputes lazily (message apply, tick, chunk sync,
  * inspect), refilling only the road components the dirty cells touch.
  */
-export class WorkerNetworks extends AbstractSystem {
+export class WorkerNetworkIndex extends AbstractSystem {
 
     /**
      * @param {GameEngine} engine
-     * @param {PlacedObjects} placed
+     * @param {PlacedObjectIndex} placed
      */
     constructor(engine, placed) {
         super(ORDER_WORKER_RECOMPUTE);
@@ -40,14 +40,14 @@ export class WorkerNetworks extends AbstractSystem {
         this.roads = new RoadNetwork(engine, placed);
         /**
          * Every road-attached machine's standing allocation.
-         * @type {WorkerAssignments}
+         * @type {WorkerAssignmentIndex}
          */
-        this.assignments = new WorkerAssignments();
+        this.assignments = new WorkerAssignmentIndex();
         /**
          * The pass handing each component's housing supply to the machines on it.
-         * @type {WorkerAllocation}
+         * @type {WorkerAllocator}
          */
-        this.allocation = new WorkerAllocation(engine, placed, this.roads, this.assignments);
+        this.allocation = new WorkerAllocator(engine, placed, this.roads, this.assignments);
         engine.registerSystem(this);
     }
 
@@ -105,8 +105,8 @@ export class WorkerNetworks extends AbstractSystem {
     /**
      * Writes each machine's granted workers through its behavior, clearing machines that lost them.
      * @private
-     * @param {Map<number, WorkerAssignment>} previous
-     * @param {Map<number, WorkerAssignment>} next
+     * @param {Map<number, WorkerAssignmentEntry>} previous
+     * @param {Map<number, WorkerAssignmentEntry>} next
      * @returns {void}
      */
     _applyGrants(previous, next) {
@@ -142,8 +142,8 @@ export class WorkerNetworks extends AbstractSystem {
      * Emits one WorkerAssignmentEvent per changed machine: grant/housing changes for attached
      * machines, and a detach event for machines that left the network.
      * @private
-     * @param {Map<number, WorkerAssignment>} previous
-     * @param {Map<number, WorkerAssignment>} next
+     * @param {Map<number, WorkerAssignmentEntry>} previous
+     * @param {Map<number, WorkerAssignmentEntry>} next
      * @returns {void}
      */
     _emitWorkerAssignments(previous, next) {

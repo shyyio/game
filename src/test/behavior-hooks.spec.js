@@ -57,7 +57,7 @@ class RecordingDeclaration extends AbstractModDeclaration {
     }
 }
 
-test("a behavior hook takes the engine and the entity, with PlacedObjects reached through the engine", async () => {
+test("a behavior hook takes the engine and the entity, with PlacedObjectIndex reached through the engine", async () => {
     const behavior = RecordingType.behavior;
     behavior.calls = [];
     const engine = await makeGameEngine([new ModPackage(new RecordingDeclaration())]);
@@ -82,7 +82,7 @@ test("a behavior hook takes the engine and the entity, with PlacedObjects reache
     assert.equal(despawnArgs[1], eid);
 });
 
-test("every AbstractBehavior hook drops the PlacedObjects parameter", () => {
+test("every AbstractBehavior hook drops the PlacedObjectIndex parameter", () => {
     const arities = {
         install: 1,
         canSpawn: 3,

@@ -6,7 +6,7 @@ import {NotImplementedError} from "@/common/error.js";
  *
  * Contract: onDragTile is called at most once per tile per drag, and always
  * moves exactly one step in a cardinal direction (never diagonal).
- * Enforcement is the InputHandler's responsibility.
+ * Enforcement is the InputDispatcher's responsibility.
  */
 export class AbstractTool {
 
@@ -15,7 +15,7 @@ export class AbstractTool {
      */
     constructor(session) {
         this.session = session;
-        // Orientable tools assign the shared ToolRotation here so the placement
+        // Orientable tools assign the shared ToolFacingCache here so the placement
         // facing persists across tool switches; tools with no orientation leave it
         // null and rotate() is a no-op for them.
         this._rotation = null;

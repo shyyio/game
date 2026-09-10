@@ -9,7 +9,7 @@ export const METRICS_SCHEMA = {
 /**
  * The cached rollup for one (metricsType, scope): parallel per-row arrays plus the query params they answer.
  */
-export class MetricsRollup {
+export class MetricsRollupCache {
 
     /**
      * @param {MetricsEntryType} metricsType
@@ -36,11 +36,11 @@ export class MetricsRollup {
 
     /**
      * @param {MetricsRollupEvent} event
-     * @returns {MetricsRollup}
+     * @returns {MetricsRollupCache}
      */
     static fromRollupEvent(event) {
         const {bucketTick, category, tag} = expandRollupRows(event);
-        return new MetricsRollup(
+        return new MetricsRollupCache(
             event.metricsType, event.scope, event.tier, event.toTick,
             bucketTick, category, tag, event.count, event.sum,
         );
@@ -48,9 +48,9 @@ export class MetricsRollup {
 
     /**
      * Merges one completed bucket into the previous rollup, deduping on (bucketTick, category, tag) and pruning past windowTicks.
-     * @param {MetricsRollup|undefined} previous
+     * @param {MetricsRollupCache|undefined} previous
      * @param {MetricsRollupBucketEvent} event
-     * @returns {MetricsRollup}
+     * @returns {MetricsRollupCache}
      */
     static mergeBucket(previous, event) {
         const byKey = new Map();
@@ -84,7 +84,7 @@ export class MetricsRollup {
             count.push(point.count);
             sum.push(point.sum);
         }
-        return new MetricsRollup(
+        return new MetricsRollupCache(
             event.metricsType, event.scope, event.tier, event.toTick,
             bucketTick, category, tag, count, sum,
         );
@@ -92,7 +92,7 @@ export class MetricsRollup {
 }
 
 /**
- * Writes the latest {@link MetricsRollup} per (metricsType, scope).
+ * Writes the latest {@link MetricsRollupCache} per (metricsType, scope).
  */
 export class MetricsWriter extends AbstractCacheWriter {
 
@@ -103,11 +103,11 @@ export class MetricsWriter extends AbstractCacheWriter {
     onEvent(event) {
         const key = metricsRollupKey(event.metricsType, event.scope);
         if (event instanceof MetricsRollupEvent) {
-            this._state.mapSet("metrics.rollups", key, MetricsRollup.fromRollupEvent(event));
+            this._state.mapSet("metrics.rollups", key, MetricsRollupCache.fromRollupEvent(event));
         } else if (event instanceof MetricsRollupBucketEvent) {
             this._state.mapSet(
                 "metrics.rollups", key,
-                MetricsRollup.mergeBucket(this._state.mapGet("metrics.rollups", key), event),
+                MetricsRollupCache.mergeBucket(this._state.mapGet("metrics.rollups", key), event),
             );
         }
     }
@@ -121,7 +121,7 @@ export class MetricsView extends AbstractCacheView {
     /**
      * @param {number} metricsType
      * @param {number} scope
-     * @returns {MetricsRollup|undefined} undefined until a response/push arrives
+     * @returns {MetricsRollupCache|undefined} undefined until a response/push arrives
      */
     rollup(metricsType, scope) {
         return this._state.mapGet("metrics.rollups", metricsRollupKey(metricsType, scope));

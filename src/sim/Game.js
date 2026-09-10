@@ -14,11 +14,11 @@ import {GameEngine} from "@/sim/GameEngine.js";
 import {EventBus} from "@/sim/EventBus.js";
 import {SettingsCache, PlayerSettingsCache, PLAYER_SETTING_TABLE} from "@/common/SettingsCache.js";
 import {PlayerSettingsToolOrderCache, PLAYER_SETTINGS_TOOL_ORDER_TABLE} from "@/common/PlayerSettingsToolOrderCache.js";
-import {ChunkClaims, CHUNK_CLAIM_TABLE} from "@/sim/ChunkClaims.js";
+import {ChunkClaimIndex, CHUNK_CLAIM_TABLE} from "@/sim/ChunkClaimIndex.js";
 import {PlayerRegistry, PLAYER_TABLE, FRIEND_TABLE} from "@/sim/PlayerRegistry.js";
 import {PlayerDirectory} from "@/sim/PlayerDirectory.js";
 import {ClaimService} from "@/sim/ClaimService.js";
-import {SessionViews} from "@/sim/SessionViews.js";
+import {SessionViewCache} from "@/sim/SessionViewCache.js";
 import {CHUNK_SIZE, DEFAULT_TICK_MS, GameSettingsKey} from "@/common/constants.js";
 import {GameMetrics} from "@/sim/GameMetrics.js";
 import {migrateSnapshot} from "@/common/saveMigrations.js";
@@ -103,9 +103,9 @@ export class Game {
         this.players = new PlayerRegistry();
 
         /**
-         * @type {ChunkClaims}
+         * @type {ChunkClaimIndex}
          */
-        this.claims = new ChunkClaims(this.players);
+        this.claims = new ChunkClaimIndex(this.players);
         this.simEngine.setChunkOwners(this.claims);
 
         /**
@@ -122,9 +122,9 @@ export class Game {
 
         /**
          * The chunks, overworld and inspect menus each session is looking at.
-         * @type {SessionViews}
+         * @type {SessionViewCache}
          */
-        this.sessionViews = new SessionViews(this);
+        this.sessionViews = new SessionViewCache(this);
 
         /**
          * The whole metrics surface: entry recording, session lengths, queries, live pushes.

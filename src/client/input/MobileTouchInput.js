@@ -3,7 +3,7 @@ import Mouse from "@/client/input/Mouse.js";
 /**
  * A held-back HUD touch's snapshot; the pooled pixi event can't be stashed itself.
  */
-class HeldTouch {
+class HeldTouchEntry {
 
     /**
      * @param {number} pointerId
@@ -31,7 +31,7 @@ export class MobileTouchInput {
         this._viewport = viewport;
         /**
          * Held-back HUD touches, replayed into the tracker when a pinch partner lands.
-         * @type {Map<number, HeldTouch>}
+         * @type {Map<number, HeldTouchEntry>}
          */
         this._heldHudTouches = new Map();
         // Bound once so uninstall() can remove the exact listeners install() added.
@@ -98,7 +98,7 @@ export class MobileTouchInput {
             this._viewport.input.down(e);
             return;
         }
-        this._heldHudTouches.set(e.pointerId, new HeldTouch(e.pointerId, e.pointerType, e.global.clone()));
+        this._heldHudTouches.set(e.pointerId, new HeldTouchEntry(e.pointerId, e.pointerType, e.global.clone()));
     }
 
     /**

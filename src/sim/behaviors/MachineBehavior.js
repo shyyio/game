@@ -4,7 +4,7 @@ import {LOGIC_KEY_ENABLED, LOGIC_KEY_PROCESSING} from "@/common/constants.js";
 import {AbstractSystem} from "@/sim/AbstractSystem.js";
 import {deterministicRoll} from "@/sim/Rng.js";
 import {AbstractBehavior} from "@/common/behaviors/AbstractBehavior.js";
-import {SyncedFields, SyncedField} from "@/common/SyncedFields.js";
+import {SyncedFieldSet, SyncedField} from "@/common/SyncedFieldSet.js";
 import {syncFluidSource} from "@/sim/behaviors/util.js";
 
 /**
@@ -39,7 +39,7 @@ class MachineComponent extends AbstractComponent {
             new FieldDefinition("inputCount"),
             new FieldDefinition("processingTicks"),
             // Per-tick processing progress (1 unstaffed, MANNED_SPEED_MULTIPLIER fully staffed;
-            // grants are full-crew-or-nothing); written by WorkerNetworks via setWorkers.
+            // grants are full-crew-or-nothing); written by WorkerNetworkIndex via setWorkers.
             new FieldDefinition("workerStep", "f32", 1),
             // Logic-network switch; a disabled machine pauses whole (no gather, craft, or output).
             new FieldDefinition("enabled", "i32", 1),
@@ -58,7 +58,7 @@ const RECIPE_SLOT_LIMIT = 1024;
 const MANNED_SPEED_MULTIPLIER = 1.3;
 
 // Per-slot column names, indexed 0..RECIPE_SLOTS-1.
-const SYNCED_FIELDS = new SyncedFields("Machine", [new SyncedField("lastOutput", EMPTY)]);
+const SYNCED_FIELDS = new SyncedFieldSet("Machine", [new SyncedField("lastOutput", EMPTY)]);
 
 const IN_COLS = ["inputPort0", "inputPort1", "inputPort2"];
 const SLOT_COLS = ["slot0", "slot1", "slot2"];

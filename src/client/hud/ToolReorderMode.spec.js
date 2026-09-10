@@ -1,6 +1,6 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
-import {ToolReorderDrag} from "@/client/hud/ToolReorderDrag.js";
+import {ToolReorderMode} from "@/client/hud/ToolReorderMode.js";
 
 const ICON_BASE_SCALE = 2;
 // Past any lift duration, so the tween has settled.
@@ -26,11 +26,11 @@ function stubIcon() {
  * A drag of `order[1]` over a three-tool order.
  * @param {object} [icon]
  * @param {function(): void} [detachTracking]
- * @returns {{drag: ToolReorderDrag, order: string[]}}
+ * @returns {{drag: ToolReorderMode, order: string[]}}
  */
 function build(icon = stubIcon(), detachTracking = () => {}) {
     const order = ["a", "b", "c"];
-    return {drag: new ToolReorderDrag(order[1], icon, order, detachTracking), order};
+    return {drag: new ToolReorderMode(order[1], icon, order, detachTracking), order};
 }
 
 test("the working order starts as a copy, leaving the picked-up order untouched", () => {

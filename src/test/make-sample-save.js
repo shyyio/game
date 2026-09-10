@@ -9,7 +9,7 @@ import {GameEngine} from "@/sim/GameEngine.js";
 import {ecsModRegistry} from "@/test/ecsSim.js";
 import {PipeType, TankType} from "@/mods/fluids/common/objectTypes.js";
 import {FLUID_TYPE_WATER} from "@/mods/fluids/common/constants.js";
-import {Pipes} from "@/mods/fluids/sim/Pipes.js";
+import {PipeNetworkIndex} from "@/mods/fluids/sim/PipeNetworkIndex.js";
 
 // Writes a NodeSaveStore SQLite save populated with one of every object type, plus players, a
 // friendship, and a chunk claim, for inspecting the on-disk save format. Output path is argv[2]
@@ -31,7 +31,7 @@ for (const cell of [{x: 20, y: 20}, {x: 20, y: 21}, {x: 20, y: 22}, {x: 20, y: 2
 engine.applyMessage(new CreateObjectMessage(PipeType.objectTypeId, 30, 32, Direction.UP));
 engine.applyMessage(new CreateObjectMessage(PipeType.objectTypeId, 30, 33, Direction.UP));
 engine.applyMessage(new CreateObjectMessage(TankType.objectTypeId, 30, 30, Direction.UP));
-engine.resolve(Pipes).addFluid(30, 32, FLUID_TYPE_WATER, 50);
+engine.resolve(PipeNetworkIndex).addFluid(30, 32, FLUID_TYPE_WATER, 50);
 for (let i = 0; i < 5; i += 1) {
     engine.tick();
 }

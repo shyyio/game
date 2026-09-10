@@ -7,7 +7,7 @@ import {
     LOGIC_COMPARATOR_AT_LEAST,
     LOGIC_CONDITION_KIND_STORED,
 } from "../common/constants.js";
-import {LogicRule, LogicCondition, deviceCondition, storedCondition} from "../sim/LogicRules.js";
+import {LogicRule, LogicCondition, deviceCondition, storedCondition} from "../sim/LogicRuleCache.js";
 import {LogicTerminalType} from "../common/objectTypes.js";
 
 const PANEL_WIDTH = 400;

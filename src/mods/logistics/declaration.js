@@ -1,4 +1,4 @@
-import {AbstractModDeclaration, LogicKeyEntry, LogicKeyState} from "@spup/sdk";
+import {AbstractModDeclaration, LogicKeyEntry, LogicKeyStateEntry} from "@spup/sdk";
 import {LOGIC_KEY_OPEN} from "./common/constants.js";
 import {
     BeltType,
@@ -65,8 +65,8 @@ export class LogisticsDeclaration extends AbstractModDeclaration {
 
     get logicKeys() {
         return {[LOGIC_KEY_OPEN]: new LogicKeyEntry("Open", [
-            new LogicKeyState(1, "Open", "is open"),
-            new LogicKeyState(0, "Close", "is closed"),
+            new LogicKeyStateEntry(1, "Open", "is open"),
+            new LogicKeyStateEntry(0, "Close", "is closed"),
         ], "Gate state")};
     }
 }

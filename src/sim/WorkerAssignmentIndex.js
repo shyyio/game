@@ -7,7 +7,7 @@ const EMPTY_OBJECT_REFS = new Set();
  * allocation's result, filled in as the component's supply is handed out; `supply`/`demand` are its
  * whole component's totals, carried for inspect.
  */
-export class WorkerAssignment {
+export class WorkerAssignmentEntry {
 
     /**
      * @param {object} config
@@ -38,12 +38,12 @@ export class WorkerAssignment {
  * Every road-attached machine's assignment, indexed by chunk (so a chunk sync walks only its own)
  * and by road component (so a partial recompute diffs only the components it touched).
  */
-export class WorkerAssignments {
+export class WorkerAssignmentIndex {
 
     constructor() {
         /**
          * machineObjectRef -> assignment.
-         * @type {Map<number, WorkerAssignment>}
+         * @type {Map<number, WorkerAssignmentEntry>}
          * @private
          */
         this._byObjectRef = new Map();
@@ -55,7 +55,7 @@ export class WorkerAssignments {
 
     /**
      * @param {number} objectRef
-     * @returns {WorkerAssignment|null}
+     * @returns {WorkerAssignmentEntry|null}
      */
     getAssignmentByObjectRefOrNull(objectRef) {
         const found = this._byObjectRef.get(objectRef);
@@ -79,7 +79,7 @@ export class WorkerAssignments {
     }
 
     /**
-     * @param {WorkerAssignment} assignment
+     * @param {WorkerAssignmentEntry} assignment
      * @returns {void}
      */
     setAssignment(assignment) {
@@ -106,7 +106,7 @@ export class WorkerAssignments {
      * The assignments a recompute replaces: all of them when `components` is null, else the given
      * components' share.
      * @param {Set<number>|null} components
-     * @returns {Map<number, WorkerAssignment>}
+     * @returns {Map<number, WorkerAssignmentEntry>}
      */
     getAssignmentsByComponents(components) {
         if (components === null) {

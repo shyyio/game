@@ -4,8 +4,8 @@ import {
     LOGIC_CONDITION_KIND_STORED,
     isLogicComparatorMatching,
 } from "../common/constants.js";
-import {LogicNetworks} from "./LogicNetworks.js";
-import {LogicRules} from "./LogicRules.js";
+import {LogicNetworkIndex} from "./LogicNetworkIndex.js";
+import {LogicRuleCache} from "./LogicRuleCache.js";
 
 /**
  * A logic terminal: its tier.
@@ -48,7 +48,7 @@ export class LogicTerminalBehavior extends AbstractBehavior {
 
     install(engine) {
         engine.components.register(new LogicTerminalComponent());
-        engine.provide(LogicRules, new LogicRules());
+        engine.provide(LogicRuleCache, new LogicRuleCache());
         engine.registerSystem(new LogicRulesSystem(engine));
     }
 
@@ -57,7 +57,7 @@ export class LogicTerminalBehavior extends AbstractBehavior {
     }
 
     onDespawn(engine, eid) {
-        engine.resolve(LogicRules).removeTerminal(engine.placed.getObjectRefByEid(eid));
+        engine.resolve(LogicRuleCache).removeTerminal(engine.placed.getObjectRefByEid(eid));
     }
 
     /**
@@ -71,8 +71,8 @@ export class LogicTerminalBehavior extends AbstractBehavior {
      */
     static _evaluate(engine) {
         const placed = engine.placed;
-        const networks = engine.resolve(LogicNetworks);
-        const rulesService = engine.resolve(LogicRules);
+        const networks = engine.resolve(LogicNetworkIndex);
+        const rulesService = engine.resolve(LogicRuleCache);
         const terminals = engine.components.getComponentByName("LogicTerminal");
         const eids = terminals.eids;
         for (let row = 0; row < terminals.count; row += 1) {

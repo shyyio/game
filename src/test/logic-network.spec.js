@@ -10,7 +10,7 @@ import {CapturingSession} from "@/test/CapturingSession.js";
 import {GateType, PoleType, BeltType} from "@/mods/logistics/common/objectTypes.js";
 import {WireLinkMessage, WireUnlinkMessage} from "@/mods/logistics/common/messages.js";
 import {LogicWireSetEvent, LogicWireClearEvent} from "@/mods/logistics/common/events.js";
-import {LogicNetworks} from "@/mods/logistics/sim/LogicNetworks.js";
+import {LogicNetworkIndex} from "@/mods/logistics/sim/LogicNetworkIndex.js";
 
 /**
  * Places an object and returns its objectRef (the newest placed row's).
@@ -23,7 +23,7 @@ function place(engine, type, x, y, direction=Direction.UP) {
 
 test("poles connect only through explicit wires", async () => {
     const engine = await makeGameEngine();
-    const networks = engine.resolve(LogicNetworks);
+    const networks = engine.resolve(LogicNetworkIndex);
     const a = place(engine, PoleType, 0, 0);
     const b = place(engine, PoleType, 8, 0);
     const c = place(engine, PoleType, 16, 0);
@@ -45,7 +45,7 @@ test("poles connect only through explicit wires", async () => {
 
 test("removing a pole drops its wires and splits its component", async () => {
     const engine = await makeGameEngine();
-    const networks = engine.resolve(LogicNetworks);
+    const networks = engine.resolve(LogicNetworkIndex);
     const a = place(engine, PoleType, 0, 0);
     const bridge = place(engine, PoleType, 8, 0);
     const c = place(engine, PoleType, 16, 0);
@@ -60,7 +60,7 @@ test("removing a pole drops its wires and splits its component", async () => {
 
 test("a wired logic network spans chunk seams", async () => {
     const engine = await makeGameEngine();
-    const networks = engine.resolve(LogicNetworks);
+    const networks = engine.resolve(LogicNetworkIndex);
     const a = place(engine, PoleType, 0, 60);
     const b = place(engine, PoleType, 0, 68);
     assert.notEqual(chunkKeyAt(0, 60), chunkKeyAt(0, 68), "the poles sit in different chunks");
@@ -76,7 +76,7 @@ test("a pole-pole wire message round-trips, toggles off, and respects range", as
     game.dispatchMessage(new ClaimChunkMessage(chunkKey), player);
     game.dispatchMessage(new SetViewportMessage([chunkKey]), player);
     const engine = game.simEngine;
-    const networks = engine.resolve(LogicNetworks);
+    const networks = engine.resolve(LogicNetworkIndex);
     const a = place(engine, PoleType, 5, 5);
     const b = place(engine, PoleType, 12, 5);
     const far = place(engine, PoleType, 30, 5);
@@ -108,7 +108,7 @@ test("a wire joins a gate to a pole's network; unwiring and pole removal detach 
     const engine = game.simEngine;
     const gateId = place(engine, GateType, 5, 5, Direction.UP);
     const poleId = place(engine, PoleType, 8, 5);
-    const networks = engine.resolve(LogicNetworks);
+    const networks = engine.resolve(LogicNetworkIndex);
 
     player.events.length = 0;
     game.dispatchMessage(new WireLinkMessage(gateId, poleId), player);
@@ -136,7 +136,7 @@ test("devices wire to each other directly, poles optional", async () => {
     game.connect(player);
     game.dispatchMessage(new ClaimChunkMessage(chunkKeyAt(5, 5)), player);
     const engine = game.simEngine;
-    const networks = engine.resolve(LogicNetworks);
+    const networks = engine.resolve(LogicNetworkIndex);
     const gateA = place(engine, GateType, 5, 5, Direction.UP);
     const gateB = place(engine, GateType, 8, 5, Direction.UP);
 
@@ -158,7 +158,7 @@ test("wiring rejects a non-wireable device and an out-of-range pole", async () =
     game.connect(player);
     game.dispatchMessage(new ClaimChunkMessage(chunkKeyAt(5, 5)), player);
     const engine = game.simEngine;
-    const networks = engine.resolve(LogicNetworks);
+    const networks = engine.resolve(LogicNetworkIndex);
     const beltId = place(engine, BeltType, 5, 7, Direction.UP);
     const gateId = place(engine, GateType, 5, 5, Direction.UP);
     const nearPole = place(engine, PoleType, 8, 5);
@@ -187,7 +187,7 @@ test("poles and wires survive a save/load", async () => {
 
     const restored = await makeGame([], store);
     assert.equal(await restored.load(), true);
-    const networks = restored.simEngine.resolve(LogicNetworks);
+    const networks = restored.simEngine.resolve(LogicNetworkIndex);
     assert.equal(networks.hasWire(poleId, otherPoleId), true, "the pole wire persisted");
     const network = networks.getNetworkByObjectRefOrNull(poleId);
     assert.deepEqual(network.poleIds, [poleId, otherPoleId].sort((x, y) => x - y));

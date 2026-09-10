@@ -59,7 +59,7 @@ export function windowTicksFor(rangeTicks, tier) {
 
 /**
  * Groups a rollup's flat rows into one series per (category, tag); an absent bucket is a real zero, not missing data.
- * @param {MetricsRollup|undefined} rollup
+ * @param {MetricsRollupCache|undefined} rollup
  * @param {string} metric CHART_METRIC_*
  * @returns {ChartSeriesSet}
  */
@@ -123,7 +123,7 @@ export class SeriesRate {
  * Per-series count rate over [nowTick - rangeTicks, nowTick), sorted by rate descending. The
  * window clamps to the data actually on hand, so a fresh subscription isn't diluted by empty
  * history; an absent bucket inside the window is a real zero.
- * @param {MetricsRollup|undefined} rollup
+ * @param {MetricsRollupCache|undefined} rollup
  * @param {number} rangeTicks
  * @param {number} nowTick - freshest tick to count up to (the chart's shifted "now")
  * @returns {SeriesRate[]}

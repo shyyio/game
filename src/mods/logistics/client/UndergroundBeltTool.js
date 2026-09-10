@@ -1,7 +1,7 @@
 import {AbstractTool, Direction, Haptics, LAYER_SURFACE, CreateObjectMessage, DeleteObjectMessage} from "@spup/sdk/client";
 import {BeltBend, MAX_UNDERGROUND_LENGTH, BELT_NORMAL, BELT_TUNNEL_DOWN, BELT_TUNNEL_UP} from "../common/constants.js";
 import {BeltType, BeltTunnelDownType, BeltTunnelUpType, isBeltType} from "../common/objectTypes.js";
-import {Belt} from "./BeltDrawLayer.js";
+import {BeltEntry} from "./BeltDrawLayer.js";
 import {getUndergroundBeltsToCreate, surfaceBeltAt, inferBeltParent, getTunnelPartnerOrNull} from "../common/geometry.js";
 
 /**
@@ -97,7 +97,7 @@ export class UndergroundBeltTool extends AbstractTool {
             return null;
         }
         const {parentX, parentY} = inferBeltParent(this._cache, surface.tileX, surface.tileY, surface.data.direction);
-        const bend = Belt.getBend(surface.data.direction, surface.tileX, surface.tileY, parentX, parentY);
+        const bend = BeltEntry.getBend(surface.data.direction, surface.tileX, surface.tileY, parentX, parentY);
         return {
             id: surface.id,
             type: surface.data.type.beltKind,

@@ -25,7 +25,7 @@ export {AbstractTileMeshDrawLayer} from "@/client/layers/AbstractTileMeshDrawLay
 // Derived-default renderer for a placed object type, driven by the shared cache.
 export {ObjectDrawLayer} from "@/client/layers/ObjectDrawLayer.js";
 // The `data` payload of a derived-type cache entry ({type, direction}).
-export {ObjectClientData} from "@/client/state/ObjectsState.js";
+export {ObjectClientEntry} from "@/client/state/ObjectsState.js";
 // The base-case object sprite (static, geometry-centered); the derived layers build it from a texture.
 export {ObjectSprite} from "@/client/layers/ObjectSprite.js";
 // The single shared item layer; mods that compute item positions (belts) drive it via
@@ -101,7 +101,7 @@ export {default as WindowFocus} from "@/client/WindowFocus.js";
 export {default as Haptics} from "@/client/Haptics.js";
 
 // One inspect-hover highlight (an object outlined at a tile), returned in arrays from a mod's onInspect.
-export {InspectHighlight} from "@/client/layers/InspectHighlight.js";
+export {InspectHighlightSprite} from "@/client/layers/InspectHighlightSprite.js";
 
 // The shared plain-data state tree (`client.cache`); namespaces register schema/writer/view via
 // `client.cache.register(name, schema, writer, view)`, reached via cache.writer(name)/cache.view(name).

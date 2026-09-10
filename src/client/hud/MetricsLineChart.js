@@ -236,7 +236,7 @@ export class MetricsLineChart {
     }
 
     /**
-     * @param {MetricsRollup|undefined} rollup
+     * @param {MetricsRollupCache|undefined} rollup
      * @returns {void}
      */
     push(rollup) {

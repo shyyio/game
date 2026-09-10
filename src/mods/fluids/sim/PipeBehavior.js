@@ -1,5 +1,5 @@
 import {AbstractBehavior} from "@spup/sdk";
-import {Pipes} from "./Pipes.js";
+import {PipeNetworkIndex} from "./PipeNetworkIndex.js";
 
 /**
  * A pipe cell: spawn/despawn feed the shared Pipes network engine; placement is rejected when it
@@ -8,19 +8,19 @@ import {Pipes} from "./Pipes.js";
 export class PipeBehavior extends AbstractBehavior {
 
     install(engine) {
-        engine.provide(Pipes, new Pipes(engine));
+        engine.provide(PipeNetworkIndex, new PipeNetworkIndex(engine));
     }
 
     canSpawn(engine, type, message) {
-        return engine.resolve(Pipes).canJoin(message.x, message.y);
+        return engine.resolve(PipeNetworkIndex).canJoin(message.x, message.y);
     }
 
     onSpawn(engine, eid, type, message) {
-        engine.resolve(Pipes).placePipe(message.x, message.y, engine.placed.getObjectRefByEid(eid));
+        engine.resolve(PipeNetworkIndex).placePipe(message.x, message.y, engine.placed.getObjectRefByEid(eid));
     }
 
     onDespawn(engine, eid) {
-        engine.resolve(Pipes).removePipe(engine.placed.getObjectRefByEid(eid));
+        engine.resolve(PipeNetworkIndex).removePipe(engine.placed.getObjectRefByEid(eid));
     }
 
     /**
@@ -29,7 +29,7 @@ export class PipeBehavior extends AbstractBehavior {
      * @returns {void}
      */
     onRebuild(engine) {
-        const pipes = engine.resolve(Pipes);
+        const pipes = engine.resolve(PipeNetworkIndex);
         pipes.resetPipes();
         const placed = engine.placed;
         const objects = placed.objects;

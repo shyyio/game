@@ -34,7 +34,7 @@ export class LogicNetwork {
  * (pole-pole, device-pole, or device-device). Components recompute lazily after any edit; edges
  * whose endpoint despawned are swept via the engine's despawn listener.
  */
-export class LogicNetworks extends AbstractSystem {
+export class LogicNetworkIndex extends AbstractSystem {
 
     /**
      * @param {GameEngine} engine

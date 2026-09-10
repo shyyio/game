@@ -14,7 +14,7 @@ import {PlayerCursorEvent, PlayerCursorHideEvent} from "./common/events.js";
 /**
  * A session's published cursor: its owner and the chunk it was last seen in, for targeted hides.
  */
-class CursorState {
+class CursorEntry {
 
     /**
      * @param {number} playerRef
@@ -36,8 +36,8 @@ export class CursorSyncSimMod extends AbstractSimMod {
     constructor() {
         super();
         /**
-         * sessionRef -> its cursor's {@link CursorState}, present only while the cursor is shown.
-         * @type {Map<number, CursorState>}
+         * sessionRef -> its cursor's {@link CursorEntry}, present only while the cursor is shown.
+         * @type {Map<number, CursorEntry>}
          */
         this._cursorBySession = new Map();
     }
@@ -133,7 +133,7 @@ export class CursorSyncSimMod extends AbstractSimMod {
         const chunkKey = event.chunkKey;
         const state = this._cursorBySession.get(session.sessionRef);
         if (state === undefined) {
-            this._cursorBySession.set(session.sessionRef, new CursorState(session.playerRef, chunkKey));
+            this._cursorBySession.set(session.sessionRef, new CursorEntry(session.playerRef, chunkKey));
         } else {
             if (state.chunkKey !== chunkKey) {
                 this._publishPlayerCursorHide(state.playerRef, state.chunkKey, chunkKey, session.sessionRef, game);

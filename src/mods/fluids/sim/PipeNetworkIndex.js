@@ -87,7 +87,7 @@ class PipeNetwork {
  * edges reuse the port-transfer resolver: drain resting payloads at input ports, create one
  * one-unit payload per out-edge port.
  */
-export class Pipes extends AbstractSystem {
+export class PipeNetworkIndex extends AbstractSystem {
 
     /**
      * @param {GameEngine} engine

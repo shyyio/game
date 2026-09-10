@@ -25,7 +25,7 @@ export class OverworldTileIndex extends AbstractSystem {
 
     /**
      * @param {GameEngine} engine
-     * @param {PlacedObjects} placed
+     * @param {PlacedObjectIndex} placed
      */
     constructor(engine, placed) {
         super();
@@ -36,7 +36,7 @@ export class OverworldTileIndex extends AbstractSystem {
          * @type {Map<number, OverworldChunkEntry>}
          */
         this._chunks = new Map();
-        // After PlacedObjects, so its chunk index is rebuilt before the repaint.
+        // After PlacedObjectIndex, so its chunk index is rebuilt before the repaint.
         engine.registerSystem(this);
     }
 

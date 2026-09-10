@@ -18,7 +18,7 @@ const FILL_ALPHA = 0.9;
 /**
  * One pipe tile's fluid-fill state and pooled Graphics.
  */
-class PipeFill {
+class PipeFillSprite {
 
     /**
      * @param {number} tileX
@@ -45,7 +45,7 @@ export class PipeFluidDrawLayer extends AbstractChunkedDrawLayer {
         super();
         /**
          * Pipe id -> its fill.
-         * @type {Map<number, PipeFill>}
+         * @type {Map<number, PipeFillSprite>}
          */
         this._fills = new Map();
         /**
@@ -69,7 +69,7 @@ export class PipeFluidDrawLayer extends AbstractChunkedDrawLayer {
             return;
         }
         this.removePipe(entry.id);
-        const fill = new PipeFill(entry.tileX, entry.tileY, entry.chunkKey);
+        const fill = new PipeFillSprite(entry.tileX, entry.tileY, entry.chunkKey);
         this._fills.set(entry.id, fill);
         getOrCreate(this._fillsByChunk, fill.chunkKey, () => new Set()).add(fill);
         this._node(fill.chunkKey).sprites.addChild(fill.graphics);
@@ -123,7 +123,7 @@ export class PipeFluidDrawLayer extends AbstractChunkedDrawLayer {
     /**
      * Redraws one fill's fill rectangle, bottom-up by fraction.
      * @private
-     * @param {PipeFill} fill
+     * @param {PipeFillSprite} fill
      * @returns {void}
      */
     _drawFill(fill) {

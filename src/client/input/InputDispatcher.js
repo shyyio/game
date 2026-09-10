@@ -9,7 +9,7 @@ const TOOL_HOTKEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9"];
 // Letter keys bound for core tools; the pressed key is matched against each core tool's `hotkey`.
 const CORE_TOOL_HOTKEYS = ["e"];
 
-export class InputHandler {
+export class InputDispatcher {
 
     /**
      * @param {ToolbarLayer} toolbar - the pixi tool bar, owning the tool list and active selection
@@ -30,7 +30,7 @@ export class InputHandler {
         this._hoverTileY = null;
         // Map mode (zoomed far out) temporarily deactivates the active tool.
         this._isMapMode = false;
-        // Keyboard bindings registered in init(), unbound in destroy() so a stale InputHandler from
+        // Keyboard bindings registered in init(), unbound in destroy() so a stale InputDispatcher from
         // a torn-down Game mount doesn't keep driving a destroyed toolbar/tool/draw layer.
         this._keyboardBindings = [];
     }
@@ -118,7 +118,7 @@ export class InputHandler {
 
         this._onKey("Tab", (event) => {
             // Let Tab cycle focus normally inside dialogs/form controls (e.g. Settings).
-            if (InputHandler._isEditableTarget(event.target)) {
+            if (InputDispatcher._isEditableTarget(event.target)) {
                 return;
             }
             // Otherwise stop Tab from cycling focus off the canvas.

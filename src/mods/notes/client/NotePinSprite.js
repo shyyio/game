@@ -23,7 +23,7 @@ const HIGHLIGHT_PADDING = 3;
 /**
  * A note's marker: a map pin whose tip sits exactly on the note's sub-tile anchor.
  */
-export class NotePin extends Container {
+export class NotePinSprite extends Container {
 
     constructor() {
         super();

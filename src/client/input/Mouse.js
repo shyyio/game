@@ -168,7 +168,7 @@ class Mouse {
     /**
      * Forgets the bound app/viewport (both destroyed already), drops in-flight gesture state, and
      * clears every callback list, so the next {@link init} rebinds to a fresh pixi Application and
-     * the next InputHandler's callbacks start clean.
+     * the next InputDispatcher's callbacks start clean.
      * @returns {void}
      */
     reset() {

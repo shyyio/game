@@ -15,7 +15,7 @@ const MAP_PROMPT = "Claim your first chunk. You can change it later.";
  * The first-claim flow: while the player holds no chunks the map picks one chunk and nothing else,
  * and the claim that lands drops them into the world on it. Owns the connect-time view.
  */
-export class SettleFlow {
+export class SettleMode {
 
     /**
      * @param {Client} client

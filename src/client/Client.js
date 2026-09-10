@@ -10,7 +10,7 @@ import {ChunkClaimsDrawLayer} from "@/client/layers/ChunkClaimsDrawLayer.js";
 import {ChunkSubscription} from "@/client/ChunkSubscription.js";
 import {EventQueue} from "@/client/EventQueue.js";
 import {Camera} from "@/client/Camera.js";
-import {CenterLock} from "@/client/CenterLock.js";
+import {CenterLockMode} from "@/client/CenterLockMode.js";
 import {ViewModeController} from "@/client/ViewModeController.js";
 import {SettingsMenu} from "@/client/SettingsMenu.js";
 import {Hud} from "@/client/Hud.js";
@@ -39,7 +39,7 @@ import {ObjectsView} from "@/client/state/ObjectsState.js";
 import {ObjectDrawLayer} from "@/client/layers/ObjectDrawLayer.js";
 import {ObjectGhostLayer} from "@/client/layers/ObjectGhostLayer.js";
 import {ObjectTool} from "@/client/input/ObjectTool.js";
-import {InspectHighlight} from "@/client/layers/InspectHighlight.js";
+import {InspectHighlightSprite} from "@/client/layers/InspectHighlightSprite.js";
 import {LaneItemDrawLayer} from "@/client/layers/LaneItemDrawLayer.js";
 import {ItemDrawLayer} from "@/client/layers/ItemDrawLayer.js";
 import {ConnectionDrawLayer} from "@/client/layers/ConnectionDrawLayer.js";
@@ -49,7 +49,7 @@ import {WorkerBadgeLayer} from "@/client/layers/WorkerBadgeLayer.js";
 import {ChunkSelectionLayer} from "@/client/layers/ChunkSelectionLayer.js";
 import {ClaimFrontierDrawLayer} from "@/client/layers/ClaimFrontierDrawLayer.js";
 import {ClaimSelectionMode} from "@/client/input/ClaimSelectionMode.js";
-import {SettleFlow} from "@/client/input/SettleFlow.js";
+import {SettleMode} from "@/client/input/SettleMode.js";
 import {ChunkCursor} from "@/client/input/ChunkCursor.js";
 import {advanceAnimationFrame} from "@/client/layers/animation.js";
 import {
@@ -84,7 +84,7 @@ class ObjectTypeClientBundle {
  * Shared placement facing for orientable tools, held under the Client so it carries
  * over across tool switches.
  */
-class ToolRotation {
+class ToolFacingCache {
 
     constructor() {
         this._direction = Direction.UP;
@@ -135,7 +135,7 @@ const CLAIM_RESULT_NOTICES = {
  * Routes a rejected claim/unclaim to a toast notice, except a non-empty unclaim, which opens
  * the destructive confirm dialog instead.
  */
-class ClaimResultFeedback {
+class ClaimResultNotifier {
 
     /**
      * @param {Client} client
@@ -194,7 +194,7 @@ export class Client {
         this.subscription = new ChunkSubscription(this.viewport, this.cache, this.session, this.hud.statusLayer);
         this.events = new EventQueue(this);
         this.camera = new Camera(this);
-        this.centerLock = new CenterLock(this);
+        this.centerLock = new CenterLockMode(this);
         this.viewMode = new ViewModeController(this);
         this.settingsMenu = new SettingsMenu(this);
         this._buildChunkLayers();
@@ -271,7 +271,7 @@ export class Client {
         // (reorder, resync) doesn't orphan an active core tool's identity.
         this._coreTools = [new EraserTool(this)];
         // Shared placement facing, so orientation persists across tool switches.
-        this.toolRotation = new ToolRotation();
+        this.toolRotation = new ToolFacingCache();
     }
 
     /**
@@ -385,10 +385,10 @@ export class Client {
         this.claimSelection = new ClaimSelectionMode(this);
         this.events.onEvent(event => this.claimSelection.onEvent(event));
         // The first-claim flow, owning the state before the player holds any chunk.
-        this.settleFlow = new SettleFlow(this);
+        this.settleFlow = new SettleMode(this);
         this.events.onEvent(event => this.settleFlow.onEvent(event));
         // Toast/confirm-dialog feedback for claim/unclaim rejections.
-        this.claimResultFeedback = new ClaimResultFeedback(this);
+        this.claimResultFeedback = new ClaimResultNotifier(this);
         this.events.onEvent(event => this.claimResultFeedback.onEvent(event));
         this.events.onEvent(event => this.hud.friendsPanelLayer.onEvent(event));
     }
@@ -557,7 +557,7 @@ export class Client {
     /**
      * The chunk-picking mode holding the map: the settle flow until the player owns a chunk,
      * chunk administration after (itself inert while off).
-     * @returns {SettleFlow|ClaimSelectionMode}
+     * @returns {SettleMode|ClaimSelectionMode}
      */
     get chunkMode() {
         if (this.settleFlow.active) {
@@ -680,7 +680,7 @@ export class Client {
             for (const bundle of this.bundles) {
                 const entry = this.objects.getObjectByTypeAtOrNull(tileX, tileY, bundle.type);
                 if (entry !== null) {
-                    derived.push(new InspectHighlight(entry.tileX, entry.tileY, entry.data.direction, bundle.type));
+                    derived.push(new InspectHighlightSprite(entry.tileX, entry.tileY, entry.data.direction, bundle.type));
                 }
             }
         }

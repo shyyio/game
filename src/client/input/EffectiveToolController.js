@@ -22,7 +22,7 @@ export class EffectiveToolController {
      * @param {Client} client
      * @param {ClientViewport} viewport
      * @param {ToolbarLayer} toolbar
-     * @param {InputHandler} inputHandler
+     * @param {InputDispatcher} inputHandler
      */
     constructor(client, viewport, toolbar, inputHandler) {
         this.client = client;

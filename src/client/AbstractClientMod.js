@@ -147,7 +147,7 @@ export class AbstractClientMod {
      * @param {number|null} tileX
      * @param {number|null} tileY
      * @param {Client} client
-     * @returns {InspectHighlight[]}
+     * @returns {InspectHighlightSprite[]}
      */
     onInspect(tileX, tileY, client) {
         return [];

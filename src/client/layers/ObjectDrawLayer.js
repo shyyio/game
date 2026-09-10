@@ -2,7 +2,7 @@ import {AbstractChunkedDrawLayer} from "@/client/layers/AbstractChunkedDrawLayer
 import {TILE_SIZE} from "@/client/constants.js";
 import {chunkKeyAt} from "@/common/util.js";
 import {MAP_TILE_COLOR} from "@/client/Theme.js";
-import {ObjectClientData} from "@/client/state/ObjectsState.js";
+import {ObjectClientEntry} from "@/client/state/ObjectsState.js";
 import {ObjectSprite} from "@/client/layers/ObjectSprite.js";
 
 /**
@@ -34,7 +34,7 @@ export class ObjectDrawLayer extends AbstractChunkedDrawLayer {
      * @returns {void}
      */
     onCacheSet(entry) {
-        if (!(entry.data instanceof ObjectClientData) || entry.data.type.objectTypeId !== this._type.objectTypeId) {
+        if (!(entry.data instanceof ObjectClientEntry) || entry.data.type.objectTypeId !== this._type.objectTypeId) {
             return;
         }
         this.removeObject(entry.id);
@@ -62,7 +62,7 @@ export class ObjectDrawLayer extends AbstractChunkedDrawLayer {
      * @returns {void}
      */
     onCacheUpdate(entry) {
-        if (!(entry.data instanceof ObjectClientData) || entry.data.type.objectTypeId !== this._type.objectTypeId) {
+        if (!(entry.data instanceof ObjectClientEntry) || entry.data.type.objectTypeId !== this._type.objectTypeId) {
             return;
         }
         const sprite = this._objects.get(entry.id);

@@ -1,13 +1,13 @@
-import {InputHandler} from "@/client/input/InputHandler.js";
+import {InputDispatcher} from "@/client/input/InputDispatcher.js";
 
 /**
- * Builds the InputHandler and wires its callbacks to the client (object tap, inspect, map
+ * Builds the InputDispatcher and wires its callbacks to the client (object tap, inspect, map
  * hover/tap, rotate button).
  * @param {Client} client
- * @returns {InputHandler}
+ * @returns {InputDispatcher}
  */
 export function createInputHandler(client) {
-    const inputHandler = new InputHandler(client.hud.toolbarLayer);
+    const inputHandler = new InputDispatcher(client.hud.toolbarLayer);
     inputHandler.onObjectTap((tileX, tileY) => {
         client.onObjectTap(tileX, tileY);
     });

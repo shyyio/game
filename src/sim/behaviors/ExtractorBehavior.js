@@ -2,7 +2,7 @@ import {EMPTY, NO_EID, AbstractComponent, FieldDefinition} from "@/sim/AbstractC
 import {InspectHeartbeatEvent} from "@/common/InspectEvents.js";
 import {AbstractSystem} from "@/sim/AbstractSystem.js";
 import {AbstractBehavior} from "@/common/behaviors/AbstractBehavior.js";
-import {SyncedFields, SyncedField} from "@/common/SyncedFields.js";
+import {SyncedFieldSet, SyncedField} from "@/common/SyncedFieldSet.js";
 import {LAYER_RESOURCE} from "@/sim/behaviors/ResourceBehavior.js";
 
 /**
@@ -26,7 +26,7 @@ class ExtractorComponent extends AbstractComponent {
     }
 }
 
-const SYNCED_FIELDS = new SyncedFields("Extractor", [new SyncedField("lastOutput", EMPTY)]);
+const SYNCED_FIELDS = new SyncedFieldSet("Extractor", [new SyncedField("lastOutput", EMPTY)]);
 
 /**
  * Ticks every extractor.

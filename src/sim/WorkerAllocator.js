@@ -1,12 +1,12 @@
 import {cellNeighbors, tileKeyAt} from "@/common/util.js";
 import {LAYER_SURFACE} from "@/common/constants.js";
-import {WorkerAssignment} from "@/sim/WorkerAssignments.js";
+import {WorkerAssignmentEntry} from "@/sim/WorkerAssignmentIndex.js";
 
 /**
  * One road-attached machine's claim on its component's supply. `distance` is its Manhattan reach to
  * the nearest housing, the order workers are handed out in.
  */
-export class MachineDemand {
+export class MachineDemandEntry {
 
     /**
      * @param {number} objectRef
@@ -30,13 +30,13 @@ export class MachineDemand {
  * its full workerCost by ascending (distance to housing, objectRef) while supply lasts, and one the
  * remainder can't fully staff gets nothing.
  */
-export class WorkerAllocation {
+export class WorkerAllocator {
 
     /**
      * @param {GameEngine} engine
-     * @param {PlacedObjects} placed
+     * @param {PlacedObjectIndex} placed
      * @param {RoadNetwork} roads
-     * @param {WorkerAssignments} assignments
+     * @param {WorkerAssignmentIndex} assignments
      */
     constructor(engine, placed, roads, assignments) {
         this.engine = engine;
@@ -58,7 +58,7 @@ export class WorkerAllocation {
      * component reruns with that component included, so partial results match a full one.
      * @param {RoadTile[]} seeds
      * @param {Set<number>|null} affected
-     * @returns {Map<number, WorkerAssignment>}
+     * @returns {Map<number, WorkerAssignmentEntry>}
      */
     run(seeds, affected) {
         this._affected = affected;
@@ -113,7 +113,7 @@ export class WorkerAllocation {
         const machineList = Array.from(machines.values());
         for (const machine of machineList) {
             machine.distance = this._getMinDistance(machine.cells, housingList);
-            this._next.set(machine.objectRef, new WorkerAssignment({
+            this._next.set(machine.objectRef, new WorkerAssignmentEntry({
                 objectRef: machine.objectRef,
                 x: machine.x,
                 y: machine.y,
@@ -164,7 +164,7 @@ export class WorkerAllocation {
      * @param {number} x
      * @param {number} y
      * @param {RoadComponent} component
-     * @param {Map<number, MachineDemand>} machines
+     * @param {Map<number, MachineDemandEntry>} machines
      * @returns {void}
      */
     _attach(x, y, component, machines) {
@@ -185,7 +185,7 @@ export class WorkerAllocation {
             return;
         }
         const position = this.engine.Position;
-        machines.set(owner, new MachineDemand(owner, behavior.workerCost, position.x[eid], position.y[eid], cells));
+        machines.set(owner, new MachineDemandEntry(owner, behavior.workerCost, position.x[eid], position.y[eid], cells));
     }
 
     /**
@@ -223,7 +223,7 @@ export class WorkerAllocation {
      * The smallest Manhattan distance between the machine's cells and any housing cell.
      * @private
      * @param {{x: number, y: number}[]} machineCells
-     * @param {HousingSupply[]} housingList
+     * @param {HousingSupplyEntry[]} housingList
      * @returns {number}
      */
     _getMinDistance(machineCells, housingList) {

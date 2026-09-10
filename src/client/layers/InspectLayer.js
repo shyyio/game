@@ -24,7 +24,7 @@ export class InspectLayer extends AbstractDrawLayer {
 
     /**
      * Replaces the current highlights (empty clears).
-     * @param {InspectHighlight[]} highlights
+     * @param {InspectHighlightSprite[]} highlights
      */
     show(highlights) {
         this.clear();

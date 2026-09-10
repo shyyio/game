@@ -232,7 +232,7 @@ export class ObjectType {
 
     /**
      * Client hook: the texture for an entry's current data; state-dependent art overrides this.
-     * @param {ObjectClientData} data
+     * @param {ObjectClientEntry} data
      * @returns {string}
      */
     getTextureByData(data) {

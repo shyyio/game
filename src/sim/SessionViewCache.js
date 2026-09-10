@@ -7,7 +7,7 @@ import {PLAYER_REF_NONE} from "@/common/constants.js";
  * What each session is currently looking at: the chunks in its viewport, the overworld map it
  * requests, and the objects it has inspect menus open on.
  */
-export class SessionViews {
+export class SessionViewCache {
 
     /**
      * @param {Game} game

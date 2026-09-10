@@ -15,7 +15,7 @@ import {GateType, BeltType} from "@/mods/logistics/common/objectTypes.js";
 import {SetGateOpenMessage} from "@/mods/logistics/common/messages.js";
 import {ObjectFieldsEvent, ObjectFieldsBatchEvent} from "@/common/ObjectEvents.js";
 import {PipeType} from "@/mods/fluids/common/objectTypes.js";
-import {Pipes} from "@/mods/fluids/sim/Pipes.js";
+import {PipeNetworkIndex} from "@/mods/fluids/sim/PipeNetworkIndex.js";
 import {FLUID_TYPE_WATER, FLUID_TYPE_OIL} from "@/mods/fluids/common/constants.js";
 
 const RED = 3;
@@ -138,7 +138,7 @@ test("a belt gate works across a chunk seam", async () => {
 
 test("a gate placed against a pipe spawns in fluid mode and forwards fluid until closed", async () => {
     const engine = await makeGameEngine();
-    const pipes = engine.resolve(Pipes);
+    const pipes = engine.resolve(PipeNetworkIndex);
     placePipe(engine, 0, 0);
     placePipe(engine, 1, 0);
     const gate = placeGate(engine, 2, 0, Direction.RIGHT);
@@ -171,7 +171,7 @@ test("a gate placed against a pipe spawns in fluid mode and forwards fluid until
 
 test("a closed fluid gate isolates different fluids on its two sides", async () => {
     const engine = await makeGameEngine();
-    const pipes = engine.resolve(Pipes);
+    const pipes = engine.resolve(PipeNetworkIndex);
     placePipe(engine, 0, 0);
     const gate = placeGate(engine, 1, 0, Direction.RIGHT);
     placePipe(engine, 2, 0);
@@ -216,7 +216,7 @@ test("the guard rejects coupling one transport kind while the other side holds t
     assert.equal(engine.space.getOwnerAt(5, 4, LAYER_SURFACE), null, "the conflicting pipe was not placed");
 
     // The reverse: pipe behind, belt in front rejected.
-    const pipes = engine.resolve(Pipes);
+    const pipes = engine.resolve(PipeNetworkIndex);
     placePipe(engine, 10, 6);
     const other = placeGate(engine, 10, 5, Direction.DOWN);
     assert.equal(gateMode(engine, other.eid), 1, "pipe-fed gate is fluid");

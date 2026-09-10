@@ -68,7 +68,7 @@ export function beltBendOf(parentEdge) {
     return BeltBend.STRAIGHT;
 }
 
-export class Belt {
+export class BeltEntry {
 
     /**
      * @param {number} id
@@ -123,7 +123,7 @@ export class BeltDrawLayer extends AbstractTileMeshDrawLayer {
     constructor() {
         super();
         /**
-         * @type {Map<number, Belt>}
+         * @type {Map<number, BeltEntry>}
          */
         this._belts = new Map();
         // The belts each chunk holds.
@@ -207,7 +207,7 @@ export class BeltDrawLayer extends AbstractTileMeshDrawLayer {
     /**
      * The belts a chunk holds.
      * @param {number} chunkKey
-     * @returns {Iterable<Belt>}
+     * @returns {Iterable<BeltEntry>}
      * @private
      */
     _getBeltsByChunkKey(chunkKey) {
@@ -237,7 +237,7 @@ export class BeltDrawLayer extends AbstractTileMeshDrawLayer {
         } else {
             bend = beltBendOf(edge);
         }
-        const belt = new Belt(id, x, y, direction, bend, type);
+        const belt = new BeltEntry(id, x, y, direction, bend, type);
         this._belts.set(id, belt);
 
         const chunkKey = chunkKeyAt(x, y);

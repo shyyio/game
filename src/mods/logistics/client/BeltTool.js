@@ -1,7 +1,7 @@
 import {AbstractTool, Direction, Haptics, LAYER_SURFACE, CreateObjectMessage, DeleteObjectMessage} from "@spup/sdk/client";
 import {BELT_NORMAL} from "../common/constants.js";
 import {BeltType} from "../common/objectTypes.js";
-import {Belt} from "./BeltDrawLayer.js";
+import {BeltEntry} from "./BeltDrawLayer.js";
 import {inferBeltParent} from "../common/geometry.js";
 
 export class BeltTool extends AbstractTool {
@@ -58,7 +58,7 @@ export class BeltTool extends AbstractTool {
         const isOverwrite = occupant !== null && !isBlocked;
         this._placementFeedbackLayer.showTile({tileX, tileY, isBlocked, isOverwrite});
         const {parentX, parentY} = inferBeltParent(this._cache, tileX, tileY, direction);
-        const bend = Belt.getBend(direction, tileX, tileY, parentX, parentY);
+        const bend = BeltEntry.getBend(direction, tileX, tileY, parentX, parentY);
         this._ghostLayer.showGhost(tileX, tileY, direction, BELT_NORMAL, bend, isBlocked);
     }
 

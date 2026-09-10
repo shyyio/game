@@ -3,7 +3,7 @@
  * labels the action ("Close"), `state` the condition ("is closed"). Declare the permissive state
  * first: retargeting a rule to another device keeps the state position, not the key.
  */
-export class LogicKeyState {
+export class LogicKeyStateEntry {
 
     /**
      * @param {number} value
@@ -26,7 +26,7 @@ export class LogicKeyEntry {
 
     /**
      * @param {string} name
-     * @param {LogicKeyState[]|null} states
+     * @param {LogicKeyStateEntry[]|null} states
      * @param {string|null} stateLabel - condition-type label; defaults to "<name> state"
      */
     constructor(name, states = null, stateLabel = null) {

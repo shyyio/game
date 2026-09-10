@@ -28,7 +28,7 @@ export class RoadTile {
  * A housing's contribution to the component it bridges; `remaining` is drawn down as the allocation
  * hands its workers out.
  */
-export class HousingSupply {
+export class HousingSupplyEntry {
 
     /**
      * @param {number} objectRef
@@ -54,7 +54,7 @@ export class RoadComponent {
     constructor(seed) {
         this.minTile = seed.key;
         this.tiles = [seed];
-        /** @type {HousingSupply[]} */
+        /** @type {HousingSupplyEntry[]} */
         this.housings = [];
     }
 
@@ -95,7 +95,7 @@ export class RoadNetwork {
 
     /**
      * @param {GameEngine} engine
-     * @param {PlacedObjects} placed
+     * @param {PlacedObjectIndex} placed
      */
     constructor(engine, placed) {
         this.engine = engine;
@@ -257,7 +257,7 @@ export class RoadNetwork {
      * The housing occupying (x, y), or null when the tile holds none.
      * @param {number} x
      * @param {number} y
-     * @returns {HousingSupply|null}
+     * @returns {HousingSupplyEntry|null}
      */
     getHousingAtOrNull(x, y) {
         const owner = this.engine.space.getOwnerAt(x, y, LAYER_SURFACE);
@@ -272,7 +272,7 @@ export class RoadNetwork {
         if (behavior.workerSupply <= 0) {
             return null;
         }
-        return new HousingSupply(owner, behavior.workerSupply, this.getFootprintByEid(behavior, eid));
+        return new HousingSupplyEntry(owner, behavior.workerSupply, this.getFootprintByEid(behavior, eid));
     }
 
     /**

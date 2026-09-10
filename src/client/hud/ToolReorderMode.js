@@ -10,7 +10,7 @@ const LIFT_DURATION_MS = 150;
  * One in-progress mod-tool reorder drag: the lifted icon and its scale tween, plus the working copy
  * of the mod-tool order that reorders live as the drag crosses slots.
  */
-export class ToolReorderDrag {
+export class ToolReorderMode {
 
     /**
      * @param {AbstractTool} tool - the dragged tool

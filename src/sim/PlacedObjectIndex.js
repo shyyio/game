@@ -45,7 +45,7 @@ const EMPTY_EIDS = new Set();
  * component, the objectRef -> eid index, and the ONE spawn/despawn/chunk-sync/inspect path. Built by
  * the engine before sim mods wire up; installs each frozen type's behavior once per behavior class.
  */
-export class PlacedObjects extends AbstractSystem {
+export class PlacedObjectIndex extends AbstractSystem {
 
     /**
      * @param {GameEngine} engine

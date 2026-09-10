@@ -8,7 +8,7 @@ import {
     startDelay,
     tileKeyAt,
 } from "@spup/sdk/client";
-import {NotePin} from "./NotePin.js";
+import {NotePinSprite} from "./NotePinSprite.js";
 import {noteAnchor} from "./layout.js";
 
 // Idle pins kept pooled; a screenful of notes past this is already unusual.
@@ -138,10 +138,10 @@ export class NotesDrawLayer extends AbstractDrawLayer {
 
     /**
      * @private
-     * @returns {NotePin}
+     * @returns {NotePinSprite}
      */
     _buildPin() {
-        const pin = new NotePin();
+        const pin = new NotePinSprite();
         this._applyPointerMode(pin);
         pin.on("pointerover", () => this._onPointerOver(pin));
         pin.on("pointerout", () => this._onPointerOut(pin));
@@ -151,7 +151,7 @@ export class NotesDrawLayer extends AbstractDrawLayer {
 
     /**
      * @private
-     * @param {NotePin} pin
+     * @param {NotePinSprite} pin
      * @returns {void}
      */
     _applyPointerMode(pin) {
@@ -165,7 +165,7 @@ export class NotesDrawLayer extends AbstractDrawLayer {
 
     /**
      * @private
-     * @param {NotePin} pin
+     * @param {NotePinSprite} pin
      * @returns {void}
      */
     _onPointerOver(pin) {
@@ -190,7 +190,7 @@ export class NotesDrawLayer extends AbstractDrawLayer {
 
     /**
      * @private
-     * @param {NotePin} pin
+     * @param {NotePinSprite} pin
      * @returns {void}
      */
     _onPointerOut(pin) {
@@ -263,7 +263,7 @@ export class NotesDrawLayer extends AbstractDrawLayer {
 
     /**
      * @private
-     * @param {NotePin} pin
+     * @param {NotePinSprite} pin
      * @param {Note} note
      * @returns {void}
      */

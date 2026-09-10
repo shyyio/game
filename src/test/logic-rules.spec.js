@@ -18,10 +18,10 @@ import {
 import {LogicSnapshotEvent} from "@/mods/logistics/common/events.js";
 import {
     LogicRule,
-    LogicRules,
+    LogicRuleCache,
     deviceCondition,
     storedCondition,
-} from "@/mods/logistics/sim/LogicRules.js";
+} from "@/mods/logistics/sim/LogicRuleCache.js";
 import {
     LOGIC_KEY_OPEN,
     LOGIC_COMPARATOR_AT_LEAST,
@@ -280,7 +280,7 @@ test("a rule referencing a device outside the network suspends without writing",
         ]),
     ]), player);
     engine.tick();
-    const rules = engine.resolve(LogicRules).getRulesByObjectRef(terminal);
+    const rules = engine.resolve(LogicRuleCache).getRulesByObjectRef(terminal);
     assert.equal(rules[0].suspended, true, "the stray condition device suspended the rule");
     assert.equal(columnOf(engine, "Gate", "open", gateB), 1, "the action never ran");
 });
@@ -299,19 +299,19 @@ test("an over-cap or wrong-shape rule list is rejected whole", async () => {
     const overCap = Array(LOGIC_RULE_CAP + 1).fill(null)
         .map(() => new LogicRule(gate, LOGIC_KEY_OPEN, 0, []));
     game.dispatchMessage(rulesMessage(terminal, overCap), player);
-    assert.equal(engine.resolve(LogicRules).getRulesByObjectRef(terminal).length, 0, "over the rule cap");
+    assert.equal(engine.resolve(LogicRuleCache).getRulesByObjectRef(terminal).length, 0, "over the rule cap");
 
     const overConditions = new LogicRule(gate, LOGIC_KEY_OPEN, 0, Array(LOGIC_CONDITION_CAP + 1)
         .fill(null).map(() => deviceCondition(gate, LOGIC_KEY_OPEN, LOGIC_COMPARATOR_AT_LEAST, 0)));
     game.dispatchMessage(rulesMessage(terminal, [overConditions]), player);
-    assert.equal(engine.resolve(LogicRules).getRulesByObjectRef(terminal).length, 0, "over the condition cap");
+    assert.equal(engine.resolve(LogicRuleCache).getRulesByObjectRef(terminal).length, 0, "over the condition cap");
 
     game.dispatchMessage(rulesMessage(terminal, [
         new LogicRule(gate, LOGIC_KEY_OPEN, 0, [
             deviceCondition(gate, LOGIC_KEY_OPEN, 99, 0),
         ]),
     ]), player);
-    assert.equal(engine.resolve(LogicRules).getRulesByObjectRef(terminal).length, 0, "unknown comparator");
+    assert.equal(engine.resolve(LogicRuleCache).getRulesByObjectRef(terminal).length, 0, "unknown comparator");
 });
 
 test("rules and their conditions persist through a save/load and keep running", async () => {
@@ -335,7 +335,7 @@ test("rules and their conditions persist through a save/load and keep running", 
 
     const restored = await makeGame([], store);
     assert.equal(await restored.load(), true);
-    const rules = restored.simEngine.resolve(LogicRules).getRulesByObjectRef(terminal);
+    const rules = restored.simEngine.resolve(LogicRuleCache).getRulesByObjectRef(terminal);
     assert.equal(rules.length, 1);
     assert.equal(rules[0].actionDeviceId, gateB);
     assert.equal(rules[0].conditions.length, 1);
@@ -407,8 +407,8 @@ test("removing a terminal drops its rules", async () => {
     game.dispatchMessage(rulesMessage(terminal, [
         new LogicRule(gate, LOGIC_KEY_OPEN, 0, []),
     ]), player);
-    assert.equal(engine.resolve(LogicRules).getRulesByObjectRef(terminal).length, 1);
+    assert.equal(engine.resolve(LogicRuleCache).getRulesByObjectRef(terminal).length, 1);
 
     engine.applyMessage(new DeleteObjectMessage(terminal));
-    assert.equal(engine.resolve(LogicRules).getRulesByObjectRef(terminal).length, 0);
+    assert.equal(engine.resolve(LogicRuleCache).getRulesByObjectRef(terminal).length, 0);
 });

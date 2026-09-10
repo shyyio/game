@@ -56,12 +56,12 @@ export {
 } from "@/common/ObjectType.js";
 
 // Component+system bundles a declaration plugs into an ObjectType's `behavior` slot; the engine's
-// PlacedObjects host derives the whole entity lifecycle from them. The base class and the empty
+// PlacedObjectIndex host derives the whole entity lifecycle from them. The base class and the empty
 // StaticBehavior sit in common/ beside ObjectType; the ones below it reach into the engine.
 export {AbstractBehavior} from "@/common/behaviors/AbstractBehavior.js";
 export {StaticBehavior} from "@/common/behaviors/StaticBehavior.js";
 // A behavior's `syncedFields`: component fields the engine mirrors into the client's object data.
-export {SyncedFields, SyncedField} from "@/common/SyncedFields.js";
+export {SyncedFieldSet, SyncedField} from "@/common/SyncedFieldSet.js";
 export {MachineBehavior} from "@/sim/behaviors/MachineBehavior.js";
 export {ExtractorBehavior} from "@/sim/behaviors/ExtractorBehavior.js";
 export {GeneratorBehavior} from "@/sim/behaviors/GeneratorBehavior.js";
@@ -99,12 +99,12 @@ export {
 // it, declare a static `wireFields` map, and optionally override `validate`.
 export {AbstractMessage} from "@/common/AbstractMessage.js";
 
-// Generic "delete the object with this ref" message; the engine's PlacedObjects host despawns the
+// Generic "delete the object with this ref" message; the engine's PlacedObjectIndex host despawns the
 // entity. Lets a tool remove any object without knowing which mod owns it.
 export {DeleteObjectMessage} from "@/common/CoreMessages.js";
 
 // Generic object-placement message (tagged with an ObjectType's objectTypeId) and the generic object
-// lifecycle events PlacedObjects emits.
+// lifecycle events PlacedObjectIndex emits.
 export {CreateObjectMessage} from "@/common/CoreMessages.js";
 export {ObjectInsertEvent, ObjectSyncEvent, ObjectDeleteEvent} from "@/common/ObjectEvents.js";
 // A synced-field delta per object (`engine.sync.eventFor` builds one for a corrective send) and the
@@ -143,7 +143,7 @@ export {WelcomeEvent, FriendListEvent} from "@/common/PlayerEvents.js";
 // Per-key player-setting delta, for a mod reacting to a setting flipping mid-session.
 export {PlayerSettingsUpdateEvent} from "@/common/PlayerSettingsEvents.js";
 
-// Worker assignment deltas/sync the engine's WorkerNetworks emits (NO_HOUSING = unmanned).
+// Worker assignment deltas/sync the engine's WorkerNetworkIndex emits (NO_HOUSING = unmanned).
 export {WorkerAssignmentEvent, WorkerAssignmentSyncEvent, WorkerAssignmentBatchEvent, NO_HOUSING} from "@/common/WorkerEvents.js";
 
 // `Direction` is the cardinal-direction enum (with rotate/dx/dy/axis helpers), `Axis` what axis returns.
@@ -162,7 +162,7 @@ export {PLAYER_REF_NONE} from "@/common/constants.js";
 // LOGIC_KEY_PROCESSING reads whether a craft is in flight and is never writable.
 export {LOGIC_KEY_ENABLED, LOGIC_KEY_PROCESSING} from "@/common/constants.js";
 // UI metadata a declaration's logicKeys map carries per key (name + optional on/off states).
-export {LogicKeyEntry, LogicKeyState} from "@/common/LogicKeys.js";
+export {LogicKeyEntry, LogicKeyStateEntry} from "@/common/LogicKeys.js";
 
 // Per-key player-setting config a declaration contributes (playerSettingEntries); only
 // clientWritable keys accept a SetPlayerSettingMessage, holding an integer in

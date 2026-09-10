@@ -17,7 +17,7 @@ export class SyncedField {
 /**
  * A behavior's synced fields: which component holds them and, in wire order, which fields.
  */
-export class SyncedFields {
+export class SyncedFieldSet {
 
     /**
      * @param {string} component

@@ -59,7 +59,7 @@ class CenterMarkerLayer extends Container {
  * The mobile aim mode: hover and placement pin to the screen center, and the player pans the world
  * under the crosshair instead of moving a cursor over it.
  */
-export class CenterLock {
+export class CenterLockMode {
 
     /**
      * @param {Client} client

@@ -111,7 +111,7 @@ export class ObjectsWriter extends AbstractCacheWriter {
  * The `data` payload of a derived-type cache entry, plus the behavior's synced fields under their
  * own names, starting at their defaults.
  */
-export class ObjectClientData {
+export class ObjectClientEntry {
 
     /**
      * @param {ObjectType} type
@@ -310,7 +310,7 @@ export class ObjectsView extends AbstractCacheView {
                     y: object.tileY + cell.y,
                     layer: group.layer,
                 })));
-            this.set(id, object.tileX, object.tileY, cells, object.ports, new ObjectClientData(type, object.direction));
+            this.set(id, object.tileX, object.tileY, cells, object.ports, new ObjectClientEntry(type, object.direction));
         });
     }
 

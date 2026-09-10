@@ -2,7 +2,7 @@ import {PLAYER_REF_NONE} from "@/common/constants.js";
 
 /**
  * Who owns a chunk and who may build in it. The base is the open world of a test without a Game:
- * nobody owns anything and everyone may build; ChunkClaims answers from the claims.
+ * nobody owns anything and everyone may build; ChunkClaimIndex answers from the claims.
  */
 export class ChunkOwnerIndex {
 

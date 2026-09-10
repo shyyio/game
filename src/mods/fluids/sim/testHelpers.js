@@ -1,12 +1,12 @@
 // Pipe-specific conveniences for specs; they live with the mod they serve.
 
-import {Pipes} from "./Pipes.js";
+import {PipeNetworkIndex} from "./PipeNetworkIndex.js";
 
 /**
  * The engine's pipe transport.
  * @param {GameEngine} engine
- * @returns {Pipes}
+ * @returns {PipeNetworkIndex}
  */
 export function pipesOf(engine) {
-    return engine.resolve(Pipes);
+    return engine.resolve(PipeNetworkIndex);
 }

@@ -15,7 +15,7 @@ import {isPlacementBlockedByGate, gateConnections} from "./common/gateConnection
 import {
     AbstractClientMod,
     Direction,
-    InspectHighlight,
+    InspectHighlightSprite,
     Rectangle,
     TILE_SIZE,
     LAYER_SURFACE,
@@ -249,7 +249,7 @@ export class LogisticsClientMod extends AbstractClientMod {
      * @param {number|null} tileX
      * @param {number|null} tileY
      * @param {Client} client
-     * @returns {InspectHighlight[]}
+     * @returns {InspectHighlightSprite[]}
      */
     onInspect(tileX, tileY, client) {
         if (tileX === null) {
@@ -273,9 +273,9 @@ export class LogisticsClientMod extends AbstractClientMod {
             return [];
         }
         // The hovered mouth, plus the mouth it tunnels to (alternate highlight).
-        const highlights = [new InspectHighlight(mouth.tileX, mouth.tileY, mouth.data.direction, mouth.data.type)];
+        const highlights = [new InspectHighlightSprite(mouth.tileX, mouth.tileY, mouth.data.direction, mouth.data.type)];
         if (tunnel !== null && tunnel.pair !== null) {
-            highlights.push(new InspectHighlight(
+            highlights.push(new InspectHighlightSprite(
                 tunnel.pair.tileX,
                 tunnel.pair.tileY,
                 tunnel.pair.data.direction,

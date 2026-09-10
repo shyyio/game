@@ -39,7 +39,7 @@ export class WorkerBadgeLayer extends AbstractDrawLayer {
         state.subscribe("workerAssignments.byMachine", machineId => this._onAssignmentChange(machineId));
         /**
          * Live badges keyed by machineId.
-         * @type {Map<number, Badge>}
+         * @type {Map<number, BadgeSprite>}
          * @private
          */
         this._badges = new Map();
@@ -169,7 +169,7 @@ export class WorkerBadgeLayer extends AbstractDrawLayer {
      */
     _getPoolByStateKey(stateKey) {
         return getOrCreate(this._pools, stateKey, () => new DisplayPool(
-            (workers, granted) => new Badge(
+            (workers, granted) => new BadgeSprite(
                 this._getContextByStateKey(stateKey, workers, granted),
                 stateKey,
             ),
@@ -248,7 +248,7 @@ export class WorkerBadgeLayer extends AbstractDrawLayer {
 /**
  * One machine's dot-row badge, drawing its staffing state's shared context.
  */
-class Badge extends Graphics {
+class BadgeSprite extends Graphics {
 
     /**
      * @param {GraphicsContext} context

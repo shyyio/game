@@ -13,7 +13,7 @@ import {
 } from "@/mods/logistics/common/objectTypes.js";
 import {WireLinkMessage, WireUnlinkMessage, LogicSnapshotRequestMessage} from "@/mods/logistics/common/messages.js";
 import {LogicSnapshotEvent} from "@/mods/logistics/common/events.js";
-import {LogicNetworks} from "@/mods/logistics/sim/LogicNetworks.js";
+import {LogicNetworkIndex} from "@/mods/logistics/sim/LogicNetworkIndex.js";
 import {LOGIC_TIER_BASE} from "@/mods/logistics/common/constants.js";
 
 /**
@@ -39,7 +39,7 @@ test("a network accepts only one terminal", async () => {
     const game = await makeGame();
     const player = claimedPlayer(game);
     const engine = game.simEngine;
-    const networks = engine.resolve(LogicNetworks);
+    const networks = engine.resolve(LogicNetworkIndex);
     const poleA = place(engine, PoleType, 5, 5);
     const poleB = place(engine, PoleType, 12, 5);
     const terminalA = place(engine, LogicTerminalType, 6, 5);
@@ -66,7 +66,7 @@ test("a terminal may relink within its own network", async () => {
     const game = await makeGame();
     const player = claimedPlayer(game);
     const engine = game.simEngine;
-    const networks = engine.resolve(LogicNetworks);
+    const networks = engine.resolve(LogicNetworkIndex);
     const poleA = place(engine, PoleType, 5, 5);
     const poleB = place(engine, PoleType, 12, 5);
     const terminal = place(engine, LogicTerminalType, 6, 5);
@@ -81,7 +81,7 @@ test("removing a terminal frees its network for a new one", async () => {
     const game = await makeGame();
     const player = claimedPlayer(game);
     const engine = game.simEngine;
-    const networks = engine.resolve(LogicNetworks);
+    const networks = engine.resolve(LogicNetworkIndex);
     const pole = place(engine, PoleType, 5, 5);
     const terminalA = place(engine, LogicTerminalType, 6, 5);
     const terminalB = place(engine, LogicTerminalType, 8, 5);
@@ -139,7 +139,7 @@ test("a terminal wired straight to a gate forms a working pole-less network", as
     const game = await makeGame();
     const player = claimedPlayer(game);
     const engine = game.simEngine;
-    const networks = engine.resolve(LogicNetworks);
+    const networks = engine.resolve(LogicNetworkIndex);
     const terminal = place(engine, LogicTerminalType, 6, 5);
     const gate = place(engine, GateType, 8, 5, Direction.UP);
 

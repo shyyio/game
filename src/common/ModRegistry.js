@@ -1,7 +1,7 @@
 import {CORE_PLAYER_SETTING_ENTRIES} from "@/common/PlayerSettingEntry.js";
 import {FrozenSet} from "@/common/FrozenSet.js";
 import {LOGIC_KEY_ENABLED, LOGIC_KEY_PROCESSING} from "@/common/constants.js";
-import {LogicKeyEntry, LogicKeyState} from "@/common/LogicKeys.js";
+import {LogicKeyEntry, LogicKeyStateEntry} from "@/common/LogicKeys.js";
 import {ItemRegistry} from "@/common/ItemRegistry.js";
 import {ItemCategory} from "@/common/ItemCategory.js";
 import {CORE_NOISE_CHANNELS} from "@/common/Terrain.js";
@@ -12,12 +12,12 @@ const BIOME_LIMIT = 255;
 // Logic keys the engine's own behaviors expose; mods add theirs via declaration.logicKeys.
 const CORE_LOGIC_KEYS = {
     [LOGIC_KEY_ENABLED]: new LogicKeyEntry("Enabled", [
-        new LogicKeyState(1, "Enable", "is enabled"),
-        new LogicKeyState(0, "Disable", "is disabled"),
+        new LogicKeyStateEntry(1, "Enable", "is enabled"),
+        new LogicKeyStateEntry(0, "Disable", "is disabled"),
     ], "Enabled state"),
     [LOGIC_KEY_PROCESSING]: new LogicKeyEntry("Processing", [
-        new LogicKeyState(1, null, "is processing"),
-        new LogicKeyState(0, null, "is idle"),
+        new LogicKeyStateEntry(1, null, "is processing"),
+        new LogicKeyStateEntry(0, null, "is idle"),
     ], "Processing state"),
 };
 

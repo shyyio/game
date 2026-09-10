@@ -52,7 +52,7 @@ export class FluidsClientMod extends AbstractClientMod {
     }
 
     /**
-     * Mirrors Pipes.canJoin: a pipe may not bridge different fluid types.
+     * Mirrors PipeNetworkIndex.canJoin: a pipe may not bridge different fluid types.
      * @param {ObjectType} type
      * @param {number} tileX
      * @param {number} tileY

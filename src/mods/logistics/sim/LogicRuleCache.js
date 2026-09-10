@@ -55,7 +55,7 @@ export class LogicRule {
  * Per-terminal rule lists, replaced whole per Confirm; persisted as the LogicRule and
  * LogicRuleCondition tables.
  */
-export class LogicRules {
+export class LogicRuleCache {
 
     constructor() {
         /**

@@ -12,7 +12,7 @@ const CONNECTION_SEQUENCES = [OUTPUT_CONNECTION, INPUT_CONNECTION];
 /**
  * One animated half-belt stub bridging a port to whatever it connects to.
  */
-class Connection {
+class ConnectionSprite {
 
     /**
      * @param {number} sequence - frame table slot
@@ -197,7 +197,7 @@ export class ConnectionDrawLayer extends AbstractTileMeshDrawLayer {
     /**
      * The stubs `entry` should show: one per connected port, on the port's own side of the pair.
      * @param {CacheEntry} entry
-     * @returns {Connection[]}
+     * @returns {ConnectionSprite[]}
      * @private
      */
     _deriveConnections(entry) {
@@ -206,7 +206,7 @@ export class ConnectionDrawLayer extends AbstractTileMeshDrawLayer {
 
         for (const connection of this.cache.connectedPorts(entry)) {
             const base = connection.isOutput ? OUTPUT_CONNECTION : INPUT_CONNECTION;
-            connections.push(new Connection(
+            connections.push(new ConnectionSprite(
                 this._getSlotByName(base),
                 connection.tileX,
                 connection.tileY,

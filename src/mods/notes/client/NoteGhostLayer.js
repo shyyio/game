@@ -7,7 +7,7 @@ import {
     tileKeyAt,
 } from "@spup/sdk/client";
 import {NOTE_EDITOR_MODE_PLACE} from "./NotesState.js";
-import {NotePin} from "./NotePin.js";
+import {NotePinSprite} from "./NotePinSprite.js";
 import {noteAnchor} from "./layout.js";
 
 const GHOST_ALPHA = 0.55;
@@ -33,7 +33,7 @@ export class NoteGhostLayer extends AbstractDrawLayer {
         // The color the pin currently carries; the own identity only arrives with the welcome
         // event, after this layer is built.
         this._paintedColor = null;
-        this._pin = new NotePin();
+        this._pin = new NotePinSprite();
         this.addChild(this._pin);
     }
 

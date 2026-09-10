@@ -5,9 +5,9 @@ import {portAt} from "@/common/portGeometry.js";
 import {PLAYER_REF_NONE} from "@/common/constants.js";
 import {ListenerList} from "@/common/ListenerList.js";
 import {CreateObjectMessage, DeleteObjectMessage} from "@/common/CoreMessages.js";
-import {PlacedObjects} from "@/sim/PlacedObjects.js";
+import {PlacedObjectIndex} from "@/sim/PlacedObjectIndex.js";
 import {OverworldTileIndex} from "@/sim/OverworldTileIndex.js";
-import {WorkerNetworks} from "@/sim/WorkerNetworks.js";
+import {WorkerNetworkIndex} from "@/sim/WorkerNetworkIndex.js";
 import {ComponentRegistry} from "@/sim/ComponentRegistry.js";
 import {SpatialIndex} from "@/sim/SpatialIndex.js";
 import {TransferResolver} from "@/sim/TransferResolver.js";
@@ -76,7 +76,7 @@ export class GameEngine {
     _initHostSlots() {
         /**
          * The generic entity host for derived object types; built in init when a registry is given.
-         * @type {PlacedObjects|null}
+         * @type {PlacedObjectIndex|null}
          */
         this.placed = null;
 
@@ -88,7 +88,7 @@ export class GameEngine {
 
         /**
          * Road-network worker allocation over the placed objects; built with the entity host.
-         * @type {WorkerNetworks|null}
+         * @type {WorkerNetworkIndex|null}
          */
         this.workers = null;
 
@@ -332,7 +332,7 @@ export class GameEngine {
             // throw otherwise. The generic entity host installs every derived type's behavior first,
             // then bespoke sim mods register theirs.
             this._fluidTypes = this.modRegistry.fluidTypes;
-            this.placed = new PlacedObjects(this, this.modRegistry);
+            this.placed = new PlacedObjectIndex(this, this.modRegistry);
         }
         // After the host, so a chunk syncs its objects before the lanes over them, and a rebuild
         // binds every cell's ports before the lanes re-derive.
@@ -340,7 +340,7 @@ export class GameEngine {
         if (this.modRegistry !== null) {
             this.placed.installBehaviors();
             this.overworldTiles = new OverworldTileIndex(this, this.placed);
-            this.workers = new WorkerNetworks(this, this.placed);
+            this.workers = new WorkerNetworkIndex(this, this.placed);
             for (const mod of this.modRegistry.simMods) {
                 mod.init(this);
             }

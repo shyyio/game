@@ -1,7 +1,7 @@
 /**
  * One highlight drawn when inspecting an object. Mods return these from `onInspect`.
  */
-export class InspectHighlight {
+export class InspectHighlightSprite {
 
     /**
      * @param {number} tileX

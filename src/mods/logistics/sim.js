@@ -20,8 +20,8 @@ import {
     LOGIC_CONDITION_KIND_DEVICE,
     LOGIC_CONDITION_KIND_STORED,
 } from "./common/constants.js";
-import {LogicNetworks} from "./sim/LogicNetworks.js";
-import {LogicRule, LogicRules, LogicCondition} from "./sim/LogicRules.js";
+import {LogicNetworkIndex} from "./sim/LogicNetworkIndex.js";
+import {LogicRule, LogicRuleCache, LogicCondition} from "./sim/LogicRuleCache.js";
 
 /**
  * @typedef {Object} WireEndpoints
@@ -48,8 +48,8 @@ export class LogisticsSimMod extends AbstractSimMod {
      */
     serializeTables() {
         return [
-            ...this._engine.resolve(LogicNetworks).serializeTables(),
-            ...this._engine.resolve(LogicRules).serializeTables(),
+            ...this._engine.resolve(LogicNetworkIndex).serializeTables(),
+            ...this._engine.resolve(LogicRuleCache).serializeTables(),
         ];
     }
 
@@ -58,8 +58,8 @@ export class LogisticsSimMod extends AbstractSimMod {
      * @returns {void}
      */
     deserializeTables(tablesByName) {
-        this._engine.resolve(LogicNetworks).deserializeTables(tablesByName.get(LOGIC_WIRE_TABLE));
-        this._engine.resolve(LogicRules).deserializeTables(
+        this._engine.resolve(LogicNetworkIndex).deserializeTables(tablesByName.get(LOGIC_WIRE_TABLE));
+        this._engine.resolve(LogicRuleCache).deserializeTables(
             tablesByName.get(LOGIC_RULE_TABLE),
             tablesByName.get(LOGIC_CONDITION_TABLE),
         );
@@ -172,7 +172,7 @@ export class LogisticsSimMod extends AbstractSimMod {
             return;
         }
         const engine = game.simEngine;
-        const networks = engine.resolve(LogicNetworks);
+        const networks = engine.resolve(LogicNetworkIndex);
         if (this._isWireBreakingTerminalRule(engine, networks, endpoints)) {
             return;
         }
@@ -183,7 +183,7 @@ export class LogisticsSimMod extends AbstractSimMod {
      * Whether the wire would leave a network with more than one terminal: it merges two sides
      * (components, or still-unwired single endpoints) that each hold one.
      * @param {GameEngine} engine
-     * @param {LogicNetworks} networks
+     * @param {LogicNetworkIndex} networks
      * @param {{aEid: number, bEid: number}} endpoints
      * @returns {boolean}
      * @private
@@ -260,7 +260,7 @@ export class LogisticsSimMod extends AbstractSimMod {
             return;
         }
         const engine = game.simEngine;
-        engine.resolve(LogicNetworks).unwire(
+        engine.resolve(LogicNetworkIndex).unwire(
             engine.placed.getObjectRefByEid(endpoints.aEid),
             engine.placed.getObjectRefByEid(endpoints.bEid),
         );
@@ -338,7 +338,7 @@ export class LogisticsSimMod extends AbstractSimMod {
                 conditions,
             ));
         }
-        engine.resolve(LogicRules).setRules(message.objectRef, rules);
+        engine.resolve(LogicRuleCache).setRules(message.objectRef, rules);
     }
 
     /**
@@ -360,7 +360,7 @@ export class LogisticsSimMod extends AbstractSimMod {
         }
         const terminals = engine.components.getComponentByName("LogicTerminal");
         const tier = terminals.store.tier[terminals.getRowByEid(eid)];
-        const networks = engine.resolve(LogicNetworks);
+        const networks = engine.resolve(LogicNetworkIndex);
         const deviceObjectRefs = [];
         const deviceTypeIds = [];
         const deviceTileXs = [];
@@ -384,7 +384,7 @@ export class LogisticsSimMod extends AbstractSimMod {
                 deviceTileYs.push(position.y[deviceEid]);
             }
         }
-        const rules = engine.resolve(LogicRules).getRulesByObjectRef(message.objectRef);
+        const rules = engine.resolve(LogicRuleCache).getRulesByObjectRef(message.objectRef);
         const conditions = rules.flatMap(rule => rule.conditions);
         game.bus.publishTo(session.sessionRef, new LogicSnapshotEvent(
             message.objectRef, linked, tier, deviceObjectRefs, deviceTypeIds, deviceTileXs, deviceTileYs,

@@ -5,7 +5,7 @@
  */
 
 /**
- * A component+system bundle giving a placeable object type its sim behavior. PlacedObjects owns the
+ * A component+system bundle giving a placeable object type its sim behavior. PlacedObjectIndex owns the
  * generic entity lifecycle (spawn/despawn/chunk-sync/inspect); a behavior supplies the type-specific
  * pieces: its components and systems ({@link install}, once per behavior class per engine — never
  * read instance config there) and the per-entity hooks. One behavior instance belongs to exactly one
@@ -18,7 +18,7 @@ export class AbstractBehavior {
          * @type {ObjectType|null}
          */
         this.type = null;
-        // Worker interface, read by WorkerNetworks: a positive workerSupply makes the type a source, a
+        // Worker interface, read by WorkerNetworkIndex: a positive workerSupply makes the type a source, a
         // positive workerCost a consumer.
         this.workerSupply = 0;
         this.workerCost = 0;
@@ -49,7 +49,7 @@ export class AbstractBehavior {
      * The component fields the engine mirrors into each entity's client data (`data.<name>`): a
      * behavior marks a changed row with `engine.sync.markDirty`, and the engine batches the deltas
      * per chunk at tick end and chunk-syncs every row off its defaults.
-     * @returns {SyncedFields|null}
+     * @returns {SyncedFieldSet|null}
      */
     get syncedFields() {
         return null;
