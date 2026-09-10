@@ -52,7 +52,7 @@ export class EraserTool extends AbstractTool {
     onTileEnter(tileX, tileY) {
         // Mirrors the sim's delete gate: no erasing outside buildable chunks.
         const erasable = this._client.canBuildAt(tileX, tileY)
-            && this._cache.findObjectAt(tileX, tileY, LAYER_SURFACE) !== null;
+            && this._cache.getObjectAtOrNull(tileX, tileY, LAYER_SURFACE) !== null;
         let blocked;
         if (erasable) {
             blocked = [{x: tileX, y: tileY}];

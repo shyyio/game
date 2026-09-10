@@ -11,7 +11,7 @@ import {
 } from "@spup/sdk";
 import {BELT_TUNNEL_DOWN, BELT_TUNNEL_UP, BELT_UNDERGROUND, tunnelStep} from "../common/constants.js";
 import {BeltUndergroundType} from "../common/objectTypes.js";
-import {findTunnelPartner, getUndergroundBeltsToCreate, isTunnelMouth} from "../common/geometry.js";
+import {getTunnelPartnerOrNull, getUndergroundBeltsToCreate, isTunnelMouth} from "../common/geometry.js";
 
 /**
  * The level a belt kind takes flow from.
@@ -85,7 +85,7 @@ export class BeltBehavior extends LaneBehavior {
      * @returns {void}
      */
     _spawnTunnelBelts(engine, message) {
-        const partner = findTunnelPartner(
+        const partner = getTunnelPartnerOrNull(
             message.x, message.y, message.direction, this.beltKind,
             (x, y) => BeltBehavior._getBeltsAt(engine, x, y),
         );

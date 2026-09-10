@@ -26,7 +26,7 @@ function isValidScope(api, scope, metricsType) {
     if (scope !== METRICS_QUERY_SCOPE_OWN && scope !== METRICS_QUERY_SCOPE_GLOBAL) {
         return false;
     }
-    return scope !== METRICS_QUERY_SCOPE_GLOBAL || api.modRegistry.findMetricsGlobalQueryByType(metricsType) !== undefined;
+    return scope !== METRICS_QUERY_SCOPE_GLOBAL || api.modRegistry.getMetricsGlobalQueryByTypeOrNull(metricsType) !== null;
 }
 
 /**

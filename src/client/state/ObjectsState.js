@@ -547,7 +547,7 @@ export class ObjectsView extends AbstractCacheView {
      * @param {string} layer
      * @returns {CacheEntry|null}
      */
-    findObjectAt(tileX, tileY, layer) {
+    getObjectAtOrNull(tileX, tileY, layer) {
         // A layer nothing has ever been stored on holds nothing; reads never register one.
         const code = this._layerCodes.get(layer);
         if (code === undefined) {
@@ -586,8 +586,8 @@ export class ObjectsView extends AbstractCacheView {
      * @param {ObjectType} type
      * @returns {CacheEntry|null}
      */
-    findObjectByTypeAt(tileX, tileY, type) {
-        const entry = this.findObjectAt(tileX, tileY, type.positionLayer);
+    getObjectByTypeAtOrNull(tileX, tileY, type) {
+        const entry = this.getObjectAtOrNull(tileX, tileY, type.positionLayer);
         if (entry !== null && entry.data.type.objectTypeId === type.objectTypeId) {
             return entry;
         }
@@ -625,12 +625,12 @@ export class ObjectsView extends AbstractCacheView {
      * @param {Direction} direction
      * @returns {PortMatch|null}
      */
-    findInputPortAt(tileX, tileY, direction) {
-        const entry = this.findObjectAt(tileX, tileY, LAYER_SURFACE);
+    getInputPortAtOrNull(tileX, tileY, direction) {
+        const entry = this.getObjectAtOrNull(tileX, tileY, LAYER_SURFACE);
         if (entry === null) {
             return null;
         }
-        return this._isPortMatch(entry, "inputPorts", tileX, tileY, direction);
+        return this._getPortMatchOrNull(entry, "inputPorts", tileX, tileY, direction);
     }
 
     /**
@@ -641,14 +641,14 @@ export class ObjectsView extends AbstractCacheView {
      * @param {Direction} direction
      * @returns {PortMatch|null}
      */
-    findOutputPortAt(tileX, tileY, direction) {
+    getOutputPortAtOrNull(tileX, tileY, direction) {
         const sourceX = tileX - Direction.dx(direction);
         const sourceY = tileY - Direction.dy(direction);
-        const entry = this.findObjectAt(sourceX, sourceY, LAYER_SURFACE);
+        const entry = this.getObjectAtOrNull(sourceX, sourceY, LAYER_SURFACE);
         if (entry === null) {
             return null;
         }
-        return this._isPortMatch(entry, "outputPorts", tileX, tileY, direction);
+        return this._getPortMatchOrNull(entry, "outputPorts", tileX, tileY, direction);
     }
 
     /**
@@ -662,7 +662,7 @@ export class ObjectsView extends AbstractCacheView {
      * @returns {PortMatch|null}
      * @private
      */
-    _isPortMatch(entry, portKind, portX, portY, facing) {
+    _getPortMatchOrNull(entry, portKind, portX, portY, facing) {
         const target = edgeKey(portX, portY, facing);
         for (const candidate of entry.data.type.getSurfacePortsByKind(portKind)) {
             const placed = portAt(candidate, entry.tileX, entry.tileY, entry.data.direction);
@@ -688,7 +688,7 @@ export class ObjectsView extends AbstractCacheView {
 
         for (const port of type.getSurfacePortsByKind("outputPorts")) {
             const placed = portAt(port, entry.tileX, entry.tileY, direction);
-            const consumer = this.findInputPortAt(placed.x, placed.y, placed.direction);
+            const consumer = this.getInputPortAtOrNull(placed.x, placed.y, placed.direction);
             if (consumer !== null) {
                 // An output port's stub sits on the emitting tile; the cell it reaches is the neighbor's.
                 connections.push({
@@ -705,7 +705,7 @@ export class ObjectsView extends AbstractCacheView {
 
         for (const port of type.getSurfacePortsByKind("inputPorts")) {
             const placed = portAt(port, entry.tileX, entry.tileY, direction);
-            const feeder = this.findOutputPortAt(placed.x, placed.y, placed.direction);
+            const feeder = this.getOutputPortAtOrNull(placed.x, placed.y, placed.direction);
             if (feeder !== null) {
                 // An input port's stub sits on its own cell; the feeder is the tile behind it.
                 connections.push({

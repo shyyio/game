@@ -142,7 +142,7 @@ export class TradingTerminalBehavior extends AbstractBehavior {
             if (item[inputPort] !== terminal.itemTypeId[row]) {
                 continue;
             }
-            const match = book.findBestEligibleBuyer(
+            const match = book.getBestEligibleBuyerOrNull(
                 terminal.itemTypeId[row],
                 terminal.price[row],
                 port => item[port] === EMPTY,
@@ -181,8 +181,8 @@ export class TradingTerminalBehavior extends AbstractBehavior {
      */
     static _submitNpcPurchase(engine, item, book, terminal, row, reservedBalance) {
         const itemTypeId = terminal.itemTypeId[row];
-        const fixedPrice = book.findFixedPriceByItemTypeId(itemTypeId);
-        if (fixedPrice === undefined) {
+        const fixedPrice = book.getFixedPriceByItemTypeIdOrNull(itemTypeId);
+        if (fixedPrice === null) {
             return;
         }
         const outputPort = terminal.outputPort[row];

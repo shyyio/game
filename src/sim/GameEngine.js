@@ -579,8 +579,8 @@ export class GameEngine {
         if (this.placed === null) {
             return true;
         }
-        const eid = this.placed.findEidByObjectRef(objectRef);
-        if (eid === undefined) {
+        const eid = this.placed.getEidByObjectRefOrNull(objectRef);
+        if (eid === null) {
             return true;
         }
         return this.canBuildIn(playerRef, chunkKeyAt(this.Position.x[eid], this.Position.y[eid]));

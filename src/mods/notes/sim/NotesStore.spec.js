@@ -12,11 +12,11 @@ function note(tileX, tileY, authorRef=1, text="hi") {
 test("a note is stored by tile and replaced in place", () => {
     const store = new NotesStore();
     store.set(note(3, 4));
-    assert.equal(store.findNoteAt(3, 4).text, "hi");
-    assert.equal(store.findNoteAt(4, 4), null);
+    assert.equal(store.getNoteAtOrNull(3, 4).text, "hi");
+    assert.equal(store.getNoteAtOrNull(4, 4), null);
 
     store.set(note(3, 4, 2, "mine now"));
-    assert.equal(store.findNoteAt(3, 4).text, "mine now");
+    assert.equal(store.getNoteAtOrNull(3, 4).text, "mine now");
     assert.equal(store.getNotesByChunkKey(chunkKeyAt(3, 4)).length, 1);
 });
 
@@ -25,7 +25,7 @@ test("deleting a note drops it from the chunk index", () => {
     store.set(note(3, 4));
     assert.equal(store.delete(3, 4), true);
     assert.equal(store.delete(3, 4), false);
-    assert.equal(store.findNoteAt(3, 4), null);
+    assert.equal(store.getNoteAtOrNull(3, 4), null);
     assert.deepEqual(store.getNotesByChunkKey(chunkKeyAt(3, 4)), []);
 });
 
@@ -53,9 +53,9 @@ test("the table round-trips every note", () => {
 
     const restored = new NotesStore();
     restored.deserializeTables(tables[0]);
-    assert.equal(restored.findNoteAt(3, 4).text, "left");
-    assert.equal(restored.findNoteAt(-5, -6).authorRef, 2);
-    assert.equal(restored.findNoteAt(-5, -6).offsetMx, 250);
+    assert.equal(restored.getNoteAtOrNull(3, 4).text, "left");
+    assert.equal(restored.getNoteAtOrNull(-5, -6).authorRef, 2);
+    assert.equal(restored.getNoteAtOrNull(-5, -6).offsetMx, 250);
     assert.equal(restored.getNotesByChunkKey(chunkKeyAt(-5, -6)).length, 1);
 });
 
@@ -64,10 +64,10 @@ test("deserializing clears what stood before, a missing table included", () => {
     store.set(note(3, 4));
 
     store.deserializeTables(undefined);
-    assert.equal(store.findNoteAt(3, 4), null);
+    assert.equal(store.getNoteAtOrNull(3, 4), null);
 
     store.set(note(3, 4));
     store.deserializeTables({name: NOTE_TABLE, fields: [], rows: []});
-    assert.equal(store.findNoteAt(3, 4), null);
+    assert.equal(store.getNoteAtOrNull(3, 4), null);
     assert.deepEqual(store.getNotesByChunkKey(chunkKeyAt(3, 4)), []);
 });

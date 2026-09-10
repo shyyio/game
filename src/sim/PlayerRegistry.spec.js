@@ -88,16 +88,16 @@ test("friend codes are random, unique per player, and not tied to playerRef", ()
     const alice = players.getOrCreate("sub-alice", "alice");
     const bob = players.getOrCreate("sub-bob", "bob");
     assert.notEqual(alice.friendCode, bob.friendCode);
-    assert.equal(players.findPlayerByFriendCode(alice.friendCode), alice);
-    assert.equal(players.findPlayerByFriendCode(bob.friendCode), bob);
+    assert.equal(players.getPlayerByFriendCodeOrNull(alice.friendCode), alice);
+    assert.equal(players.getPlayerByFriendCodeOrNull(bob.friendCode), bob);
 });
 
-test("findPlayerByFriendCode is case/format-tolerant and returns undefined for an unknown or malformed code", () => {
+test("getPlayerByFriendCodeOrNull is case/format-tolerant and null for an unknown or malformed code", () => {
     const players = new PlayerRegistry();
     const alice = players.getOrCreate("sub-alice", "alice");
-    assert.equal(players.findPlayerByFriendCode(alice.friendCode.toLowerCase()), alice);
-    assert.equal(players.findPlayerByFriendCode(alice.friendCode.replace("-", "")), alice);
-    assert.equal(players.findPlayerByFriendCode("not-a-code"), undefined);
+    assert.equal(players.getPlayerByFriendCodeOrNull(alice.friendCode.toLowerCase()), alice);
+    assert.equal(players.getPlayerByFriendCodeOrNull(alice.friendCode.replace("-", "")), alice);
+    assert.equal(players.getPlayerByFriendCodeOrNull("not-a-code"), null);
 });
 
 test("friend codes survive a round-trip", () => {

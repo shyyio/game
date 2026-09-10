@@ -12,7 +12,7 @@ import {RoadBehavior} from "@/sim/behaviors/RoadBehavior.js";
  * @returns {CacheEntry|null}
  */
 function walkableAt(cache, x, y) {
-    const entry = cache.findObjectAt(x, y, LAYER_SURFACE);
+    const entry = cache.getObjectAtOrNull(x, y, LAYER_SURFACE);
     if (entry === null) {
         return null;
     }
@@ -45,7 +45,7 @@ function entryCenter(entry) {
  * @param {CacheEntry} machineEntry
  * @returns {{x: number, y: number}[]|null}
  */
-export function findCommuteRoute(cache, machineEntry) {
+export function getCommuteRouteOrNull(cache, machineEntry) {
     // parent: walked tile -> the tile it was reached from (null for a seed by the machine).
     const parents = new Map();
     const queue = [];

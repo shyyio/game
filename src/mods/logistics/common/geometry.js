@@ -136,7 +136,7 @@ export function isTunnelMouth(type) {
  * @param {function(number, number): {type: BeltType, direction: Direction}[]} beltsAt - candidates on a tile
  * @returns {object|null} the matched partner-kind belt (whatever shape `beltsAt` returns), or null
  */
-export function findTunnelPartner(x, y, direction, kind, beltsAt) {
+export function getTunnelPartnerOrNull(x, y, direction, kind, beltsAt) {
     const {dx, dy} = tunnelStep(kind, direction);
     const partnerKind = kind === BELT_TUNNEL_UP ? BELT_TUNNEL_DOWN : BELT_TUNNEL_UP;
     let cx = x;

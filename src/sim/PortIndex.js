@@ -283,7 +283,7 @@ export class PortIndex {
      * @param {number} direction
      * @returns {number|null} the port eid
      */
-    findPortEidAt(x, y, direction) {
+    getPortEidAtOrNull(x, y, direction) {
         const eid = this._byEdge.get(edgeKey(x, y, direction));
         if (eid === undefined) {
             return null;

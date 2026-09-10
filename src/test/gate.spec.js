@@ -150,23 +150,23 @@ test("a gate placed against a pipe spawns in fluid mode and forwards fluid until
     let forwarded = false;
     for (let i = 0; i < 12 && !forwarded; i += 1) {
         engine.tick();
-        forwarded = pipes.findNetworkAt(3, 0).amount > 0;
+        forwarded = pipes.getNetworkAtOrNull(3, 0).amount > 0;
     }
     assert.ok(forwarded, "fluid crossed the open gate into the downstream network");
-    assert.equal(pipes.findNetworkAt(3, 0).fluidType, FLUID_TYPE_WATER);
+    assert.equal(pipes.getNetworkAtOrNull(3, 0).fluidType, FLUID_TYPE_WATER);
 
     gateBehavior(engine).setOpen(engine, gate.eid, false);
     // A payload already resting on the output port still lands; settle, then hold.
     for (let i = 0; i < 4; i += 1) {
         engine.tick();
     }
-    const upstreamBefore = pipes.findNetworkAt(0, 0).amount;
-    const downstreamBefore = pipes.findNetworkAt(3, 0).amount;
+    const upstreamBefore = pipes.getNetworkAtOrNull(0, 0).amount;
+    const downstreamBefore = pipes.getNetworkAtOrNull(3, 0).amount;
     for (let i = 0; i < 8; i += 1) {
         engine.tick();
     }
-    assert.equal(pipes.findNetworkAt(0, 0).amount, upstreamBefore, "the closed gate stops draining upstream");
-    assert.equal(pipes.findNetworkAt(3, 0).amount, downstreamBefore, "nothing more crossed the closed gate");
+    assert.equal(pipes.getNetworkAtOrNull(0, 0).amount, upstreamBefore, "the closed gate stops draining upstream");
+    assert.equal(pipes.getNetworkAtOrNull(3, 0).amount, downstreamBefore, "nothing more crossed the closed gate");
 });
 
 test("a closed fluid gate isolates different fluids on its two sides", async () => {
@@ -182,10 +182,10 @@ test("a closed fluid gate isolates different fluids on its two sides", async () 
     for (let i = 0; i < 8; i += 1) {
         engine.tick();
     }
-    assert.equal(pipes.findNetworkAt(0, 0).fluidType, FLUID_TYPE_WATER);
-    assert.equal(pipes.findNetworkAt(0, 0).amount, 2);
-    assert.equal(pipes.findNetworkAt(2, 0).fluidType, FLUID_TYPE_OIL);
-    assert.equal(pipes.findNetworkAt(2, 0).amount, 2);
+    assert.equal(pipes.getNetworkAtOrNull(0, 0).fluidType, FLUID_TYPE_WATER);
+    assert.equal(pipes.getNetworkAtOrNull(0, 0).amount, 2);
+    assert.equal(pipes.getNetworkAtOrNull(2, 0).fluidType, FLUID_TYPE_OIL);
+    assert.equal(pipes.getNetworkAtOrNull(2, 0).amount, 2);
 });
 
 test("connecting a transport to an unconnected gate transforms its mode", async () => {
@@ -222,7 +222,7 @@ test("the guard rejects coupling one transport kind while the other side holds t
     assert.equal(gateMode(engine, other.eid), 1, "pipe-fed gate is fluid");
     engine.applyMessage(new CreateObjectMessage(BeltType.objectTypeId, 10, 4, Direction.DOWN));
     assert.equal(engine.space.getOwnerAt(10, 4, LAYER_SURFACE), null, "the conflicting belt was not placed");
-    assert.equal(pipes.findNetworkAt(10, 6).size, 1, "the pipe network is untouched");
+    assert.equal(pipes.getNetworkAtOrNull(10, 6).size, 1, "the pipe network is untouched");
 });
 
 test("a toggle applies at the next tick, batches the change, and syncs to late joiners", async () => {

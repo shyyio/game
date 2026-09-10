@@ -66,7 +66,7 @@ function producedOver(engine, inputPort, outputPort, ticks) {
  */
 function carryOf(engine, objectRef) {
     const def = engine.components.getComponentByName("Machine");
-    return def.store.carry[def.getRowByEid(engine.placed.findEidByObjectRef(objectRef))];
+    return def.store.carry[def.getRowByEid(engine.placed.getEidByObjectRefOrNull(objectRef))];
 }
 
 // Housing at (2,4) (cells x2-3, y4-5), a road row along y=5, machines on y=4 each adjacent to the
@@ -125,7 +125,7 @@ test("fractional progress banks past a craft and shortens the next", async () =>
     engine.tick();
     assert.equal(carryOf(engine, nearId), 0, "bank consumed at load");
     const def = engine.components.getComponentByName("Machine");
-    const remaining = def.store.remaining[def.getRowByEid(engine.placed.findEidByObjectRef(nearId))];
+    const remaining = def.store.remaining[def.getRowByEid(engine.placed.getEidByObjectRefOrNull(nearId))];
     assert.ok(Math.abs(remaining - 1.4) < 1e-3, `remaining ${remaining}`);
 });
 

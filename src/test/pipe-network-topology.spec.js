@@ -10,14 +10,14 @@ test("adjacent pipes group into one network per connected component", async () =
     pipes.placePipe(1, 0);
     pipes.placePipe(3, 0);
 
-    assert.equal(pipes.findNetworkAt(0, 0).size, 2, "adjacent pipes share a network");
-    assert.equal(pipes.findNetworkAt(0, 0).id, pipes.findNetworkAt(1, 0).id);
-    assert.equal(pipes.findNetworkAt(3, 0).size, 1, "the gapped pipe is its own network");
-    assert.notEqual(pipes.findNetworkAt(0, 0).id, pipes.findNetworkAt(3, 0).id);
+    assert.equal(pipes.getNetworkAtOrNull(0, 0).size, 2, "adjacent pipes share a network");
+    assert.equal(pipes.getNetworkAtOrNull(0, 0).id, pipes.getNetworkAtOrNull(1, 0).id);
+    assert.equal(pipes.getNetworkAtOrNull(3, 0).size, 1, "the gapped pipe is its own network");
+    assert.notEqual(pipes.getNetworkAtOrNull(0, 0).id, pipes.getNetworkAtOrNull(3, 0).id);
 
     pipes.placePipe(2, 0);
-    assert.equal(pipes.findNetworkAt(0, 0).size, 4, "the bridging pipe merges the components");
-    assert.equal(pipes.findNetworkAt(0, 0).id, pipes.findNetworkAt(3, 0).id);
+    assert.equal(pipes.getNetworkAtOrNull(0, 0).size, 4, "the bridging pipe merges the components");
+    assert.equal(pipes.getNetworkAtOrNull(0, 0).id, pipes.getNetworkAtOrNull(3, 0).id);
 });
 
 // Pipe object refs run 1..4 on a fresh engine, in placement order.
@@ -26,11 +26,11 @@ test("removing an end pipe shrinks the network in place", async () => {
     for (let x = 0; x < 4; x += 1) {
         pipes.placePipe(x, 0);
     }
-    assert.equal(pipes.findNetworkAt(1, 0).size, 4);
+    assert.equal(pipes.getNetworkAtOrNull(1, 0).size, 4);
 
     pipes.removePipe(4);
-    assert.equal(pipes.findNetworkAt(0, 0).size, 3);
-    assert.equal(pipes.findNetworkAt(3, 0), null);
+    assert.equal(pipes.getNetworkAtOrNull(0, 0).size, 3);
+    assert.equal(pipes.getNetworkAtOrNull(3, 0), null);
 });
 
 test("removing a middle pipe splits the run and shares the fluid out by size", async () => {
@@ -41,8 +41,8 @@ test("removing a middle pipe splits the run and shares the fluid out by size", a
     pipes.addFluid(0, 0, FLUID_TYPE_WATER, 6);
     pipes.removePipe(2);
 
-    const left = pipes.findNetworkAt(0, 0);
-    const right = pipes.findNetworkAt(2, 0);
+    const left = pipes.getNetworkAtOrNull(0, 0);
+    const right = pipes.getNetworkAtOrNull(2, 0);
     assert.equal(left.size, 1);
     assert.equal(right.size, 2);
     assert.notEqual(left.id, right.id);
@@ -56,8 +56,8 @@ test("a pipe line never crosses a chunk boundary", async () => {
     for (const y of [62, 63, 64, 65]) {
         pipes.placePipe(0, y);
     }
-    const above = pipes.findNetworkAt(0, 63);
-    const below = pipes.findNetworkAt(0, 64);
+    const above = pipes.getNetworkAtOrNull(0, 63);
+    const below = pipes.getNetworkAtOrNull(0, 64);
     assert.equal(above.size, 2, "the line is two per-chunk networks");
     assert.equal(below.size, 2);
     assert.notEqual(above.id, below.id);
@@ -80,9 +80,9 @@ test("a drained network frees its fluid type for the next fill", async () => {
     const {engine, pipes} = await makePipes();
     pipes.placePipe(0, 0);
     pipes.addFluid(0, 0, FLUID_TYPE_OIL, 0);
-    assert.equal(pipes.findNetworkAt(0, 0).fluidType, EMPTY, "a zero add binds no type");
+    assert.equal(pipes.getNetworkAtOrNull(0, 0).fluidType, EMPTY, "a zero add binds no type");
     pipes.addFluid(0, 0, FLUID_TYPE_OIL, 2);
-    assert.equal(pipes.findNetworkAt(0, 0).fluidType, FLUID_TYPE_OIL);
+    assert.equal(pipes.getNetworkAtOrNull(0, 0).fluidType, FLUID_TYPE_OIL);
     engine.tick();
-    assert.equal(pipes.findNetworkAt(0, 0).amount, 2, "nothing consumes, nothing leaves");
+    assert.equal(pipes.getNetworkAtOrNull(0, 0).amount, 2, "nothing consumes, nothing leaves");
 });

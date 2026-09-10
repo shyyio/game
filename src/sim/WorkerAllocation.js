@@ -76,7 +76,7 @@ export class WorkerAllocation {
             seedList = Array.from(seedList);
             for (const id of this._contested) {
                 affected.add(id);
-                seedList.push(this.roads.findTileByKey(id));
+                seedList.push(this.roads.getTileByKeyOrNull(id));
             }
         }
     }
@@ -172,8 +172,8 @@ export class WorkerAllocation {
         if (owner === null || machines.has(owner) || this._next.has(owner)) {
             return;
         }
-        const eid = this.placed.findEidByObjectRef(owner);
-        if (eid === undefined) {
+        const eid = this.placed.getEidByObjectRefOrNull(owner);
+        if (eid === null) {
             return;
         }
         const behavior = this.placed.getBehaviorByTypeId(this.placed.getObjectTypeIdByEid(eid));
@@ -201,19 +201,19 @@ export class WorkerAllocation {
     _isComponentClaimingCells(component, owner, cells) {
         let winner = component.minTile;
         for (const {x, y} of cellNeighbors(cells)) {
-            const road = this.roads.findTileByKey(tileKeyAt(x, y));
-            if (road !== undefined && road.component !== null && road.component < winner) {
+            const road = this.roads.getTileByKeyOrNull(tileKeyAt(x, y));
+            if (road !== null && road.component !== null && road.component < winner) {
                 winner = road.component;
             }
         }
-        const existing = this.assignments.findAssignmentByObjectRef(owner);
+        const existing = this.assignments.getAssignmentByObjectRefOrNull(owner);
         if (winner !== component.minTile) {
-            if (!this._affected.has(winner) && (existing === undefined || existing.component !== winner)) {
+            if (!this._affected.has(winner) && (existing === null || existing.component !== winner)) {
                 this._contested.add(winner);
             }
             return false;
         }
-        if (existing !== undefined && !this._affected.has(existing.component)) {
+        if (existing !== null && !this._affected.has(existing.component)) {
             this._contested.add(existing.component);
         }
         return true;

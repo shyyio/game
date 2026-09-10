@@ -37,8 +37,8 @@ test("a mod's player-setting entries collect at freeze", () => {
     const registry = new ModRegistry();
     registry.register(new ModPackage(new EntriesDeclaration("A", [new PlayerSettingEntry(MOD_KEY, false, 2)])));
     registry.freeze();
-    assert.equal(registry.findPlayerSettingEntryByKey(MOD_KEY).clientWritable, false);
-    assert.equal(registry.findPlayerSettingEntryByKey(999), undefined);
+    assert.equal(registry.getPlayerSettingEntryByKeyOrNull(MOD_KEY).clientWritable, false);
+    assert.equal(registry.getPlayerSettingEntryByKeyOrNull(999), null);
 });
 
 test("a duplicate key across mods throws at freeze", () => {
@@ -57,7 +57,7 @@ test("the same mod registered twice throws at freeze, naming it", () => {
 
 test("the entry accessor throws before freeze", () => {
     const registry = new ModRegistry();
-    assert.throws(() => registry.findPlayerSettingEntryByKey(MOD_KEY), /not frozen/);
+    assert.throws(() => registry.getPlayerSettingEntryByKeyOrNull(MOD_KEY), /not frozen/);
 });
 
 class ItemsDeclaration extends AbstractModDeclaration {

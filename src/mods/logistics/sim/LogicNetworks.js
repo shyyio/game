@@ -193,7 +193,7 @@ export class LogicNetworks extends AbstractSystem {
      * @param {number} objectRef
      * @returns {LogicNetwork|null}
      */
-    findNetworkByObjectRef(objectRef) {
+    getNetworkByObjectRefOrNull(objectRef) {
         for (const network of this.networks) {
             if (network.poleIds.includes(objectRef) || network.deviceIds.includes(objectRef)) {
                 return network;
@@ -256,8 +256,8 @@ export class LogicNetworks extends AbstractSystem {
         const position = engine.Position;
         const emitted = new Set();
         for (const objectRef of [aObjectRef, bObjectRef]) {
-            const eid = this.placed.findEidByObjectRef(objectRef);
-            if (eid === undefined) {
+            const eid = this.placed.getEidByObjectRefOrNull(objectRef);
+            if (eid === null) {
                 continue;
             }
             const event = new eventClass(position.x[eid], position.y[eid], aObjectRef, bObjectRef);
@@ -279,8 +279,8 @@ export class LogicNetworks extends AbstractSystem {
         this._dirty = false;
         const neighbors = new Map();
         for (const [key, wire] of Array.from(this._wires)) {
-            if (this.placed.findEidByObjectRef(wire.a) === undefined
-                || this.placed.findEidByObjectRef(wire.b) === undefined) {
+            if (this.placed.getEidByObjectRefOrNull(wire.a) === null
+                || this.placed.getEidByObjectRefOrNull(wire.b) === null) {
                 this._removeWire(key);
                 continue;
             }
@@ -347,8 +347,8 @@ export class LogicNetworks extends AbstractSystem {
         const events = [];
         for (const wire of this.wires) {
             for (const objectRef of [wire.a, wire.b]) {
-                const eid = this.placed.findEidByObjectRef(objectRef);
-                if (eid === undefined || chunkKeyAt(position.x[eid], position.y[eid]) !== chunkKey) {
+                const eid = this.placed.getEidByObjectRefOrNull(objectRef);
+                if (eid === null || chunkKeyAt(position.x[eid], position.y[eid]) !== chunkKey) {
                     continue;
                 }
                 events.push(new LogicWireSetEvent(position.x[eid], position.y[eid], wire.a, wire.b));

@@ -5,11 +5,11 @@ import {CapturingSession} from "@/test/CapturingSession.js";
 
 // Test events routing through a fixed topic.
 function chunkEvent(chunkKey) {
-    return {chunkKey, getSubscribersByBus: bus => bus.findSubscribersByChunkKey(chunkKey)};
+    return {chunkKey, getSubscribersByBus: bus => bus.getSubscribersByChunkKey(chunkKey)};
 }
 
 function objectEvent(objectRef) {
-    return {objectRef, getSubscribersByBus: bus => bus.findSubscribersByObjectRef(objectRef)};
+    return {objectRef, getSubscribersByBus: bus => bus.getSubscribersByObjectRef(objectRef)};
 }
 
 test("addSession allocates ascending ids", () => {

@@ -190,10 +190,14 @@ export class PlacedObjects extends AbstractSystem {
     /**
      * The placed entity with object ref `objectRef`, or undefined.
      * @param {number} objectRef
-     * @returns {number|undefined}
+     * @returns {number|null}
      */
-    findEidByObjectRef(objectRef) {
-        return this._eidByObjectRef.get(objectRef);
+    getEidByObjectRefOrNull(objectRef) {
+        const eid = this._eidByObjectRef.get(objectRef);
+        if (eid === undefined) {
+            return null;
+        }
+        return eid;
     }
 
     /**

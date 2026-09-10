@@ -7,7 +7,7 @@ import {floodRoadComponent} from "@/common/roadFlood.js";
 import {RoadBehavior, isWorkerBehavior} from "@/sim/behaviors/RoadBehavior.js";
 import {DEBUG_COLOR} from "@/client/Theme.js";
 import {drawLine, drawCircle, drawRect} from "@/client/layers/pixiUtils.js";
-import {findCommuteRoute} from "@/client/layers/workerRoute.js";
+import {getCommuteRouteOrNull} from "@/client/layers/workerRoute.js";
 import {WorkerAssignmentsView} from "@/client/state/WorkerAssignmentsState.js";
 
 const ROAD_FILL_ALPHA = 0.35;
@@ -93,7 +93,7 @@ export class WorkerDebugLayer extends AbstractDebugDrawLayer {
                 roadTiles,
                 seen,
                 housingAt: (x, y) => {
-                    const entry = this.cache.findObjectAt(x, y, LAYER_SURFACE);
+                    const entry = this.cache.getObjectAtOrNull(x, y, LAYER_SURFACE);
                     if (entry === null || seenHousings.has(entry.id)) {
                         return null;
                     }
@@ -149,7 +149,7 @@ export class WorkerDebugLayer extends AbstractDebugDrawLayer {
             if (roadTiles.has(tileKeyAt(x, y))) {
                 continue;
             }
-            const entry = this.cache.findObjectAt(x, y, LAYER_SURFACE);
+            const entry = this.cache.getObjectAtOrNull(x, y, LAYER_SURFACE);
             if (entry === null || attached.has(entry.id)) {
                 continue;
             }
@@ -215,7 +215,7 @@ export class WorkerDebugLayer extends AbstractDebugDrawLayer {
                 continue;
             }
             const color = DEBUG_COLOR(assignment.housingId);
-            const route = findCommuteRoute(this.cache, machineEntry);
+            const route = getCommuteRouteOrNull(this.cache, machineEntry);
             if (route !== null) {
                 this._graphics.moveTo(route[0].x, route[0].y);
                 for (let i = 1; i < route.length; i += 1) {

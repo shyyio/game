@@ -74,8 +74,12 @@ class FakeClient {
         this.modRegistry = {
             clientMods: [],
             settingEntries: new Map(),
-            findPlayerSettingEntryByKey(key) {
-                return this.settingEntries.get(key);
+            getPlayerSettingEntryByKeyOrNull(key) {
+                const found = this.settingEntries.get(key);
+                if (found === undefined) {
+                    return null;
+                }
+                return found;
             },
         };
     }

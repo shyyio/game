@@ -257,7 +257,7 @@ export class Terrain {
      * @param {number} tileY
      * @returns {TerrainDetail|null}
      */
-    findDetailByBiome(biome, tileX, tileY) {
+    getDetailByBiomeOrNull(biome, tileX, tileY) {
         if (biome.details.length === 0) {
             return null;
         }

@@ -67,7 +67,7 @@ export class InspectHeartbeatEvent extends AbstractEvent {
      * @returns {Set<number>|undefined}
      */
     getSubscribersByBus(bus) {
-        return bus.findSubscribersByObjectRef(this.objectRef);
+        return bus.getSubscribersByObjectRef(this.objectRef);
     }
 }
 
@@ -93,6 +93,6 @@ export class InspectClosedEvent extends AbstractEvent {
      * @returns {Set<number>|undefined}
      */
     getSubscribersByBus(bus) {
-        return bus.findSubscribersByObjectRef(this.objectRef);
+        return bus.getSubscribersByObjectRef(this.objectRef);
     }
 }

@@ -34,7 +34,7 @@ class GateSystem extends AbstractSystem {
 
     isPlacementAllowed(type, x, y, direction) {
         return !isPlacementBlockedByGate(
-            (tx, ty) => GateBehavior._findOccupantAt(this.engine, tx, ty),
+            (tx, ty) => GateBehavior._getOccupantAtOrNull(this.engine, tx, ty),
             occupant => occupant.type.behavior instanceof GateBehavior,
             type, x, y, direction,
         );
@@ -66,7 +66,7 @@ export class GateBehavior extends AbstractBehavior {
         gate.outputPort[row] = engine.getPortAt(type.outputPorts[0], message.x, message.y, message.direction).port;
         gate.open[row] = 1;
         const kinds = gateConnections(
-            (tx, ty) => GateBehavior._findOccupantAt(engine, tx, ty),
+            (tx, ty) => GateBehavior._getOccupantAtOrNull(engine, tx, ty),
             message.x, message.y, message.direction,
         );
         const wantsFluid = (kinds.behind === CONVEYS_FLUID || kinds.front === CONVEYS_FLUID)
@@ -216,14 +216,14 @@ export class GateBehavior extends AbstractBehavior {
      * @param {number} y
      * @returns {Occupant|null}
      */
-    static _findOccupantAt(engine, x, y) {
+    static _getOccupantAtOrNull(engine, x, y) {
         const placed = engine.placed;
         const objectRef = engine.space.getOwnerAt(x, y, LAYER_SURFACE);
         if (objectRef === null) {
             return null;
         }
-        const eid = placed.findEidByObjectRef(objectRef);
-        if (eid === undefined) {
+        const eid = placed.getEidByObjectRefOrNull(objectRef);
+        if (eid === null) {
             return null;
         }
         const type = placed.getObjectTypeByTypeId(placed.getObjectTypeIdByEid(eid));
@@ -266,7 +266,7 @@ export class GateBehavior extends AbstractBehavior {
         for (let row = 0; row < gates.count; row += 1) {
             const eid = gates.eids[row];
             const kinds = gateConnections(
-                (tx, ty) => GateBehavior._findOccupantAt(engine, tx, ty),
+                (tx, ty) => GateBehavior._getOccupantAtOrNull(engine, tx, ty),
                 position.x[eid], position.y[eid], position.direction[eid],
             );
             const hasItem = kinds.behind === CONVEYS_ITEM || kinds.front === CONVEYS_ITEM;

@@ -35,7 +35,7 @@ export class NodeErrorReportStore {
         `);
         this.db.exec(`CREATE INDEX IF NOT EXISTS "idx_ErrorReport_fingerprint" ON "ErrorReport" (fingerprint)`);
 
-        this._findRecentByFingerprint = this.db.prepare(`
+        this._selectRecentByFingerprint = this.db.prepare(`
             SELECT errorReportId
             FROM "ErrorReport"
             WHERE fingerprint = ? AND lastSeen >= ?
@@ -72,7 +72,7 @@ export class NodeErrorReportStore {
      */
     putReport(report, nowMs, dedupWindowMs) {
         const {fingerprint, message, stack, buildVersion, url, extra} = report;
-        const recent = this._findRecentByFingerprint.get(fingerprint, nowMs - dedupWindowMs);
+        const recent = this._selectRecentByFingerprint.get(fingerprint, nowMs - dedupWindowMs);
         if (recent !== undefined) {
             this._bump.run(nowMs, recent.errorReportId);
             return {errorReportId: recent.errorReportId, isNew: false};

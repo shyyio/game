@@ -2,7 +2,7 @@ import {AbstractTool, Direction, Haptics, LAYER_SURFACE, CreateObjectMessage, De
 import {BeltBend, MAX_UNDERGROUND_LENGTH, BELT_NORMAL, BELT_TUNNEL_DOWN, BELT_TUNNEL_UP} from "../common/constants.js";
 import {BeltType, BeltTunnelDownType, BeltTunnelUpType, isBeltType} from "../common/objectTypes.js";
 import {Belt} from "./BeltDrawLayer.js";
-import {getUndergroundBeltsToCreate, surfaceBeltAt, inferBeltParent, findTunnelPartner} from "../common/geometry.js";
+import {getUndergroundBeltsToCreate, surfaceBeltAt, inferBeltParent, getTunnelPartnerOrNull} from "../common/geometry.js";
 
 /**
  * @typedef {Object} TunnelPlacement
@@ -49,7 +49,7 @@ export class UndergroundBeltTool extends AbstractTool {
         const placement = this._resolvePlacement(tileX, tileY, this._rotation.direction);
         const blocked = this._isTileBlocked(tileX, tileY, placement);
         // An overwritable same-axis belt is deleted before the mouth lands.
-        const overwrite = !blocked && this._findSurfaceBeltAt(tileX, tileY) !== null;
+        const overwrite = !blocked && this._getSurfaceBeltAtOrNull(tileX, tileY) !== null;
         this._placementFeedbackLayer.showTile({tileX, tileY, blocked, overwrite});
         if (blocked || placement.parentId === null) {
             this._ghostLayer.showGhost(tileX, tileY, placement.direction, placement.type, BeltBend.STRAIGHT, blocked);
@@ -91,7 +91,7 @@ export class UndergroundBeltTool extends AbstractTool {
      * @private
      * @returns {{id: number, type: BeltType, direction: Direction, straight: boolean}|null}
      */
-    _findSurfaceBeltAt(tileX, tileY) {
+    _getSurfaceBeltAtOrNull(tileX, tileY) {
         const surface = surfaceBeltAt(this._cache, tileX, tileY);
         if (surface === null) {
             return null;
@@ -144,11 +144,11 @@ export class UndergroundBeltTool extends AbstractTool {
             return true;
         }
         // A non-belt surface object blocks outright.
-        const occupant = this._cache.findObjectAt(tileX, tileY, LAYER_SURFACE);
+        const occupant = this._cache.getObjectAtOrNull(tileX, tileY, LAYER_SURFACE);
         if (occupant !== null && !isBeltType(occupant.data.type)) {
             return true;
         }
-        const belt = this._findSurfaceBeltAt(tileX, tileY);
+        const belt = this._getSurfaceBeltAtOrNull(tileX, tileY);
         return belt !== null && !this._isBeltOverwritable(belt, placement.direction);
     }
 
@@ -166,7 +166,7 @@ export class UndergroundBeltTool extends AbstractTool {
             return;
         }
 
-        const existing = this._findSurfaceBeltAt(tileX, tileY);
+        const existing = this._getSurfaceBeltAtOrNull(tileX, tileY);
         if (existing !== null) {
             if (!this._isBeltOverwritable(existing, placement.direction)) {
                 return;
@@ -204,12 +204,12 @@ export class UndergroundBeltTool extends AbstractTool {
      * @returns {TunnelPlacement}
      */
     _resolvePlacement(tileX, tileY, direction) {
-        const downstreamExit = this._findTunnelParent(tileX, tileY, direction, BELT_TUNNEL_DOWN);
+        const downstreamExit = this._getTunnelParentOrNull(tileX, tileY, direction, BELT_TUNNEL_DOWN);
         if (downstreamExit !== null) {
             return {type: BELT_TUNNEL_DOWN, parentId: downstreamExit, direction};
         }
         const inverted = Direction.invert(direction);
-        const upstreamEntrance = this._findTunnelParent(tileX, tileY, inverted, BELT_TUNNEL_UP);
+        const upstreamEntrance = this._getTunnelParentOrNull(tileX, tileY, inverted, BELT_TUNNEL_UP);
         if (upstreamEntrance !== null) {
             return {type: BELT_TUNNEL_UP, parentId: upstreamEntrance, direction: inverted};
         }
@@ -221,8 +221,8 @@ export class UndergroundBeltTool extends AbstractTool {
      * @private
      * @returns {number|null} the paired mouth's id
      */
-    _findTunnelParent(tileX, tileY, direction, type) {
-        const belt = findTunnelPartner(tileX, tileY, direction, type, (x, y) => this._getBeltCandidatesAt(x, y));
+    _getTunnelParentOrNull(tileX, tileY, direction, type) {
+        const belt = getTunnelPartnerOrNull(tileX, tileY, direction, type, (x, y) => this._getBeltCandidatesAt(x, y));
         if (belt === null) {
             return null;
         }

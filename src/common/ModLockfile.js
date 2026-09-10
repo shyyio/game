@@ -114,7 +114,7 @@ export class ModLockfile {
      * @param {string} name
      * @returns {ModLockEntry|null}
      */
-    findEntryByName(name) {
+    getEntryByNameOrNull(name) {
         const found = this.mods.find(entry => entry.name === name);
         if (found === undefined) {
             return null;
@@ -131,7 +131,7 @@ export class ModLockfile {
      */
     withUpdated(built) {
         const mods = this.mods.map(entry => {
-            const replacement = built.findEntryByName(entry.name);
+            const replacement = built.getEntryByNameOrNull(entry.name);
             if (replacement === null) {
                 return entry;
             }

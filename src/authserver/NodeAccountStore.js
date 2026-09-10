@@ -23,25 +23,33 @@ export class NodeAccountStore {
                 createdAt INTEGER NOT NULL
             )
         `);
-        this._findByUsername = this.db.prepare("SELECT accountId, username, createdAt FROM \"Account\" WHERE username = ?");
-        this._findById = this.db.prepare("SELECT accountId, username, createdAt FROM \"Account\" WHERE accountId = ?");
+        this._selectAccountByUsername = this.db.prepare("SELECT accountId, username, createdAt FROM \"Account\" WHERE username = ?");
+        this._selectAccountById = this.db.prepare("SELECT accountId, username, createdAt FROM \"Account\" WHERE accountId = ?");
         this._insert = this.db.prepare("INSERT INTO \"Account\" (username, createdAt) VALUES (?, ?)");
     }
 
     /**
      * @param {string} username
-     * @returns {{accountId: number, username: string, createdAt: number}|undefined}
+     * @returns {{accountId: number, username: string, createdAt: number}|null}
      */
-    findByUsername(username) {
-        return this._findByUsername.get(username);
+    getAccountByUsernameOrNull(username) {
+        const found = this._selectAccountByUsername.get(username);
+        if (found === undefined) {
+            return null;
+        }
+        return found;
     }
 
     /**
      * @param {number} accountId
-     * @returns {{accountId: number, username: string, createdAt: number}|undefined}
+     * @returns {{accountId: number, username: string, createdAt: number}|null}
      */
-    findById(accountId) {
-        return this._findById.get(accountId);
+    getAccountByIdOrNull(accountId) {
+        const found = this._selectAccountById.get(accountId);
+        if (found === undefined) {
+            return null;
+        }
+        return found;
     }
 
     /**

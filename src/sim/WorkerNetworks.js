@@ -56,10 +56,10 @@ export class WorkerNetworks extends AbstractSystem {
      * @param {number} objectRef
      * @returns {WorkerStats|null}
      */
-    findWorkerStatsByObjectRef(objectRef) {
+    getWorkerStatsByObjectRefOrNull(objectRef) {
         this.rebuildDirtyAllocation();
-        const assignment = this.assignments.findAssignmentByObjectRef(objectRef);
-        if (assignment === undefined) {
+        const assignment = this.assignments.getAssignmentByObjectRefOrNull(objectRef);
+        if (assignment === null) {
             return null;
         }
         return {granted: assignment.granted, supply: assignment.supply, demand: assignment.demand};
@@ -130,8 +130,8 @@ export class WorkerNetworks extends AbstractSystem {
      * @returns {void}
      */
     _setGranted(objectRef, granted) {
-        const eid = this.placed.findEidByObjectRef(objectRef);
-        if (eid === undefined) {
+        const eid = this.placed.getEidByObjectRefOrNull(objectRef);
+        if (eid === null) {
             return;
         }
         const behavior = this.placed.getBehaviorByTypeId(this.placed.getObjectTypeIdByEid(eid));
@@ -181,14 +181,14 @@ export class WorkerNetworks extends AbstractSystem {
      */
     chunkSync(chunkKey) {
         this.rebuildDirtyAllocation();
-        const objectRefs = this.assignments.findObjectRefsByChunkKey(chunkKey);
-        if (objectRefs === undefined) {
+        const objectRefs = this.assignments.getObjectRefsByChunkKey(chunkKey);
+        if (objectRefs.size === 0) {
             return [];
         }
         const origin = chunkOrigin(chunkKey);
         const batch = new WorkerAssignmentBatchEvent(origin.x, origin.y);
         for (const objectRef of objectRefs) {
-            const assignment = this.assignments.findAssignmentByObjectRef(objectRef);
+            const assignment = this.assignments.getAssignmentByObjectRefOrNull(objectRef);
             const housingId = assignment.housingObjectRef === null ? NO_HOUSING : assignment.housingObjectRef;
             batch.add(objectRef, housingId, assignment.granted, assignment.x, assignment.y);
         }

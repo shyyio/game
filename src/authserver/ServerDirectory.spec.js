@@ -16,35 +16,35 @@ function freshPath() {
 }
 
 test("a missing file lists nothing", () => {
-    assert.deepEqual(new ServerDirectory(freshPath()).findQuotesByItemTypeId(), []);
+    assert.deepEqual(new ServerDirectory(freshPath()).getServers(), []);
 });
 
 test("edits to the file are picked up without a restart", () => {
     const path = freshPath();
     writeFileSync(path, JSON.stringify([ENTRY_A]));
     const directory = new ServerDirectory(path);
-    assert.deepEqual(directory.findQuotesByItemTypeId(), [ENTRY_A]);
+    assert.deepEqual(directory.getServers(), [ENTRY_A]);
     writeFileSync(path, JSON.stringify([ENTRY_B]));
-    assert.deepEqual(directory.findQuotesByItemTypeId(), [ENTRY_B]);
+    assert.deepEqual(directory.getServers(), [ENTRY_B]);
 });
 
 test("a malformed file keeps serving the last good list", () => {
     const path = freshPath();
     writeFileSync(path, JSON.stringify([ENTRY_A]));
     const directory = new ServerDirectory(path);
-    directory.findQuotesByItemTypeId();
+    directory.getServers();
     writeFileSync(path, "{ not json");
-    assert.deepEqual(directory.findQuotesByItemTypeId(), [ENTRY_A]);
+    assert.deepEqual(directory.getServers(), [ENTRY_A]);
 });
 
 test("a malformed file with no last good list lists nothing", () => {
     const path = freshPath();
     writeFileSync(path, "{ not json");
-    assert.deepEqual(new ServerDirectory(path).findQuotesByItemTypeId(), []);
+    assert.deepEqual(new ServerDirectory(path).getServers(), []);
 });
 
 test("a file holding something other than an array lists nothing", () => {
     const path = freshPath();
     writeFileSync(path, JSON.stringify(ENTRY_A));
-    assert.deepEqual(new ServerDirectory(path).findQuotesByItemTypeId(), []);
+    assert.deepEqual(new ServerDirectory(path).getServers(), []);
 });

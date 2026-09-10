@@ -127,7 +127,7 @@ export class ProductionLog {
             return;
         }
         for (const row of table.rows) {
-            if (items.findItemTypeByTypeId(row.itemTypeId) === undefined) {
+            if (items.getItemTypeByTypeIdOrNull(row.itemTypeId) === null) {
                 continue;
             }
             this.add(row.playerRef, row.itemTypeId, row.count);

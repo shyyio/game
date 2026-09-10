@@ -45,10 +45,14 @@ export class ItemRegistry {
      * The ItemType for an item type id, or undefined; for wire-fed ids a stale loadout may not
      * declare (render/label fallback).
      * @param {number} itemTypeId
-     * @returns {ItemType|undefined}
+     * @returns {ItemType|null}
      */
-    findItemTypeByTypeId(itemTypeId) {
-        return this._byType.get(itemTypeId);
+    getItemTypeByTypeIdOrNull(itemTypeId) {
+        const found = this._byType.get(itemTypeId);
+        if (found === undefined) {
+            return null;
+        }
+        return found;
     }
 
     /**

@@ -112,7 +112,7 @@ export class LogisticsClientMod extends AbstractClientMod {
      */
     canPlace(type, tileX, tileY, direction, client) {
         return !isPlacementBlockedByGate(
-            this._findOccupantAt(client),
+            this._createOccupantLookup(client),
             occupant => isGateType(occupant.type),
             type, tileX, tileY, direction,
         );
@@ -124,8 +124,8 @@ export class LogisticsClientMod extends AbstractClientMod {
      * @param {Client} client
      * @returns {function(number, number): (Occupant|null)}
      */
-    _findOccupantAt(client) {
-        return (x, y) => findOccupantAt(client, x, y);
+    _createOccupantLookup(client) {
+        return (x, y) => getOccupantAtOrNull(client, x, y);
     }
 
     /**
@@ -136,7 +136,7 @@ export class LogisticsClientMod extends AbstractClientMod {
      * @returns {void}
      */
     _predictGateMode(client, entry) {
-        const kinds = gateConnections(this._findOccupantAt(client), entry.tileX, entry.tileY, entry.data.direction);
+        const kinds = gateConnections(this._createOccupantLookup(client), entry.tileX, entry.tileY, entry.data.direction);
         const hasItem = kinds.behind === CONVEYS_ITEM || kinds.front === CONVEYS_ITEM;
         const hasFluid = kinds.behind === CONVEYS_FLUID || kinds.front === CONVEYS_FLUID;
         if (hasFluid && !hasItem) {
@@ -159,7 +159,7 @@ export class LogisticsClientMod extends AbstractClientMod {
                 continue;
             }
             for (let direction = 0; direction < 4; direction += 1) {
-                const neighbor = client.objects.findObjectAt(
+                const neighbor = client.objects.getObjectAtOrNull(
                     cell.x + Direction.dx(direction),
                     cell.y + Direction.dy(direction),
                     LAYER_SURFACE,
@@ -294,8 +294,8 @@ export class LogisticsClientMod extends AbstractClientMod {
  * @param {number} y
  * @returns {Occupant|null}
  */
-function findOccupantAt(client, x, y) {
-    const entry = client.objects.findObjectAt(x, y, LAYER_SURFACE);
+function getOccupantAtOrNull(client, x, y) {
+    const entry = client.objects.getObjectAtOrNull(x, y, LAYER_SURFACE);
     if (entry === null) {
         return null;
     }

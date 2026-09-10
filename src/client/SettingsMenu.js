@@ -49,8 +49,8 @@ export class SettingsMenu {
             if (!(control instanceof AbstractPlayerSettingControl)) {
                 continue;
             }
-            const entry = this._client.modRegistry.findPlayerSettingEntryByKey(control.key);
-            if (entry === undefined) {
+            const entry = this._client.modRegistry.getPlayerSettingEntryByKeyOrNull(control.key);
+            if (entry === null) {
                 throw new Error(`Settings control "${control.label}" targets unregistered player setting key ${control.key}`);
             }
             if (!entry.clientWritable) {

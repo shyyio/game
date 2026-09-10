@@ -113,7 +113,7 @@ export class PortItemSync {
      * @param {number} eid
      * @returns {Point|null}
      */
-    findPortTileByEid(eid) {
+    getPortTileByEidOrNull(eid) {
         if (this._rendered[eid] === 0) {
             return null;
         }

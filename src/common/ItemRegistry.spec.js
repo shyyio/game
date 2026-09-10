@@ -11,9 +11,9 @@ test("getItemTypeByTypeId returns a registered definition and throws on an unkno
     assert.throws(() => registry.getItemTypeByTypeId(311), /Unknown item type 311/);
 });
 
-test("findItemTypeByTypeId tolerates an unknown type", () => {
+test("getItemTypeByTypeIdOrNull is null for an unknown type", () => {
     const registry = new ItemRegistry();
-    assert.equal(registry.findItemTypeByTypeId(310), undefined);
+    assert.equal(registry.getItemTypeByTypeIdOrNull(310), null);
 });
 
 test("a duplicate item type throws", () => {

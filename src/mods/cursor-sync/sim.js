@@ -126,10 +126,7 @@ export class CursorSyncSimMod extends AbstractSimMod {
             }
             state.chunkKey = chunkKey;
         }
-        const viewers = game.bus.findSubscribersByChunkKey(chunkKey);
-        if (viewers === undefined) {
-            return;
-        }
+        const viewers = game.bus.getSubscribersByChunkKey(chunkKey);
         // Copied: a viewer's own dispatch may resubscribe while we fan out.
         for (const viewerSessionRef of Array.from(viewers)) {
             // The owning session never gets its own cursor echoed back.
@@ -209,15 +206,12 @@ export class CursorSyncSimMod extends AbstractSimMod {
      * @private
      */
     _publishPlayerCursorHide(playerRef, fromChunk, toChunk, ownerSessionRef, game) {
-        const losing = game.bus.findSubscribersByChunkKey(fromChunk);
-        if (losing === undefined) {
-            return;
-        }
+        const losing = game.bus.getSubscribersByChunkKey(fromChunk);
         let keeping;
         if (toChunk === null) {
-            keeping = undefined;
+            keeping = null;
         } else {
-            keeping = game.bus.findSubscribersByChunkKey(toChunk);
+            keeping = game.bus.getSubscribersByChunkKey(toChunk);
         }
         // One shared instance: delivery only encodes, and publishTo never resubscribes.
         const event = new PlayerCursorHideEvent(playerRef);
@@ -225,7 +219,7 @@ export class CursorSyncSimMod extends AbstractSimMod {
             if (sessionRef === ownerSessionRef) {
                 continue;
             }
-            if (keeping !== undefined && keeping.has(sessionRef)) {
+            if (keeping !== null && keeping.has(sessionRef)) {
                 continue;
             }
             game.bus.publishTo(sessionRef, event);

@@ -80,7 +80,7 @@ export class Symbolicator {
         if (cached !== undefined) {
             return cached;
         }
-        const mapPath = this._findMapFile(buildDir, filename);
+        const mapPath = this._getMapFileOrNull(buildDir, filename);
         if (mapPath === null) {
             this._consumersByKey.set(key, null);
             return null;
@@ -96,7 +96,7 @@ export class Symbolicator {
      * @param {string} filename
      * @returns {string|null}
      */
-    _findMapFile(buildDir, filename) {
+    _getMapFileOrNull(buildDir, filename) {
         const direct = path.join(buildDir, `${filename}.map`);
         if (existsSync(direct)) {
             return direct;

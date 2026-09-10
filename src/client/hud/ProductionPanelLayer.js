@@ -252,8 +252,8 @@ export class ProductionPanelLayer extends Container {
      * @returns {string}
      */
     _itemName(itemTypeId) {
-        const definition = this._items.findItemTypeByTypeId(itemTypeId);
-        if (definition === undefined) {
+        const definition = this._items.getItemTypeByTypeIdOrNull(itemTypeId);
+        if (definition === null) {
             return `Item ${itemTypeId}`;
         }
         return definition.name;

@@ -460,11 +460,15 @@ export class ModRegistry {
      * The player-setting entry for a key, or undefined for an unregistered key (a client write
      * to one is dropped).
      * @param {number} key
-     * @returns {PlayerSettingEntry|undefined}
+     * @returns {PlayerSettingEntry|null}
      */
-    findPlayerSettingEntryByKey(key) {
+    getPlayerSettingEntryByKeyOrNull(key) {
         this._assertFrozen();
-        return this._playerSettingEntries.get(key);
+        const found = this._playerSettingEntries.get(key);
+        if (found === undefined) {
+            return null;
+        }
+        return found;
     }
 
     /**
@@ -542,10 +546,14 @@ export class ModRegistry {
      * The GLOBAL-query declaration for a metrics type, or undefined for a private type (a GLOBAL
      * query for one fails validation).
      * @param {number} metricsType
-     * @returns {MetricsGlobalQueryEntry|undefined}
+     * @returns {MetricsGlobalQueryEntry|null}
      */
-    findMetricsGlobalQueryByType(metricsType) {
+    getMetricsGlobalQueryByTypeOrNull(metricsType) {
         this._assertFrozen();
-        return this._metricsGlobalQueries.get(metricsType);
+        const found = this._metricsGlobalQueries.get(metricsType);
+        if (found === undefined) {
+            return null;
+        }
+        return found;
     }
 }

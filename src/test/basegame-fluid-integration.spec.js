@@ -45,7 +45,7 @@ test("a Blender pumps Nutrient Slop into an adjacent pipe network", async () => 
         engine.ports.setItem(def.store.inputPort0[row], ITEM_TYPE_CABBAGE);
     }
 
-    const net = pipes.findNetworkAt(5, 4);
+    const net = pipes.getNetworkAtOrNull(5, 4);
     assert.equal(net.fluidType, ITEM_TYPE_NUTRIENT_SLOP, "the network adopted the Blender's fluid output");
     assert.ok(net.amount > 0, "some Nutrient Slop actually flowed in");
 });
@@ -56,7 +56,7 @@ test("an Air Filter types its pipe network before any payload arrives", async ()
     engine.applyMessage(new CreateObjectMessage(PipeType.objectTypeId, 5, 4, Direction.UP));
     const pipes = pipesOf(engine);
 
-    const net = pipes.findNetworkAt(5, 4);
+    const net = pipes.getNetworkAtOrNull(5, 4);
     assert.equal(net.fluidType, ITEM_TYPE_OXYGEN, "typed before any payload, from the Generator's declared source");
 });
 

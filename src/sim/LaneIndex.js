@@ -1266,7 +1266,7 @@ export class LaneIndex extends AbstractSystem {
         for (const cellSlots of itemSlotsByCellEid.values()) {
             for (let slot = 0; slot < cellSlots.length; slot += 1) {
                 const eid = cellSlots[slot];
-                if (eid !== NO_EID && items.findItemTypeByTypeId(this.items.store.itemTypeId[this.items.getRowByEid(eid)]) === undefined) {
+                if (eid !== NO_EID && items.getItemTypeByTypeIdOrNull(this.items.store.itemTypeId[this.items.getRowByEid(eid)]) === null) {
                     cellSlots[slot] = NO_EID;
                     this.items.destroy(eid);
                 }

@@ -175,10 +175,14 @@ export class RoadNetwork {
 
     /**
      * @param {number} key - a tileKey
-     * @returns {RoadTile|undefined}
+     * @returns {RoadTile|null}
      */
-    findTileByKey(key) {
-        return this._tiles.get(key);
+    getTileByKeyOrNull(key) {
+        const tile = this._tiles.get(key);
+        if (tile === undefined) {
+            return null;
+        }
+        return tile;
     }
 
     /**
@@ -225,7 +229,7 @@ export class RoadNetwork {
                 }
                 return;
             }
-            const housing = this.findHousingAt(x, y);
+            const housing = this.getHousingAtOrNull(x, y);
             if (housing !== null && !seenHousings.has(housing.objectRef)) {
                 seenHousings.add(housing.objectRef);
                 housingQueue.push(housing);
@@ -252,13 +256,13 @@ export class RoadNetwork {
      * @param {number} y
      * @returns {HousingSupply|null}
      */
-    findHousingAt(x, y) {
+    getHousingAtOrNull(x, y) {
         const owner = this.engine.space.getOwnerAt(x, y, LAYER_SURFACE);
         if (owner === null) {
             return null;
         }
-        const eid = this.placed.findEidByObjectRef(owner);
-        if (eid === undefined) {
+        const eid = this.placed.getEidByObjectRefOrNull(owner);
+        if (eid === null) {
             return null;
         }
         const behavior = this.placed.getBehaviorByTypeId(this.placed.getObjectTypeIdByEid(eid));
@@ -301,7 +305,7 @@ export class RoadNetwork {
                 roadTiles: this._tiles,
                 seen,
                 housingAt: (x, y) => {
-                    const housing = this.findHousingAt(x, y);
+                    const housing = this.getHousingAtOrNull(x, y);
                     if (housing === null || seenHousings.has(housing.objectRef)) {
                         return null;
                     }

@@ -88,8 +88,8 @@ export class MarketSimMod extends AbstractSimMod {
      */
     _configure(message, game) {
         const engine = game.simEngine;
-        const eid = engine.placed.findEidByObjectRef(message.objectRef);
-        if (eid === undefined || engine.placed.getObjectTypeIdByEid(eid) !== TradingTerminalType.objectTypeId) {
+        const eid = engine.placed.getEidByObjectRefOrNull(message.objectRef);
+        if (eid === null || engine.placed.getObjectTypeIdByEid(eid) !== TradingTerminalType.objectTypeId) {
             return;
         }
         if (message.mode !== MARKET_MODE_SELL && message.mode !== MARKET_MODE_BUY) {
@@ -108,7 +108,7 @@ export class MarketSimMod extends AbstractSimMod {
         terminal.mode[row] = message.mode;
         terminal.itemTypeId[row] = message.itemTypeId;
         if (isFixed) {
-            terminal.price[row] = book.findFixedPriceByItemTypeId(message.itemTypeId);
+            terminal.price[row] = book.getFixedPriceByItemTypeIdOrNull(message.itemTypeId);
             return;
         }
         terminal.price[row] = message.price;
@@ -139,25 +139,25 @@ export class MarketSimMod extends AbstractSimMod {
         for (const listing of engine.modRegistry.marketListings) {
             const itemTypeId = listing.itemTypeId;
             itemTypeIds.push(itemTypeId);
-            const npcPrice = book.findFixedPriceByItemTypeId(itemTypeId);
-            const npcSnapshot = npcPrice === undefined ? MARKET_SNAPSHOT_NONE : npcPrice;
+            const npcPrice = book.getFixedPriceByItemTypeIdOrNull(itemTypeId);
+            const npcSnapshot = npcPrice === null ? MARKET_SNAPSHOT_NONE : npcPrice;
             npcPrices.push(npcSnapshot);
-            const bestBid = book.findBestBidByItemTypeId(itemTypeId);
-            const bestBidSnapshot = bestBid === undefined ? MARKET_SNAPSHOT_NONE : bestBid;
+            const bestBid = book.getBestBidByItemTypeIdOrNull(itemTypeId);
+            const bestBidSnapshot = bestBid === null ? MARKET_SNAPSHOT_NONE : bestBid;
             bestBidPrices.push(bestBidSnapshot);
-            const bestAsk = book.findBestAskByItemTypeId(itemTypeId);
-            const bestAskSnapshot = bestAsk === undefined ? MARKET_SNAPSHOT_NONE : bestAsk;
+            const bestAsk = book.getBestAskByItemTypeIdOrNull(itemTypeId);
+            const bestAskSnapshot = bestAsk === null ? MARKET_SNAPSHOT_NONE : bestAsk;
             bestAskPrices.push(bestAskSnapshot);
-            const guidePrice = book.findGuidePriceByItemTypeId(itemTypeId);
-            const guideSnapshot = guidePrice === undefined ? MARKET_SNAPSHOT_NONE : guidePrice;
+            const guidePrice = book.getGuidePriceByItemTypeIdOrNull(itemTypeId);
+            const guideSnapshot = guidePrice === null ? MARKET_SNAPSHOT_NONE : guidePrice;
             guidePrices.push(guideSnapshot);
         }
 
         let currentMode = MARKET_MODE_NONE;
         let currentItemTypeId = MARKET_SNAPSHOT_NONE;
         let currentPrice = MARKET_SNAPSHOT_NONE;
-        const eid = engine.placed.findEidByObjectRef(message.objectRef);
-        if (eid !== undefined && engine.placed.getObjectTypeIdByEid(eid) === TradingTerminalType.objectTypeId) {
+        const eid = engine.placed.getEidByObjectRefOrNull(message.objectRef);
+        if (eid !== null && engine.placed.getObjectTypeIdByEid(eid) === TradingTerminalType.objectTypeId) {
             const terminals = engine.components.getComponentByName("MarketTerminal");
             const terminal = terminals.store;
             const row = terminals.getRowByEid(eid);

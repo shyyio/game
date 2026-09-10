@@ -26,7 +26,7 @@ export class NotesStore extends AbstractSystem {
      * @param {number} tileY
      * @returns {Note|null}
      */
-    findNoteAt(tileX, tileY) {
+    getNoteAtOrNull(tileX, tileY) {
         const note = this._byTile.get(tileKeyAt(tileX, tileY));
         if (note === undefined) {
             return null;

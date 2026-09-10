@@ -104,8 +104,8 @@ export class LogisticsSimMod extends AbstractSimMod {
      */
     _dispatchSetGateOpen(message, session, game) {
         const engine = game.simEngine;
-        const eid = engine.placed.findEidByObjectRef(message.objectRef);
-        if (eid === undefined) {
+        const eid = engine.placed.getEidByObjectRefOrNull(message.objectRef);
+        if (eid === null) {
             return;
         }
         const objectTypeId = engine.placed.getObjectTypeIdByEid(eid);
@@ -135,9 +135,9 @@ export class LogisticsSimMod extends AbstractSimMod {
      */
     _resolveWireEndpoints(message, session, game) {
         const engine = game.simEngine;
-        const aEid = engine.placed.findEidByObjectRef(message.aObjectRef);
-        const bEid = engine.placed.findEidByObjectRef(message.bObjectRef);
-        if (aEid === undefined || bEid === undefined || aEid === bEid) {
+        const aEid = engine.placed.getEidByObjectRefOrNull(message.aObjectRef);
+        const bEid = engine.placed.getEidByObjectRefOrNull(message.bObjectRef);
+        if (aEid === null || bEid === null || aEid === bEid) {
             return null;
         }
         const wireable = eid => {
@@ -191,8 +191,8 @@ export class LogisticsSimMod extends AbstractSimMod {
     _isWireBreakingTerminalRule(engine, networks, endpoints) {
         const aObjectRef = engine.placed.getObjectRefByEid(endpoints.aEid);
         const bObjectRef = engine.placed.getObjectRefByEid(endpoints.bEid);
-        const aNetwork = networks.findNetworkByObjectRef(aObjectRef);
-        const bNetwork = networks.findNetworkByObjectRef(bObjectRef);
+        const aNetwork = networks.getNetworkByObjectRefOrNull(aObjectRef);
+        const bNetwork = networks.getNetworkByObjectRefOrNull(bObjectRef);
         if (aNetwork !== null && bNetwork !== null && aNetwork.id === bNetwork.id) {
             return false;
         }
@@ -223,8 +223,8 @@ export class LogisticsSimMod extends AbstractSimMod {
      * @private
      */
     _isTerminalObject(engine, objectRef) {
-        const eid = engine.placed.findEidByObjectRef(objectRef);
-        if (eid === undefined) {
+        const eid = engine.placed.getEidByObjectRefOrNull(objectRef);
+        if (eid === null) {
             return false;
         }
         const type = engine.placed.getObjectTypeByTypeId(engine.placed.getObjectTypeIdByEid(eid));
@@ -276,8 +276,8 @@ export class LogisticsSimMod extends AbstractSimMod {
      */
     _configureRules(message, session, game) {
         const engine = game.simEngine;
-        const eid = engine.placed.findEidByObjectRef(message.objectRef);
-        if (eid === undefined) {
+        const eid = engine.placed.getEidByObjectRefOrNull(message.objectRef);
+        if (eid === null) {
             return;
         }
         const type = engine.placed.getObjectTypeByTypeId(engine.placed.getObjectTypeIdByEid(eid));
@@ -350,8 +350,8 @@ export class LogisticsSimMod extends AbstractSimMod {
      */
     _publishLogicSnapshot(message, session, game) {
         const engine = game.simEngine;
-        const eid = engine.placed.findEidByObjectRef(message.objectRef);
-        if (eid === undefined) {
+        const eid = engine.placed.getEidByObjectRefOrNull(message.objectRef);
+        if (eid === null) {
             return;
         }
         const type = engine.placed.getObjectTypeByTypeId(engine.placed.getObjectTypeIdByEid(eid));
@@ -366,7 +366,7 @@ export class LogisticsSimMod extends AbstractSimMod {
         const deviceTileXs = [];
         const deviceTileYs = [];
         let linked = 0;
-        const network = networks.findNetworkByObjectRef(message.objectRef);
+        const network = networks.getNetworkByObjectRefOrNull(message.objectRef);
         if (network !== null) {
             linked = 1;
             const position = engine.Position;
@@ -374,8 +374,8 @@ export class LogisticsSimMod extends AbstractSimMod {
                 if (deviceId === message.objectRef) {
                     continue;
                 }
-                const deviceEid = engine.placed.findEidByObjectRef(deviceId);
-                if (deviceEid === undefined) {
+                const deviceEid = engine.placed.getEidByObjectRefOrNull(deviceId);
+                if (deviceEid === null) {
                     continue;
                 }
                 deviceObjectRefs.push(deviceId);

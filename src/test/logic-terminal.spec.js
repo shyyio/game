@@ -145,7 +145,7 @@ test("a terminal wired straight to a gate forms a working pole-less network", as
 
     game.dispatchMessage(new WireLinkMessage(terminal, gate), player);
     assert.equal(networks.hasWire(terminal, gate), true);
-    assert.deepEqual(networks.findNetworkByObjectRef(terminal).poleIds, []);
+    assert.deepEqual(networks.getNetworkByObjectRefOrNull(terminal).poleIds, []);
 
     game.dispatchMessage(new LogicSnapshotRequestMessage(terminal), player);
     const snapshot = player.events.find(event => event instanceof LogicSnapshotEvent);

@@ -311,8 +311,8 @@ export class GameMetrics {
         if (scope !== METRICS_QUERY_SCOPE_GLOBAL) {
             return rows;
         }
-        const entry = this._modRegistry.findMetricsGlobalQueryByType(metricsType);
-        if (entry === undefined || entry.rowFilter === null) {
+        const entry = this._modRegistry.getMetricsGlobalQueryByTypeOrNull(metricsType);
+        if (entry === null || entry.rowFilter === null) {
             return rows;
         }
         return rows.filter(entry.rowFilter);

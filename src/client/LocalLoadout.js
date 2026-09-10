@@ -249,7 +249,7 @@ export class LocalLoadout {
      * @param {string} name
      * @returns {LocalMod|null}
      */
-    findEntryByName(name) {
+    getEntryByNameOrNull(name) {
         const found = this.mods.find(mod => mod.name === name);
         if (found === undefined) {
             return null;
@@ -388,7 +388,7 @@ export function buildLatestLoadout(loadout, listings) {
 export function serverLockfile(loadout, current=new ModLockfile([])) {
     const resolved = new Map();
     for (const mod of loadout.mods) {
-        const already = current.findEntryByName(mod.name);
+        const already = current.getEntryByNameOrNull(mod.name);
         if (already !== null && already.version === mod.version) {
             resolved.set(mod.name, already.toJSON());
             continue;

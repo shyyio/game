@@ -43,7 +43,7 @@ export class WireTool extends AbstractTool {
     }
 
     onTap(tileX, tileY) {
-        const entry = this._cache.findObjectAt(tileX, tileY, LAYER_SURFACE);
+        const entry = this._cache.getObjectAtOrNull(tileX, tileY, LAYER_SURFACE);
         if (entry === null || !WireTool._isEntryWireable(entry)) {
             if (!Mobile.enabled) {
                 this._select(null);
@@ -87,7 +87,7 @@ export class WireTool extends AbstractTool {
 
     onTileEnter(tileX, tileY) {
         this._showPreview(tileX, tileY);
-        const entry = this._cache.findObjectAt(tileX, tileY, LAYER_SURFACE);
+        const entry = this._cache.getObjectAtOrNull(tileX, tileY, LAYER_SURFACE);
         const tile = [{x: tileX, y: tileY}];
         if (entry === null) {
             this._placementFeedbackLayer.show({blocked: [], overwrite: [], clear: [], showTarget: true});
@@ -174,7 +174,7 @@ export class WireTool extends AbstractTool {
             this._select(null);
             return;
         }
-        const entry = this._cache.findObjectAt(tileX, tileY, LAYER_SURFACE);
+        const entry = this._cache.getObjectAtOrNull(tileX, tileY, LAYER_SURFACE);
         let snap = null;
         if (entry !== null && entry.id !== selected.id && WireTool._isEntryWireable(entry)) {
             snap = entry;

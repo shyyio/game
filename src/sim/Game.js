@@ -359,8 +359,8 @@ export class Game {
      * @private
      */
     _dispatchSetPlayerSetting(session, key, value) {
-        const entry = this.modRegistry.findPlayerSettingEntryByKey(key);
-        if (entry === undefined || !entry.clientWritable) {
+        const entry = this.modRegistry.getPlayerSettingEntryByKeyOrNull(key);
+        if (entry === null || !entry.clientWritable) {
             return;
         }
         if (value < 0 || value >= entry.optionCount) {

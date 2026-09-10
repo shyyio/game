@@ -70,7 +70,7 @@ export class LogicTerminalBehavior extends AbstractBehavior {
             if (rules.length === 0) {
                 continue;
             }
-            const network = networks.findNetworkByObjectRef(placed.getObjectRefByEid(eid));
+            const network = networks.getNetworkByObjectRefOrNull(placed.getObjectRefByEid(eid));
             const claimed = new Set();
             for (const rule of rules) {
                 LogicTerminalBehavior._evaluateRule(engine, network, rule, claimed);
@@ -141,8 +141,8 @@ export class LogicTerminalBehavior extends AbstractBehavior {
                 if (condition.deviceId !== 0 && deviceId !== condition.deviceId) {
                     continue;
                 }
-                const eid = placed.findEidByObjectRef(deviceId);
-                if (eid === undefined) {
+                const eid = placed.getEidByObjectRefOrNull(deviceId);
+                if (eid === null) {
                     continue;
                 }
                 const stored = placed.getBehaviorByTypeId(placed.getObjectTypeIdByEid(eid)).logicStored(engine, eid);
@@ -171,8 +171,8 @@ export class LogicTerminalBehavior extends AbstractBehavior {
         if (!network.deviceIds.includes(deviceObjectRef)) {
             return null;
         }
-        const eid = engine.placed.findEidByObjectRef(deviceObjectRef);
-        if (eid === undefined) {
+        const eid = engine.placed.getEidByObjectRefOrNull(deviceObjectRef);
+        if (eid === null) {
             return null;
         }
         return eid;

@@ -33,7 +33,7 @@ function tankState(engine) {
 test("pipe networks and fluid state round-trip through the engine serializer", async () => {
     const engine = await populated();
     const pipes = pipesOf(engine);
-    const netBefore = pipes.findNetworkAt(0, 2);
+    const netBefore = pipes.getNetworkAtOrNull(0, 2);
     const tankBefore = tankState(engine);
     const snapshot = JSON.parse(JSON.stringify(engine.snapshots.serialize()));
 
@@ -41,20 +41,20 @@ test("pipe networks and fluid state round-trip through the engine serializer", a
     restored.snapshots.deserialize(snapshot);
     const restoredPipes = pipesOf(restored);
 
-    const net = restoredPipes.findNetworkAt(0, 2);
+    const net = restoredPipes.getNetworkAtOrNull(0, 2);
     assert.equal(net.id, netBefore.id, "the network id (first member) is stable");
     assert.equal(net.size, netBefore.size);
     assert.equal(net.amount, netBefore.amount, "buffered fluid restored");
     assert.equal(net.fluidType, netBefore.fluidType);
     assert.deepEqual(tankState(restored), tankBefore, "tank state restored");
-    assert.equal(restoredPipes.findNetworkAt(5, 63).size, 1, "the seam networks stay per-chunk");
-    assert.equal(restoredPipes.findNetworkAt(5, 64).size, 1);
+    assert.equal(restoredPipes.getNetworkAtOrNull(5, 63).size, 1, "the seam networks stay per-chunk");
+    assert.equal(restoredPipes.getNetworkAtOrNull(5, 64).size, 1);
 
     // The restored network keeps draining into the tank.
     for (let i = 0; i < 20; i += 1) {
         restored.tick();
     }
-    assert.equal(restoredPipes.findNetworkAt(0, 2).amount, 0, "restored network still flows");
+    assert.equal(restoredPipes.getNetworkAtOrNull(0, 2).amount, 0, "restored network still flows");
     const outputPort = restored.ports.getPortEidAt(1, -1, Direction.UP);
     assert.equal(tankState(restored).amount + 1, 4, "all units end in the tank plus its output port payload");
     assert.equal(restored.ports.getItemByPortEid(outputPort), FLUID_TYPE_WATER);
@@ -66,14 +66,14 @@ test("deleting a pipe through the generic path relinks the networks", async () =
         engine.applyMessage(new CreateObjectMessage(PipeType.objectTypeId, x, 0, Direction.UP));
     }
     const pipes = pipesOf(engine);
-    assert.equal(pipes.findNetworkAt(0, 0).size, 3);
+    assert.equal(pipes.getNetworkAtOrNull(0, 0).size, 3);
 
     const middleEid = engine.placed.getEidsByTypeId(PipeType.objectTypeId)
         .find(eid => engine.Position.x[eid] === 1 && engine.Position.y[eid] === 0);
     engine.applyMessage(new DeleteObjectMessage(engine.placed.getObjectRefByEid(middleEid)));
 
-    assert.equal(pipes.findNetworkAt(0, 0).size, 1);
-    assert.equal(pipes.findNetworkAt(2, 0).size, 1);
-    assert.equal(pipes.findNetworkAt(1, 0), null);
+    assert.equal(pipes.getNetworkAtOrNull(0, 0).size, 1);
+    assert.equal(pipes.getNetworkAtOrNull(2, 0).size, 1);
+    assert.equal(pipes.getNetworkAtOrNull(1, 0), null);
     assert.equal(pipes.pipeCount, 2);
 });

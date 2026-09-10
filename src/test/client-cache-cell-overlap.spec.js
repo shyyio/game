@@ -15,21 +15,21 @@ function cacheWithWater() {
 test("a later entry on the same cell covers the earlier one", () => {
     const cache = cacheWithWater();
     cache.set(EXTRACTOR_ID, 5, 5, [{x: 5, y: 5, layer: LAYER_SURFACE}]);
-    assert.equal(cache.findObjectAt(5, 5, LAYER_SURFACE).id, EXTRACTOR_ID);
+    assert.equal(cache.getObjectAtOrNull(5, 5, LAYER_SURFACE).id, EXTRACTOR_ID);
 });
 
 test("removing the covering entry uncovers the one beneath", () => {
     const cache = cacheWithWater();
     cache.set(EXTRACTOR_ID, 5, 5, [{x: 5, y: 5, layer: LAYER_SURFACE}]);
     cache.remove(EXTRACTOR_ID);
-    assert.equal(cache.findObjectAt(5, 5, LAYER_SURFACE).id, WATER_ID);
+    assert.equal(cache.getObjectAtOrNull(5, 5, LAYER_SURFACE).id, WATER_ID);
 });
 
 test("removing the buried entry keeps the covering one", () => {
     const cache = cacheWithWater();
     cache.set(EXTRACTOR_ID, 5, 5, [{x: 5, y: 5, layer: LAYER_SURFACE}]);
     cache.remove(WATER_ID);
-    assert.equal(cache.findObjectAt(5, 5, LAYER_SURFACE).id, EXTRACTOR_ID);
+    assert.equal(cache.getObjectAtOrNull(5, 5, LAYER_SURFACE).id, EXTRACTOR_ID);
     cache.remove(EXTRACTOR_ID);
-    assert.equal(cache.findObjectAt(5, 5, LAYER_SURFACE), null);
+    assert.equal(cache.getObjectAtOrNull(5, 5, LAYER_SURFACE), null);
 });

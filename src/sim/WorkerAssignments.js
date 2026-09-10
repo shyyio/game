@@ -1,5 +1,7 @@
 import {getOrCreate, removeFromGroup, chunkKeyAt} from "@/common/util.js";
 
+const EMPTY_OBJECT_REFS = new Set();
+
 /**
  * One road-attached machine's standing worker allocation. `granted` and `housingObjectRef` are the
  * allocation's result, filled in as the component's supply is handed out; `supply`/`demand` are its
@@ -53,19 +55,27 @@ export class WorkerAssignments {
 
     /**
      * @param {number} objectRef
-     * @returns {WorkerAssignment|undefined}
+     * @returns {WorkerAssignment|null}
      */
-    findAssignmentByObjectRef(objectRef) {
-        return this._byObjectRef.get(objectRef);
+    getAssignmentByObjectRefOrNull(objectRef) {
+        const found = this._byObjectRef.get(objectRef);
+        if (found === undefined) {
+            return null;
+        }
+        return found;
     }
 
     /**
      * The chunk's assigned machines, or undefined when it holds none.
      * @param {number} chunkKey
-     * @returns {Set<number>|undefined}
+     * @returns {Set<number>} shared and empty when none; never mutated by a caller
      */
-    findObjectRefsByChunkKey(chunkKey) {
-        return this._byChunk.get(chunkKey);
+    getObjectRefsByChunkKey(chunkKey) {
+        const found = this._byChunk.get(chunkKey);
+        if (found === undefined) {
+            return EMPTY_OBJECT_REFS;
+        }
+        return found;
     }
 
     /**

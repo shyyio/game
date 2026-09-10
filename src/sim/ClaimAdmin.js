@@ -130,15 +130,13 @@ export class ClaimAdmin extends ChunkOwnership {
      */
     _publishChunkClaimUpdate(session, chunkKey, owner, permission) {
         const event = new ChunkClaimUpdateEvent(chunkKey, owner, permission);
-        const subscribers = this.game.bus.findSubscribersByChunkKey(chunkKey);
-        if (subscribers !== undefined) {
-            for (const sessionRef of subscribers) {
-                this.game.playerDirectory.syncUsernames(sessionRef, [owner]);
-            }
+        const subscribers = this.game.bus.getSubscribersByChunkKey(chunkKey);
+        for (const sessionRef of subscribers) {
+            this.game.playerDirectory.syncUsernames(sessionRef, [owner]);
         }
         this.game.bus.publish(event);
         for (const sessionRef of this.game.bus.getSessionRefsByPlayerRef(session.playerRef)) {
-            if (subscribers === undefined || !subscribers.has(sessionRef)) {
+            if (!subscribers.has(sessionRef)) {
                 this.game.bus.publishTo(sessionRef, event);
             }
         }

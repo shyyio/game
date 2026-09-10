@@ -70,7 +70,7 @@ export class LogicScenario extends AbstractScenario {
         const tank = place(engine, TankType, TERMINAL_X + 2, TERMINAL_Y + 3);
 
         const tanks = engine.components.getComponentByName("Tank");
-        const tankRow = tanks.getRowByEid(engine.placed.findEidByObjectRef(tank));
+        const tankRow = tanks.getRowByEid(engine.placed.getEidByObjectRefOrNull(tank));
         tanks.store.fluidType[tankRow] = ITEM_TYPE_WATER;
         tanks.store.amount[tankRow] = TANK_WATER_AMOUNT;
 

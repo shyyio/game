@@ -257,7 +257,7 @@ export class ItemDrawLayer extends AbstractDrawLayer {
      * @param {number} reach - world pixels from the point an item's center may sit
      * @returns {ItemParticle|null}
      */
-    findItemAt(x, y, reach) {
+    getItemAtOrNull(x, y, reach) {
         let nearest = null;
         let nearestDistance = 0;
         for (const particle of this._items.values()) {

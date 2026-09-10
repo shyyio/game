@@ -77,7 +77,7 @@ function rulesMessage(terminalId, rules) {
  */
 function columnOf(engine, componentName, column, objectRef) {
     const def = engine.components.getComponentByName(componentName);
-    return def.store[column][def.getRowByEid(engine.placed.findEidByObjectRef(objectRef))];
+    return def.store[column][def.getRowByEid(engine.placed.getEidByObjectRefOrNull(objectRef))];
 }
 
 /**
@@ -85,7 +85,7 @@ function columnOf(engine, componentName, column, objectRef) {
  */
 function fillTank(engine, tankId, fluidType, amount) {
     const def = engine.components.getComponentByName("Tank");
-    const row = def.getRowByEid(engine.placed.findEidByObjectRef(tankId));
+    const row = def.getRowByEid(engine.placed.getEidByObjectRefOrNull(tankId));
     def.store.fluidType[row] = fluidType;
     def.store.amount[row] = amount;
 }
@@ -141,7 +141,7 @@ test("the processing key reads real activity, not the enable switch", async () =
     const game = await makeGame();
     const engine = game.simEngine;
     const machine = place(engine, BlenderType, 10, 8, Direction.UP);
-    const eid = engine.placed.findEidByObjectRef(machine);
+    const eid = engine.placed.getEidByObjectRefOrNull(machine);
     const behavior = engine.placed.getBehaviorByTypeId(engine.placed.getObjectTypeIdByEid(eid));
 
     assert.equal(behavior.logicRead(engine, eid, LOGIC_KEY_ENABLED), 1);

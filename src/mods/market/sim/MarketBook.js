@@ -140,10 +140,14 @@ class QuoteIndex {
 
     /**
      * @param {number} itemTypeId
-     * @returns {MarketQuote[]|undefined}
+     * @returns {MarketQuote[]} empty when nothing is posted
      */
-    findQuotesByItemTypeId(itemTypeId) {
-        return this._byItem.get(itemTypeId);
+    getQuotesByItemTypeId(itemTypeId) {
+        const quotes = this._byItem.get(itemTypeId);
+        if (quotes === undefined) {
+            return [];
+        }
+        return quotes;
     }
 
     /**
@@ -200,10 +204,14 @@ export class MarketBook {
 
     /**
      * @param {number} itemTypeId
-     * @returns {number|undefined}
+     * @returns {number|null}
      */
-    findFixedPriceByItemTypeId(itemTypeId) {
-        return this._fixedPrices.get(itemTypeId);
+    getFixedPriceByItemTypeIdOrNull(itemTypeId) {
+        const price = this._fixedPrices.get(itemTypeId);
+        if (price === undefined) {
+            return null;
+        }
+        return price;
     }
 
     /**
@@ -271,12 +279,12 @@ export class MarketBook {
 
     /**
      * @param {number} itemTypeId
-     * @returns {number|undefined} the highest currently-posted bid, or undefined if none
+     * @returns {number|null} the highest currently-posted bid
      */
-    findBestBidByItemTypeId(itemTypeId) {
-        const quotes = this._buys.findQuotesByItemTypeId(itemTypeId);
-        if (quotes === undefined || quotes.length === 0) {
-            return undefined;
+    getBestBidByItemTypeIdOrNull(itemTypeId) {
+        const quotes = this._buys.getQuotesByItemTypeId(itemTypeId);
+        if (quotes.length === 0) {
+            return null;
         }
         let best = quotes[0].price;
         for (let i = 1; i < quotes.length; i += 1) {
@@ -287,12 +295,12 @@ export class MarketBook {
 
     /**
      * @param {number} itemTypeId
-     * @returns {number|undefined} the lowest currently-posted ask, or undefined if none
+     * @returns {number|null} the lowest currently-posted ask
      */
-    findBestAskByItemTypeId(itemTypeId) {
-        const quotes = this._sells.findQuotesByItemTypeId(itemTypeId);
-        if (quotes === undefined || quotes.length === 0) {
-            return undefined;
+    getBestAskByItemTypeIdOrNull(itemTypeId) {
+        const quotes = this._sells.getQuotesByItemTypeId(itemTypeId);
+        if (quotes.length === 0) {
+            return null;
         }
         let best = quotes[0].price;
         for (let i = 1; i < quotes.length; i += 1) {
@@ -312,25 +320,23 @@ export class MarketBook {
      * @param {function(number): number} getBalanceByEid
      * @returns {MarketMatch|null}
      */
-    findBestEligibleBuyer(itemTypeId, floorPrice, portIsEmpty, getBalanceByEid) {
+    getBestEligibleBuyerOrNull(itemTypeId, floorPrice, portIsEmpty, getBalanceByEid) {
         let best = null;
-        const quotes = this._buys.findQuotesByItemTypeId(itemTypeId);
-        if (quotes !== undefined) {
-            for (const quote of quotes) {
-                if (quote.price < floorPrice) {
-                    continue;
-                }
-                if (!portIsEmpty(quote.outputPort)) {
-                    continue;
-                }
-                if (getBalanceByEid(quote.eid) < quote.price) {
-                    continue;
-                }
-                if (best === null
-                    || quote.price > best.price
-                    || (quote.price === best.price && quote.sequence < best.sequence)) {
-                    best = quote;
-                }
+        const quotes = this._buys.getQuotesByItemTypeId(itemTypeId);
+        for (const quote of quotes) {
+            if (quote.price < floorPrice) {
+                continue;
+            }
+            if (!portIsEmpty(quote.outputPort)) {
+                continue;
+            }
+            if (getBalanceByEid(quote.eid) < quote.price) {
+                continue;
+            }
+            if (best === null
+                || quote.price > best.price
+                || (quote.price === best.price && quote.sequence < best.sequence)) {
+                best = quote;
             }
         }
         const fixedPrice = this._fixedPrices.get(itemTypeId);
@@ -397,12 +403,12 @@ export class MarketBook {
 
     /**
      * @param {number} itemTypeId
-     * @returns {number|undefined} the item's guide price, or undefined if never traded/imbalanced
+     * @returns {number|null} the item's guide price; null until traded or imbalanced
      */
-    findGuidePriceByItemTypeId(itemTypeId) {
+    getGuidePriceByItemTypeIdOrNull(itemTypeId) {
         const guide = this._guidePrices.get(itemTypeId);
         if (guide === undefined) {
-            return undefined;
+            return null;
         }
         return guide.price;
     }

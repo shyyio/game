@@ -4,6 +4,8 @@
  * @property {number[]} removed
  */
 
+const EMPTY_SUBSCRIBERS = new Set();
+
 /**
  * Topic pub/sub for session event delivery. A session subscribes to the chunks it views and the
  * objects it inspects; `publish` picks recipients from the event's own topic and hands each the
@@ -67,9 +69,6 @@ export class EventBus {
      */
     publish(event) {
         const subscribers = event.getSubscribersByBus(this);
-        if (subscribers === undefined) {
-            return;
-        }
         // Copied: a session's own dispatch may resubscribe while we fan out.
         for (const sessionRef of Array.from(subscribers)) {
             this._sessions.get(sessionRef).publishEvent(event);
@@ -133,19 +132,27 @@ export class EventBus {
     /**
      * The sessions viewing a chunk, or undefined when none.
      * @param {number} chunkKey
-     * @returns {Set<number>|undefined}
+     * @returns {Set<number>} shared and empty when none; never mutated by a caller
      */
-    findSubscribersByChunkKey(chunkKey) {
-        return this._chunkSubscribers.get(chunkKey);
+    getSubscribersByChunkKey(chunkKey) {
+        const subscribers = this._chunkSubscribers.get(chunkKey);
+        if (subscribers === undefined) {
+            return EMPTY_SUBSCRIBERS;
+        }
+        return subscribers;
     }
 
     /**
      * The sessions inspecting an object, or undefined when none.
      * @param {number} objectRef
-     * @returns {Set<number>|undefined}
+     * @returns {Set<number>} shared and empty when none; never mutated by a caller
      */
-    findSubscribersByObjectRef(objectRef) {
-        return this._objectSubscribers.get(objectRef);
+    getSubscribersByObjectRef(objectRef) {
+        const subscribers = this._objectSubscribers.get(objectRef);
+        if (subscribers === undefined) {
+            return EMPTY_SUBSCRIBERS;
+        }
+        return subscribers;
     }
 
     /**

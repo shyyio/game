@@ -120,7 +120,7 @@ export class NotesDrawLayer extends AbstractDrawLayer {
      * @param {{x: number, y: number}|null} point
      * @returns {Note|null}
      */
-    findNoteAt(point) {
+    getNoteAtOrNull(point) {
         if (point === null) {
             return null;
         }

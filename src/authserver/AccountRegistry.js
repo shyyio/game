@@ -44,8 +44,8 @@ export class AccountRegistry {
         if (!USERNAME_PATTERN.test(username)) {
             throw new RangeError(`Invalid username: ${JSON.stringify(username)}`);
         }
-        const existing = this._store.findByUsername(username);
-        if (existing !== undefined) {
+        const existing = this._store.getAccountByUsernameOrNull(username);
+        if (existing !== null) {
             return AccountEntry.parse(existing);
         }
         const createdAt = Date.now();
@@ -58,8 +58,8 @@ export class AccountRegistry {
      * @returns {AccountEntry}
      */
     getPlayerByRef(accountId) {
-        const row = this._store.findById(accountId);
-        if (row === undefined) {
+        const row = this._store.getAccountByIdOrNull(accountId);
+        if (row === null) {
             throw new RangeError(`Unknown accountId: ${accountId}`);
         }
         return AccountEntry.parse(row);

@@ -55,10 +55,14 @@ export class ComponentRegistry {
      * The component registered under `name`, or undefined — the tolerant twin of {@link get}, for
      * the save checks that report a drifted component.
      * @param {string} name
-     * @returns {AbstractComponent|undefined}
+     * @returns {AbstractComponent|null}
      */
-    findComponentByName(name) {
-        return this._byName.get(name);
+    getComponentByNameOrNull(name) {
+        const found = this._byName.get(name);
+        if (found === undefined) {
+            return null;
+        }
+        return found;
     }
 
     /**

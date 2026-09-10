@@ -146,15 +146,15 @@ test("a refresh moves a tracking mod onto the newest compatible version", () => 
 
     const refreshed = buildLatestLoadout(loadout, listings);
 
-    assert.equal(refreshed.findEntryByName("widgets").version, "2.0.0");
-    assert.equal(refreshed.findEntryByName("widgets").pinned, false);
+    assert.equal(refreshed.getEntryByNameOrNull("widgets").version, "2.0.0");
+    assert.equal(refreshed.getEntryByNameOrNull("widgets").pinned, false);
 });
 
 test("a refresh leaves a pinned mod exactly where it was", () => {
     const loadout = new LocalLoadout([chosen("widgets", "1.0.0", true)]);
     const listings = [listing("widgets", [published("1.0.0"), published("2.0.0")])];
 
-    assert.equal(buildLatestLoadout(loadout, listings).findEntryByName("widgets").version, "1.0.0");
+    assert.equal(buildLatestLoadout(loadout, listings).getEntryByNameOrNull("widgets").version, "1.0.0");
 });
 
 test("a refresh keeps the last resolved version when the listing is gone or no longer compatible", () => {
@@ -163,8 +163,8 @@ test("a refresh keeps the last resolved version when the listing is gone or no l
 
     const refreshed = buildLatestLoadout(loadout, listings);
 
-    assert.equal(refreshed.findEntryByName("widgets").version, "1.0.0");
-    assert.equal(refreshed.findEntryByName("gadgets").version, "1.0.0");
+    assert.equal(refreshed.getEntryByNameOrNull("widgets").version, "1.0.0");
+    assert.equal(refreshed.getEntryByNameOrNull("gadgets").version, "1.0.0");
 });
 
 test("a loadout tracks the latest only while something in it is unpinned", () => {
@@ -180,15 +180,15 @@ test("adding appends, and re-choosing the same mod keeps its position", () => {
 
     const pinnedA = loadout.with(chosen("a", "2.0.0", true));
     assert.deepEqual(pinnedA.mods.map(mod => mod.name), ["a", "b", "c"]);
-    assert.equal(pinnedA.findEntryByName("a").version, "2.0.0");
-    assert.equal(pinnedA.findEntryByName("a").pinned, true);
+    assert.equal(pinnedA.getEntryByNameOrNull("a").version, "2.0.0");
+    assert.equal(pinnedA.getEntryByNameOrNull("a").pinned, true);
 });
 
 test("removing drops only that mod, and leaves the rest in order", () => {
     const loadout = new LocalLoadout([chosen("a"), chosen("b"), chosen("c")]).without("b");
 
     assert.deepEqual(loadout.mods.map(mod => mod.name), ["a", "c"]);
-    assert.equal(loadout.findEntryByName("b"), null);
+    assert.equal(loadout.getEntryByNameOrNull("b"), null);
 });
 
 test("a loadout round-trips through JSON", () => {

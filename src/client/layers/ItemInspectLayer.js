@@ -93,7 +93,7 @@ export class ItemInspectLayer extends AbstractDrawLayer {
             this._lock(null);
             return;
         }
-        this._lock(this._itemLayer.findItemAt(point.x, point.y, TAP_REACH));
+        this._lock(this._itemLayer.getItemAtOrNull(point.x, point.y, TAP_REACH));
     }
 
     /**
@@ -139,7 +139,7 @@ export class ItemInspectLayer extends AbstractDrawLayer {
         }
         this._aimX = aim.x;
         this._aimY = aim.y;
-        this._lock(this._itemLayer.findItemAt(aim.x, aim.y, HOVER_REACH));
+        this._lock(this._itemLayer.getItemAtOrNull(aim.x, aim.y, HOVER_REACH));
     }
 
     /**

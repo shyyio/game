@@ -247,7 +247,7 @@ export class MachineBehavior extends AbstractBehavior {
         }
         let workerStats = null;
         if (this.workerCost > 0) {
-            workerStats = engine.workers.findWorkerStatsByObjectRef(objectRef);
+            workerStats = engine.workers.getWorkerStatsByObjectRefOrNull(objectRef);
         }
         let workerCost = null;
         if (this.workerCost > 0) {

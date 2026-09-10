@@ -132,7 +132,7 @@ export class SnapshotSerializer {
         };
 
         for (const component of snapshot.components) {
-            const registered = engine.components.findComponentByName(component.name);
+            const registered = engine.components.getComponentByNameOrNull(component.name);
             for (const row of component.rows) {
                 const eid = remap.get(row.eid);
                 registered.attach(eid);
@@ -220,8 +220,8 @@ export class SnapshotSerializer {
         const savedNames = new Set();
         for (const component of snapshot.components) {
             savedNames.add(component.name);
-            const registered = this.engine.components.findComponentByName(component.name);
-            if (registered === undefined) {
+            const registered = this.engine.components.getComponentByNameOrNull(component.name);
+            if (registered === null) {
                 mismatches.push(`component "${component.name}" is in the save but no longer registered`);
                 continue;
             }

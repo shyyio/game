@@ -82,7 +82,7 @@ export class NotesClientMod extends AbstractClientMod {
      * @returns {boolean}
      */
     onObjectTap(tileX, tileY, client) {
-        const note = this._layer.findNoteAt(Mouse.aimPoint());
+        const note = this._layer.getNoteAtOrNull(Mouse.aimPoint());
         if (!Mobile.enabled) {
             if (note === null) {
                 return false;
@@ -109,7 +109,7 @@ export class NotesClientMod extends AbstractClientMod {
         if (!Mobile.enabled) {
             return false;
         }
-        const note = this._layer.findNoteAt(Mouse.aimPoint());
+        const note = this._layer.getNoteAtOrNull(Mouse.aimPoint());
         if (note === null) {
             return false;
         }

@@ -195,9 +195,9 @@ test("detailFor scatters a biome's details by density, deterministically", () =>
     const counts = new Map([[rock, 0], [tuft, 0], [null, 0]]);
     for (let tileX = 0; tileX < 200; tileX++) {
         for (let tileY = 0; tileY < 100; tileY++) {
-            const detail = a.findDetailByBiome(decorated, tileX, tileY);
-            assert.equal(detail, b.findDetailByBiome(decorated, tileX, tileY));
-            assert.equal(a.findDetailByBiome(bare, tileX, tileY), null);
+            const detail = a.getDetailByBiomeOrNull(decorated, tileX, tileY);
+            assert.equal(detail, b.getDetailByBiomeOrNull(decorated, tileX, tileY));
+            assert.equal(a.getDetailByBiomeOrNull(bare, tileX, tileY), null);
             counts.set(detail, counts.get(detail) + 1);
         }
     }
@@ -207,7 +207,7 @@ test("detailFor scatters a biome's details by density, deterministically", () =>
     const other = new Terrain(new WorldNoise(78, registry.noiseChannels), registry.biomes);
     let differs = 0;
     for (let tileX = 0; tileX < 200; tileX++) {
-        if (other.findDetailByBiome(decorated, tileX, 0) !== a.findDetailByBiome(decorated, tileX, 0)) {
+        if (other.getDetailByBiomeOrNull(decorated, tileX, 0) !== a.getDetailByBiomeOrNull(decorated, tileX, 0)) {
             differs++;
         }
     }

@@ -3,7 +3,7 @@ import {AbstractDrawLayer} from "@/client/layers/AbstractDrawLayer.js";
 import {DisplayPool} from "@/client/layers/DisplayPool.js";
 import {KeyedDisplayPool} from "@/client/layers/KeyedDisplayPool.js";
 import {isWorkerBehavior} from "@/sim/behaviors/RoadBehavior.js";
-import {findCommuteRoute} from "@/client/layers/workerRoute.js";
+import {getCommuteRouteOrNull} from "@/client/layers/workerRoute.js";
 import {WorkerAssignmentsView} from "@/client/state/WorkerAssignmentsState.js";
 
 // Spritesheet base of the 8-frame walk cycle.
@@ -256,7 +256,7 @@ export class WorkerDrawLayer extends AbstractDrawLayer {
         const machineEntry = this.cache.get(machineId);
         const waypoints = machineEntry === null
             ? null
-            : findCommuteRoute(this.cache, machineEntry);
+            : getCommuteRouteOrNull(this.cache, machineEntry);
         if (waypoints === null) {
             this._workers.release(machineId);
             return;

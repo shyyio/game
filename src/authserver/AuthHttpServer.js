@@ -175,7 +175,7 @@ export class AuthHttpServer extends AbstractHttpServer {
             rejectRequest(res, "401 Unauthorized", "Missing or invalid bearer token", {cors: true});
             return;
         }
-        respondJson(res, {servers: this._servers.findQuotesByItemTypeId()});
+        respondJson(res, {servers: this._servers.getServers()});
     }
 
     /**

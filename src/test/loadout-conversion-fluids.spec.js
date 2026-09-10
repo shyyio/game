@@ -65,10 +65,10 @@ test("a tank whose fluid the loadout dropped comes back empty, not holding untyp
 
 test("a pipe network whose fluid the loadout dropped comes back empty", async () => {
     const engine = await filled();
-    assert.ok(pipesOf(engine).findNetworkAt(0, 2).amount > 0);
+    assert.ok(pipesOf(engine).getNetworkAtOrNull(0, 2).amount > 0);
 
     const restored = await makeGameEngine();
     restored.snapshots.deserialize(withFluidLost(engine));
-    const net = pipesOf(restored).findNetworkAt(0, 2);
+    const net = pipesOf(restored).getNetworkAtOrNull(0, 2);
     assert.deepEqual([net.fluidType, net.amount], [EMPTY, 0]);
 });

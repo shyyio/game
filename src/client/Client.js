@@ -548,7 +548,7 @@ export class Client {
             }
         }
         for (const bundle of this.bundles) {
-            const entry = this.objects.findObjectByTypeAt(tileX, tileY, bundle.type);
+            const entry = this.objects.getObjectByTypeAtOrNull(tileX, tileY, bundle.type);
             if (entry === null || bundle.type.tapAction === null) {
                 continue;
             }
@@ -570,7 +570,7 @@ export class Client {
         const derived = [];
         if (tileX !== null) {
             for (const bundle of this.bundles) {
-                const entry = this.objects.findObjectByTypeAt(tileX, tileY, bundle.type);
+                const entry = this.objects.getObjectByTypeAtOrNull(tileX, tileY, bundle.type);
                 if (entry !== null) {
                     derived.push(new InspectHighlight(entry.tileX, entry.tileY, entry.data.direction, bundle.type));
                 }

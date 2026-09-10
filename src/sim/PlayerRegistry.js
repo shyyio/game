@@ -86,14 +86,18 @@ export class PlayerRegistry {
 
     /**
      * @param {string} code - as typed by a player, any casing/spacing/dashing
-     * @returns {PlayerEntry|undefined}
+     * @returns {PlayerEntry|null}
      */
-    findPlayerByFriendCode(code) {
+    getPlayerByFriendCodeOrNull(code) {
         const normalized = normalizeFriendCode(code);
         if (normalized === null) {
-            return undefined;
+            return null;
         }
-        return this._byFriendCode.get(normalized);
+        const found = this._byFriendCode.get(normalized);
+        if (found === undefined) {
+            return null;
+        }
+        return found;
     }
 
     /**

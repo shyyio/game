@@ -38,15 +38,15 @@ test("the whole world round-trips through the engine serializer", async () => {
     assert.equal(restored.placed.getEidsByTypeId(BlenderType.objectTypeId).length, 1, "machine restored");
     assert.equal(restored.lanes.getLaneRefs().length, beltLanes, "belt lanes restored");
     assert.notEqual(restored.space.getUserDataAt(5, 5, LAYER_RESOURCE), null, "resource cover restored");
-    assert.notEqual(restored.placed.findEidByObjectRef(splitterId), undefined, "splitter restored");
+    assert.notEqual(restored.placed.getEidByObjectRefOrNull(splitterId), null, "splitter restored");
     assert.equal(restored.space.isEveryCellFree([{x: 10, y: 10, layer: LAYER_SURFACE}]), false, "machine position restored");
 
     // The extractor keeps producing water into its edge output port after the load.
     const outputPort = restored.ports.getPortEidAt(5, 4, Direction.UP);
-    assert.deepEqual(restored.portItems.findPortTileByEid(outputPort), {x: 5, y: 4}, "output port re-registered at its own tile");
+    assert.deepEqual(restored.portItems.getPortTileByEidOrNull(outputPort), {x: 5, y: 4}, "output port re-registered at its own tile");
     for (const tile of [{x: 3, y: 7}, {x: 4, y: 7}]) {
         const port = restored.ports.getPortEidAt(tile.x, tile.y, Direction.UP);
-        assert.deepEqual(restored.portItems.findPortTileByEid(port), tile, "splitter output port re-registered at its own tile");
+        assert.deepEqual(restored.portItems.getPortTileByEidOrNull(port), tile, "splitter output port re-registered at its own tile");
     }
     let produced = false;
     for (let i = 0; i < 8 && !produced; i += 1) {
@@ -64,7 +64,7 @@ test("a snapshot survives a JSON blob round-trip (the client save path)", async 
     restored.snapshots.deserialize(snapshot);
 
     assert.equal(restored.placed.getEidsByTypeId(BlenderType.objectTypeId).length, 1);
-    assert.notEqual(restored.placed.findEidByObjectRef(splitterId), undefined);
+    assert.notEqual(restored.placed.getEidByObjectRefOrNull(splitterId), null);
 });
 
 test("a snapshot round-trips through structured SQLite (the node save path)", async () => {

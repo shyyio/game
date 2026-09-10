@@ -29,6 +29,6 @@ export class AbstractChunkRoutedEvent extends AbstractEvent {
      * @returns {Set<number>|undefined}
      */
     getSubscribersByBus(bus) {
-        return bus.findSubscribersByChunkKey(this.chunkKey);
+        return bus.getSubscribersByChunkKey(this.chunkKey);
     }
 }

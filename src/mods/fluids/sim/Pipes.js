@@ -104,7 +104,7 @@ export class Pipes extends AbstractSystem {
      * @param {number} id
      * @returns {{x:number, y:number, id:number}|null}
      */
-    findPipeById(id) {
+    getPipeByIdOrNull(id) {
         const found = this._pipeById.get(id);
         if (found === undefined) {
             return null;
@@ -118,7 +118,7 @@ export class Pipes extends AbstractSystem {
      * @param {number} y
      * @returns {PipeNetworkStats|null}
      */
-    findNetworkAt(x, y) {
+    getNetworkAtOrNull(x, y) {
         const net = this._networkByTile.get(tileKeyAt(x, y));
         if (net === undefined) {
             return null;
@@ -145,7 +145,7 @@ export class Pipes extends AbstractSystem {
                     candidates.push(net.fluidType);
                 }
             }
-            const port = this.engine.ports.findPortEidAt(x, y, Direction.invert(direction));
+            const port = this.engine.ports.getPortEidAtOrNull(x, y, Direction.invert(direction));
             if (port !== null) {
                 candidates.push(this.engine.ports.getFluidSourceByPortEid(port));
             }
@@ -463,7 +463,7 @@ export class Pipes extends AbstractSystem {
                     break;
                 }
                 // Only fluid-flagged ports receive payloads.
-                const destPortEid = engine.ports.findPortEidAt(edge.x, edge.y, edge.direction);
+                const destPortEid = engine.ports.getPortEidAtOrNull(edge.x, edge.y, edge.direction);
                 if (destPortEid === null || !engine.ports.isFluidClaimed(destPortEid)) {
                     continue;
                 }
@@ -610,7 +610,7 @@ export class Pipes extends AbstractSystem {
         const M = this._savedMembers.store;
         const membersByNet = new Map();
         for (const eid of this._savedMembers.getLiveEids()) {
-            const pipe = this.findPipeById(M.objectRef[eid]);
+            const pipe = this.getPipeByIdOrNull(M.objectRef[eid]);
             if (pipe === null) {
                 throw new Error(`PipeNetworkMember references unknown pipe ${M.objectRef[eid]}`);
             }
