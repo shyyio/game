@@ -56,7 +56,8 @@ const ENGINE_HOOKS = new Set([
     "isPlacementAllowed",
 ]);
 
-const METHOD_LINE = /^\s{4}(?:static\s+)?(?:async\s+)?(?:get\s+|set\s+)?(_?[a-z]\w*)\s*\([^)]*\)\s*\{$/;
+const METHOD_LINE = /^\s{4}(?:static\s+)?(?:async\s+)?(_?[a-z]\w*)\s*\([^)]*\)\s*\{$/;
+const KEYWORDS = new Set(["if", "for", "while", "switch", "catch", "function", "return"]);
 const LEADING_WORD = /^_?([a-z]+)/;
 
 /**
@@ -120,7 +121,7 @@ export function scanFiles(files) {
                 }
             }
             const method = line.match(METHOD_LINE);
-            if (method === null || ENGINE_HOOKS.has(method[1])) {
+            if (method === null || ENGINE_HOOKS.has(method[1]) || KEYWORDS.has(method[1])) {
                 continue;
             }
             const verb = method[1].match(LEADING_WORD)[1];
