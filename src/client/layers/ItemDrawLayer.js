@@ -222,7 +222,7 @@ export class ItemDrawLayer extends AbstractDrawLayer {
     moveItem({key, tileX, tileY, halfTile, sourceDirection, type, snap=false, hidden=false}) {
         const definition = this._itemRegistry.getItemTypeOrDefaultByTypeId(type);
         const texture = this.textureCache.get(definition.texture);
-        const particle = this._items.take(key, texture);
+        const particle = this._items.acquire(key, texture);
         particle.live = true;
         particle.itemTypeId = type;
         particle.setTexture(texture);

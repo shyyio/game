@@ -56,7 +56,7 @@ export class OverworldBake extends AbstractSystem {
                 const chunkKey = chunkOrdinal(cx, cy);
                 const bake = this._chunks.get(chunkKey);
                 if (bake !== undefined) {
-                    this._appendRuns(event, chunkKey, bake.tiles);
+                    this._addRuns(event, chunkKey, bake.tiles);
                 }
             }
         }
@@ -71,7 +71,7 @@ export class OverworldBake extends AbstractSystem {
      * @param {Uint16Array} tiles
      * @returns {void}
      */
-    _appendRuns(event, chunkKey, tiles) {
+    _addRuns(event, chunkKey, tiles) {
         const starts = [];
         const lengths = [];
         const objectTypeIds = [];

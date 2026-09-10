@@ -175,7 +175,7 @@ export class Pipes extends AbstractSystem {
                 }
                 fluidType = net.fluidType;
             }
-            this._dropNetwork(net);
+            this._removeNetwork(net);
         }
         if (amount === 0) {
             fluidType = EMPTY;
@@ -197,7 +197,7 @@ export class Pipes extends AbstractSystem {
             return false;
         }
         const net = this._networkByTile.get(tileKeyAt(pipe.x, pipe.y));
-        this._dropNetwork(net);
+        this._removeNetwork(net);
         this._pipeByTile.delete(tileKeyAt(pipe.x, pipe.y));
         this._pipeById.delete(id);
 
@@ -369,7 +369,7 @@ export class Pipes extends AbstractSystem {
      * @param {PipeNetwork} net
      * @returns {void}
      */
-    _dropNetwork(net) {
+    _removeNetwork(net) {
         this.networks.splice(this.networks.indexOf(net), 1);
         for (const key of net.tiles) {
             this._networkByTile.delete(key);

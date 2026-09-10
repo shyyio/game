@@ -30,7 +30,7 @@ export class OverworldDrawLayer extends AbstractDrawLayer {
         this.visible = false;
         state.subscribe("overworld.byChunk", (chunk, entry) => {
             if (entry === undefined || entry.runStarts.length === 0) {
-                this._dropChunk(chunk);
+                this._removeChunk(chunk);
             } else {
                 this._drawChunk(entry);
             }
@@ -90,7 +90,7 @@ export class OverworldDrawLayer extends AbstractDrawLayer {
      * @param {number} chunkKey
      * @returns {void}
      */
-    _dropChunk(chunkKey) {
+    _removeChunk(chunkKey) {
         const graphics = this._graphics.get(chunkKey);
         if (graphics === undefined) {
             return;

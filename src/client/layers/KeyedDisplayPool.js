@@ -49,10 +49,10 @@ export class KeyedDisplayPool {
      * @param {...*} args
      * @returns {*}
      */
-    take(key, ...args) {
+    acquire(key, ...args) {
         let object = this._live.get(key);
         if (object === undefined) {
-            object = this._pool.take(...args);
+            object = this._pool.acquire(...args);
             this._live.set(key, object);
         }
         return object;

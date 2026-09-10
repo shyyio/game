@@ -61,8 +61,8 @@ export class ChunkClaimsDrawLayer extends AbstractDrawLayer {
         this._labelScale = null;
         state.subscribe("chunkClaims.ownerByChunk", (chunk, owner) => {
             if (owner === undefined) {
-                this._dropChunk(chunk);
-                this._dropBadge(chunk);
+                this._removeChunk(chunk);
+                this._removeBadge(chunk);
             } else {
                 this._drawChunk(chunk, owner);
                 this._updateBadge(chunk, owner);
@@ -308,7 +308,7 @@ export class ChunkClaimsDrawLayer extends AbstractDrawLayer {
      * @param {number} chunkKey
      * @returns {void}
      */
-    _dropChunk(chunkKey) {
+    _removeChunk(chunkKey) {
         const graphics = this._graphics.get(chunkKey);
         if (graphics === undefined) {
             return;
@@ -351,7 +351,7 @@ export class ChunkClaimsDrawLayer extends AbstractDrawLayer {
     _updateBadge(chunkKey, owner) {
         const drawIcon = this._getBadgeIconByChunkKey(chunkKey, owner);
         if (drawIcon === null) {
-            this._dropBadge(chunkKey);
+            this._removeBadge(chunkKey);
             return;
         }
         let badge = this._badges.get(chunkKey);
@@ -380,7 +380,7 @@ export class ChunkClaimsDrawLayer extends AbstractDrawLayer {
      * @param {number} chunkKey
      * @returns {void}
      */
-    _dropBadge(chunkKey) {
+    _removeBadge(chunkKey) {
         const badge = this._badges.get(chunkKey);
         if (badge === undefined) {
             return;

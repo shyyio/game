@@ -45,7 +45,7 @@ export class World {
 
     /**
      * What moving this world onto `loadout` would lose, named for the operator.
-     * @param {object} snapshot this world as {@link takeSnapshot} left it
+     * @param {object} snapshot this world as {@link getSnapshot} left it
      * @param {{typeNames: string[], itemTypeIds: Set<number>}} loadout
      * @returns {{objects: Array<{name: string, count: number}>, items: Array<{name: string, count: number}>}}
      */
@@ -78,7 +78,7 @@ export class World {
      * The world as it stands, for putting it back when a conversion fails.
      * @returns {object}
      */
-    takeSnapshot() {
+    getSnapshot() {
         return this.game.serialize();
     }
 

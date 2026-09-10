@@ -155,7 +155,7 @@ export class AbstractChunkedDrawLayer extends AbstractDrawLayer {
      */
     _memberRemoved(chunkKey, empty) {
         if (empty) {
-            this._dropChunk(chunkKey);
+            this._removeChunk(chunkKey);
             return;
         }
         this._dirtyChunks.add(chunkKey);
@@ -201,7 +201,7 @@ export class AbstractChunkedDrawLayer extends AbstractDrawLayer {
      * @param {number} chunkKey
      * @returns {void}
      */
-    _dropChunk(chunkKey) {
+    _removeChunk(chunkKey) {
         const node = this._chunks.get(chunkKey);
         if (node === undefined) {
             return;

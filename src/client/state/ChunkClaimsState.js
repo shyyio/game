@@ -74,7 +74,7 @@ export class ChunkClaimsWriter extends AbstractCacheWriter {
         }
         if (event instanceof ChunkSubscribeEvent) {
             // A stale foreign entry resets before the seeded update (claimed chunks only) lands.
-            this._dropForeign(event.chunkKey);
+            this._removeForeign(event.chunkKey);
             return;
         }
         if (event instanceof OverworldSnapshotEvent) {
@@ -100,7 +100,7 @@ export class ChunkClaimsWriter extends AbstractCacheWriter {
         for (const chunk of rect.ordinals()) {
             const owner = ownerByChunk.get(chunk);
             if (owner === undefined) {
-                this._dropForeign(chunk);
+                this._removeForeign(chunk);
             } else {
                 this._state.mapSet("chunkClaims.ownerByChunk", chunk, owner);
                 this._state.mapSet("chunkClaims.permissionByChunk", chunk, permissionByChunk.get(chunk));
@@ -115,7 +115,7 @@ export class ChunkClaimsWriter extends AbstractCacheWriter {
      * @param {number} chunkKey
      * @returns {void}
      */
-    _dropForeign(chunkKey) {
+    _removeForeign(chunkKey) {
         const owner = this._state.mapGet("chunkClaims.ownerByChunk", chunkKey);
         if (owner !== undefined && owner !== this._state.get("chunkClaims.ownPlayerRef")) {
             this._state.mapDelete("chunkClaims.ownerByChunk", chunkKey);

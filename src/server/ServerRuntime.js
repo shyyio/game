@@ -145,7 +145,7 @@ export class ServerRuntime {
             const loadout = await this._loadoutFor(this.resolvePaths(next));
             // One snapshot serves both: what the losses are counted from is what a failed boot
             // restores.
-            const before = this._world.takeSnapshot();
+            const before = this._world.getSnapshot();
             const losses = this._world.conversionLosses(before, loadout);
             if (!convert && (losses.objects.length > 0 || losses.items.length > 0)) {
                 throw new LoadoutChangeRefused(losses);

@@ -96,7 +96,7 @@ export class LogicRules {
      * @param {number} terminalObjectRef
      * @returns {void}
      */
-    dropTerminal(terminalObjectRef) {
+    removeTerminal(terminalObjectRef) {
         this._rulesByTerminal.delete(terminalObjectRef);
     }
 

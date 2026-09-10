@@ -180,7 +180,7 @@ export class RoadNetwork {
      * is null for a full recompute, otherwise the set the fill adds each seed's prior component to.
      * @returns {{seeds: RoadTile[], affected: Set<number>|null}|null}
      */
-    takeDirty() {
+    popDirty() {
         if (this._dirtyAll) {
             this._dirtyAll = false;
             this._dirtyCells.clear();

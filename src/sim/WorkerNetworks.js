@@ -67,7 +67,7 @@ export class WorkerNetworks extends AbstractSystem {
     }
 
     ensureFresh() {
-        const dirty = this.roads.takeDirty();
+        const dirty = this.roads.popDirty();
         if (dirty === null) {
             return;
         }
@@ -88,7 +88,7 @@ export class WorkerNetworks extends AbstractSystem {
         this._applyGrants(previous, next);
         this._emitDeltas(previous, next);
         for (const objectRef of previous.keys()) {
-            this.assignments.drop(objectRef);
+            this.assignments.removeAssignment(objectRef);
         }
         for (const assignment of next.values()) {
             this.assignments.setAssignment(assignment);

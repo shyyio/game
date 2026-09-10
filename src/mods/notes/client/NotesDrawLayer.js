@@ -249,7 +249,7 @@ export class NotesDrawLayer extends AbstractDrawLayer {
      * @returns {void}
      */
     _onUpsert(tile, note) {
-        const pin = this._pins.take(tile);
+        const pin = this._pins.acquire(tile);
         pin.tile = tile;
         pin.show(claimColor(note.authorId));
         this._place(pin, note);

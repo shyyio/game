@@ -140,7 +140,7 @@ export class WorkerBadgeLayer extends AbstractDrawLayer {
             badge = undefined;
         }
         if (badge === undefined) {
-            badge = this._getPoolByStateKey(stateKey).take(workers, granted);
+            badge = this._getPoolByStateKey(stateKey).acquire(workers, granted);
             this._badges.set(machineId, badge);
         }
 

@@ -82,7 +82,7 @@ export class WorkerAssignments {
      * @param {number} objectRef
      * @returns {void}
      */
-    drop(objectRef) {
+    removeAssignment(objectRef) {
         const assignment = this._byObjectRef.get(objectRef);
         if (assignment === undefined) {
             return;

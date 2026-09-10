@@ -72,7 +72,7 @@ export class TerrainDetailLayer extends AbstractChunkedDrawLayer {
     repaint() {
         for (const chunk of Array.from(this._chunks.keys())) {
             this._unmountChunk(chunk);
-            this._dropChunk(chunk);
+            this._removeChunk(chunk);
         }
         // Forces the next tick's reconcile to remount what is on screen.
         this._visibleChunks = new Set();
@@ -90,7 +90,7 @@ export class TerrainDetailLayer extends AbstractChunkedDrawLayer {
         this._enabled = enabled;
         for (const chunk of Array.from(this._chunks.keys())) {
             this._unmountChunk(chunk);
-            this._dropChunk(chunk);
+            this._removeChunk(chunk);
         }
         // Forces the next tick's reconcile to remount what is on screen.
         this._visibleChunks = new Set();
@@ -176,7 +176,7 @@ export class TerrainDetailLayer extends AbstractChunkedDrawLayer {
         super._unmountChunk(chunkKey);
         if (wasMounted) {
             this._releaseSprites(this._chunks.get(chunkKey));
-            this._dropChunk(chunkKey);
+            this._removeChunk(chunkKey);
         }
     }
 
@@ -213,7 +213,7 @@ export class TerrainDetailLayer extends AbstractChunkedDrawLayer {
                 if (detail === null || this.cache.findObjectAt(tileX, tileY, LAYER_SURFACE) !== null) {
                     continue;
                 }
-                node.sprites.addChild(this._pose(this._pool.take(), detail, biome, tileX, tileY, seed));
+                node.sprites.addChild(this._pose(this._pool.acquire(), detail, biome, tileX, tileY, seed));
             }
         }
     }

@@ -153,7 +153,6 @@ export class LaneIndex extends AbstractSystem {
     /**
      * @returns {number[]} every live lane id
      */
-    // getEids()
     getLaneRefs() {
         return Array.from(this.lanes.getLiveEids());
     }
@@ -162,7 +161,6 @@ export class LaneIndex extends AbstractSystem {
      * @param {number} laneRef
      * @returns {number[]} cell eids, head first
      */
-    // getCellsByRef()
     getCellEidsByLaneRef(laneRef) {
         const cells = [];
         let eid = this.lanes.store.headCell[this._getLaneRowByLaneRef(laneRef)];
@@ -177,7 +175,6 @@ export class LaneIndex extends AbstractSystem {
      * @param {number} laneRef
      * @returns {number} slots
      */
-    // getLenghtByRef()
     getSlotCountByLaneRef(laneRef) {
         return this.lanes.store.slotCount[this._getLaneRowByLaneRef(laneRef)];
     }
@@ -186,7 +183,6 @@ export class LaneIndex extends AbstractSystem {
      * @param {number} laneRef
      * @returns {number} port eid
      */
-    // getInputPortByEid()
     getInputPortEidByLaneRef(laneRef) {
         return this.lanes.store.inputPort[this._getLaneRowByLaneRef(laneRef)];
     }
@@ -259,7 +255,6 @@ export class LaneIndex extends AbstractSystem {
      * @param {number} eid - a lane cell
      * @returns {LaneBehavior}
      */
-    // _getBehavior
     _getBehaviorByCellEid(eid) {
         return this.engine.placed.getBehaviorByTypeId(this.engine.placed.getObjectTypeIdByEid(eid));
     }
@@ -298,7 +293,6 @@ export class LaneIndex extends AbstractSystem {
      * @param {number} eid
      * @returns {number}
      */
-    // _getChildByEid()
     _getChildByCellEid(eid) {
         const position = this.engine.Position;
         const direction = position.direction[eid];
@@ -538,7 +532,7 @@ export class LaneIndex extends AbstractSystem {
      * @returns {void}
      */
     _rebuildCells(cells, dropped) {
-        const heldByCell = new Map();
+        const itemSlotsByCellEid = new Map();
         const lanes = new Set();
         for (const eid of cells) {
             const laneEid = this.getLaneRefByCellEid(eid);
@@ -553,14 +547,14 @@ export class LaneIndex extends AbstractSystem {
             }
         }
         for (const laneEid of lanes) {
-            this._captureItems(laneEid, heldByCell);
+            this._popItemsIntoCellSlots(laneEid, itemSlotsByCellEid);
             this._destroyLane(laneEid);
         }
         // The resets go out now: a rebuilt lane may take a destroyed one's eid, and the client
         // forgets a lane on its reset.
         this._flushBatches();
-        this._destroyHeld(heldByCell.get(dropped));
-        heldByCell.delete(dropped);
+        this._destroyCellSlotItems(itemSlotsByCellEid.get(dropped));
+        itemSlotsByCellEid.delete(dropped);
 
         const ordered = Array.from(cells).sort((a, b) => a - b);
         const built = [];
@@ -568,13 +562,13 @@ export class LaneIndex extends AbstractSystem {
             if (this.getLaneRefByCellEid(eid) !== NO_LANE) {
                 continue;
             }
-            built.push(this._buildLaneFrom(eid));
+            built.push(this._buildLane(eid));
         }
         for (const laneEid of built) {
-            this._placeItems(laneEid, heldByCell);
+            this._pushItemsFromCellSlots(laneEid, itemSlotsByCellEid);
         }
-        for (const items of heldByCell.values()) {
-            this._destroyHeld(items);
+        for (const items of itemSlotsByCellEid.values()) {
+            this._destroyCellSlotItems(items);
         }
         for (const laneEid of built) {
             this._emitGeometry(laneEid);
@@ -591,7 +585,7 @@ export class LaneIndex extends AbstractSystem {
      * @param {number} eid
      * @returns {number} the lane id
      */
-    _buildLaneFrom(eid) {
+    _buildLane(eid) {
         const chunkKey = this._getChunkKeyByEid(eid);
         const seen = new Set([eid]);
         let start = eid;
@@ -701,13 +695,13 @@ export class LaneIndex extends AbstractSystem {
     }
 
     /**
-     * Records where each of a lane's items stands, as the cell and the slot within it.
+     * Pops every item off a lane's file into the slot it stands on, by cell.
      * @private
      * @param {number} laneEid
-     * @param {Map<number, number[]>} heldByCell
+     * @param {Map<number, number[]>} itemSlotsByCellEid
      * @returns {void}
      */
-    _captureItems(laneEid, heldByCell) {
+    _popItemsIntoCellSlots(laneEid, itemSlotsByCellEid) {
         const laneRow = this._getLaneRowByLaneRef(laneEid);
         const cells = this.getCellEidsByLaneRef(laneEid);
         const slots = cells.map(cell => this._getBehaviorByCellEid(cell).slotsPerTile);
@@ -721,7 +715,7 @@ export class LaneIndex extends AbstractSystem {
             const itemRow = this.items.getRowByEid(itemEid);
             slotFromOutput += store.gap[itemRow];
             const slotFromInput = total - 2 - slotFromOutput;
-            this._hold(heldByCell, cells, slots, slotFromInput, itemEid);
+            this._setCellSlotItem(itemSlotsByCellEid, cells, slots, slotFromInput, itemEid);
             slotFromOutput += 1;
             store.lane[itemRow] = NO_EID;
             store.nextItem[itemRow] = NO_EID;
@@ -733,21 +727,21 @@ export class LaneIndex extends AbstractSystem {
 
     /**
      * @private
-     * @param {Map<number, number[]>} heldByCell
+     * @param {Map<number, number[]>} itemSlotsByCellEid
      * @param {number[]} cells
      * @param {number[]} slots
      * @param {number} slotFromInput - the slot counted from the lane's input edge
      * @param {number} itemEid
      * @returns {void}
      */
-    _hold(heldByCell, cells, slots, slotFromInput, itemEid) {
+    _setCellSlotItem(itemSlotsByCellEid, cells, slots, slotFromInput, itemEid) {
         let offset = slotFromInput;
         for (let i = 0; i < cells.length; i += 1) {
             if (offset < slots[i]) {
-                let cellSlots = heldByCell.get(cells[i]);
+                let cellSlots = itemSlotsByCellEid.get(cells[i]);
                 if (cellSlots === undefined) {
                     cellSlots = new Array(slots[i]).fill(NO_EID);
-                    heldByCell.set(cells[i], cellSlots);
+                    itemSlotsByCellEid.set(cells[i], cellSlots);
                 }
                 cellSlots[offset] = itemEid;
                 return;
@@ -758,18 +752,18 @@ export class LaneIndex extends AbstractSystem {
     }
 
     /**
-     * Puts the held items back on a rebuilt lane, and takes in whatever rests in an edge that is
-     * now interior to it.
+     * Pushes the cell slots' items back onto a rebuilt lane, and creates an item from whatever
+     * rests in an edge that is now interior to it.
      * @private
      * @param {number} laneEid
-     * @param {Map<number, number[]>} heldByCell
+     * @param {Map<number, number[]>} itemSlotsByCellEid
      * @returns {void}
      */
-    _placeItems(laneEid, heldByCell) {
+    _pushItemsFromCellSlots(laneEid, itemSlotsByCellEid) {
         const cells = this.getCellEidsByLaneRef(laneEid);
         const slots = cells.map(cell => this._getBehaviorByCellEid(cell).slotsPerTile);
         for (let i = 1; i < cells.length; i += 1) {
-            this._absorbEdge(heldByCell, cells, slots, i);
+            this._createItemFromInteriorPort(itemSlotsByCellEid, cells, slots, i);
         }
         const laneRow = this._getLaneRowByLaneRef(laneEid);
         const lanes = this.lanes.store;
@@ -780,7 +774,7 @@ export class LaneIndex extends AbstractSystem {
         let slotFromInput = total - 1;
         let previous = -1;
         for (let i = cells.length - 1; i >= 0; i -= 1) {
-            const items = heldByCell.get(cells[i]);
+            const items = itemSlotsByCellEid.get(cells[i]);
             for (let slot = slots[i] - 1; slot >= 0; slot -= 1) {
                 const itemEid = items === undefined ? NO_EID : items[slot];
                 const slotFromOutput = total - 2 - slotFromInput;
@@ -795,7 +789,7 @@ export class LaneIndex extends AbstractSystem {
                     this.items.destroy(itemEid);
                     continue;
                 }
-                this._appendItem(laneEid, itemEid, slotFromOutput - previous - 1);
+                this._pushItem(laneEid, itemEid, slotFromOutput - previous - 1);
                 previous = slotFromOutput;
             }
         }
@@ -803,27 +797,28 @@ export class LaneIndex extends AbstractSystem {
     }
 
     /**
-     * Takes the item resting in the edge before cell `index`, which the rebuild made interior. That
+     * Creates an item from the one resting in the edge before cell `index`, which the rebuild made
+     * interior, and clears the port. That
      * edge is where the upstream cell hands flow over, not cell `index`'s straight back edge: a bent
      * cell takes flow across a flank, and its back edge is a side input this lane never crosses.
      * @private
-     * @param {Map<number, number[]>} heldByCell
+     * @param {Map<number, number[]>} itemSlotsByCellEid
      * @param {number[]} cells
      * @param {number[]} slots
      * @param {number} index
      * @returns {void}
      */
-    _absorbEdge(heldByCell, cells, slots, index) {
+    _createItemFromInteriorPort(itemSlotsByCellEid, cells, slots, index) {
         const portEid = this._getOutputPortEidByCellEid(cells[index - 1]);
         const portItem = this.engine.ports.getItemByPortEid(portEid);
         if (portItem === EMPTY || this.engine.isFluid(portItem)) {
             return;
         }
         const slot = slots[index - 1] - 1;
-        let cellSlots = heldByCell.get(cells[index - 1]);
+        let cellSlots = itemSlotsByCellEid.get(cells[index - 1]);
         if (cellSlots === undefined) {
             cellSlots = new Array(slots[index - 1]).fill(NO_EID);
-            heldByCell.set(cells[index - 1], cellSlots);
+            itemSlotsByCellEid.set(cells[index - 1], cellSlots);
         }
         if (cellSlots[slot] !== NO_EID) {
             return;
@@ -848,14 +843,14 @@ export class LaneIndex extends AbstractSystem {
     }
 
     /**
-     * Appends an item at the input end of a lane's file.
+     * Pushes an item onto the input end of a lane's file.
      * @private
      * @param {number} laneEid
      * @param {number} itemEid
      * @param {number} gap
      * @returns {void}
      */
-    _appendItem(laneEid, itemEid, gap) {
+    _pushItem(laneEid, itemEid, gap) {
         const laneRow = this._getLaneRowByLaneRef(laneEid);
         const lanes = this.lanes.store;
         const itemRow = this.items.getRowByEid(itemEid);
@@ -876,7 +871,7 @@ export class LaneIndex extends AbstractSystem {
     // ---- the step ----
 
     /**
-     * The pop past the tail and the ingest at the head.
+     * The pop past the tail and the push at the head.
      * @returns {void}
      */
     submitIntents() {
@@ -957,7 +952,7 @@ export class LaneIndex extends AbstractSystem {
                 takenItem = this._drainItem[laneRow];
             }
             if (takenItem !== EMPTY) {
-                this._shiftItemIntoInputPort(laneEid, laneRow, takenItem);
+                this._pushItemFromInputPort(laneEid, laneRow, takenItem);
             }
         }
         this._flushBatches();
@@ -1009,18 +1004,17 @@ export class LaneIndex extends AbstractSystem {
     }
 
     /**
-     * Puts the item an intent took from the ingest port onto the input-edge slot.
+     * Pushes the item an intent took from the input port onto the lane.
      * @private
      * @param {number} laneEid
      * @param {number} laneRow
      * @param {number} itemTypeId
      * @returns {void}
      */
-    // ingest? put? pick a terminology.
-    _shiftItemIntoInputPort(laneEid, laneRow, itemTypeId) {
+    _pushItemFromInputPort(laneEid, laneRow, itemTypeId) {
         const lanes = this.lanes.store;
         const itemEid = this.items.create(itemTypeId);
-        this._appendItem(laneEid, itemEid, lanes.headGap[laneRow] - 1);
+        this._pushItem(laneEid, itemEid, lanes.headGap[laneRow] - 1);
         lanes.headGap[laneRow] = 0;
         const itemRow = this.items.getRowByEid(itemEid);
         this._getBatchByLaneRow(laneRow).addUpsert(
@@ -1049,12 +1043,6 @@ export class LaneIndex extends AbstractSystem {
         this._popSourceItem = new Int32Array(capacity);
         this._drainItem = new Int32Array(capacity);
     }
-
-    // What does "feed" even mean? That's not established terminology. Be precise
-    // The session terminilogy uses "subscription" to a list of chunks, 
-    // to pub-sub language. 'Subscription feed' would make more sense if that's what you mean
-    // but more importantly we don't need any section headers like that. and that's a code smell.
-    // the sections should be self evident
 
     /**
      * @private
@@ -1181,24 +1169,24 @@ export class LaneIndex extends AbstractSystem {
         this._lanesByChunk = new Map();
         this._batches.clear();
         const cells = Array.from(this.cells.getLiveEids());
-        const heldByCell = new Map();
+        const itemSlotsByCellEid = new Map();
         for (const laneEid of this.getLaneRefs()) {
-            this._captureItems(laneEid, heldByCell);
+            this._popItemsIntoCellSlots(laneEid, itemSlotsByCellEid);
             this._destroyLane(laneEid);
         }
         this._batches.clear();
-        this._dropUnknownItems(heldByCell);
+        this._destroyUnknownItems(itemSlotsByCellEid);
         const built = [];
         for (const eid of cells.sort((a, b) => a - b)) {
             if (this.getLaneRefByCellEid(eid) === NO_LANE) {
-                built.push(this._buildLaneFrom(eid));
+                built.push(this._buildLane(eid));
             }
         }
         for (const laneEid of built) {
-            this._placeItems(laneEid, heldByCell);
+            this._pushItemsFromCellSlots(laneEid, itemSlotsByCellEid);
         }
-        for (const items of heldByCell.values()) {
-            this._destroyHeld(items);
+        for (const items of itemSlotsByCellEid.values()) {
+            this._destroyCellSlotItems(items);
         }
         this._batches.clear();
     }
@@ -1208,8 +1196,7 @@ export class LaneIndex extends AbstractSystem {
      * @param {number[]|undefined} items
      * @returns {void}
      */
-    // This function name makes no sense. It doesn't tell me anything about what it's doing.
-    _destroyHeld(items) {
+    _destroyCellSlotItems(items) {
         if (items === undefined) {
             return;
         }
@@ -1222,16 +1209,15 @@ export class LaneIndex extends AbstractSystem {
 
     /**
      * @private
-     * @param {Map<number, number[]>} heldByCell
+     * @param {Map<number, number[]>} itemSlotsByCellEid
      * @returns {void}
      */
-    // Drop? HOw is that different from "destroy"? Why not say destroyUnknownItems???
-    _dropUnknownItems(heldByCell) {
+    _destroyUnknownItems(itemSlotsByCellEid) {
         if (this.engine.modRegistry === null) {
             return;
         }
         const items = this.engine.modRegistry.items;
-        for (const cellSlots of heldByCell.values()) {
+        for (const cellSlots of itemSlotsByCellEid.values()) {
             for (let slot = 0; slot < cellSlots.length; slot += 1) {
                 const eid = cellSlots[slot];
                 if (eid !== NO_EID && items.findItemTypeByTypeId(this.items.store.itemTypeId[this.items.getRowByEid(eid)]) === undefined) {

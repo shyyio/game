@@ -46,7 +46,7 @@ export class LogicTerminalBehavior extends AbstractBehavior {
     }
 
     onDespawn(engine, eid) {
-        engine.resolve(LogicRules).dropTerminal(engine.placed.getObjectRefByEid(eid));
+        engine.resolve(LogicRules).removeTerminal(engine.placed.getObjectRefByEid(eid));
     }
 
     /**

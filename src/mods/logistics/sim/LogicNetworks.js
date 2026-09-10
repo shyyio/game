@@ -102,7 +102,7 @@ export class LogicNetworks extends AbstractSystem {
         if (this._wires.has(key)) {
             return;
         }
-        this._hold(key, {a: aObjectRef, b: bObjectRef});
+        this._addWire(key, {a: aObjectRef, b: bObjectRef});
         this._dirty = true;
         this._emitAtEndpoints(LogicWireSetEvent, aObjectRef, bObjectRef);
     }
@@ -114,7 +114,7 @@ export class LogicNetworks extends AbstractSystem {
      * @param {{a: number, b: number}} wire
      * @returns {void}
      */
-    _hold(key, wire) {
+    _addWire(key, wire) {
         this._wires.set(key, wire);
         for (const objectRef of [wire.a, wire.b]) {
             const held = this._wiresByEndpoint.get(objectRef);
@@ -132,7 +132,7 @@ export class LogicNetworks extends AbstractSystem {
      * @param {string} key
      * @returns {boolean} whether the wire was held
      */
-    _drop(key) {
+    _removeWire(key) {
         const wire = this._wires.get(key);
         if (wire === undefined) {
             return false;
@@ -155,7 +155,7 @@ export class LogicNetworks extends AbstractSystem {
      * @returns {void}
      */
     unwire(aObjectRef, bObjectRef) {
-        if (!this._drop(wireKey(aObjectRef, bObjectRef))) {
+        if (!this._removeWire(wireKey(aObjectRef, bObjectRef))) {
             return;
         }
         this._dirty = true;
@@ -238,7 +238,7 @@ export class LogicNetworks extends AbstractSystem {
             return;
         }
         for (const row of table.rows) {
-            this._hold(wireKey(row.a_object_id, row.b_object_id), {a: row.a_object_id, b: row.b_object_id});
+            this._addWire(wireKey(row.a_object_id, row.b_object_id), {a: row.a_object_id, b: row.b_object_id});
         }
         this._dirty = true;
     }
@@ -281,7 +281,7 @@ export class LogicNetworks extends AbstractSystem {
         for (const [key, wire] of Array.from(this._wires)) {
             if (this.placed.findEidByObjectRef(wire.a) === undefined
                 || this.placed.findEidByObjectRef(wire.b) === undefined) {
-                this._drop(key);
+                this._removeWire(key);
                 continue;
             }
             const heldA = neighbors.get(wire.a);

@@ -107,7 +107,7 @@ class FakeWorld {
     }
 
     /** @returns {object} */
-    takeSnapshot() {
+    getSnapshot() {
         return {whole: true};
     }
 

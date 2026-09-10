@@ -31,7 +31,7 @@ export class DisplayPool {
      * @param {...*} args
      * @returns {*}
      */
-    take(...args) {
+    acquire(...args) {
         const pooled = this._idle.pop();
         if (pooled === undefined) {
             return this._create(...args);

@@ -172,7 +172,7 @@ export class RemoteCursorsDrawLayer extends AbstractDrawLayer {
         const y = cursor.y * TILE_SIZE;
         let display = this._displays.get(cursor.playerRef);
         if (display === undefined) {
-            display = this._displays.take(cursor.playerRef);
+            display = this._displays.acquire(cursor.playerRef);
             display.show(this._players.getUsernameByPlayerRef(cursor.playerRef), claimColor(cursor.playerRef));
             display.snap(x, y);
         } else {
