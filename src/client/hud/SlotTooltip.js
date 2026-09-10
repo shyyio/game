@@ -29,7 +29,7 @@ export class SlotTooltip extends AbstractTooltipLayer {
         this._name.x = TOOLTIP_PADDING;
         this._name.y = TOOLTIP_PADDING;
         this.addChild(this._name);
-        this._tick = () => this._update(this._app.ticker.deltaMS);
+        this._tick = () => this._advance(this._app.ticker.deltaMS);
         app.ticker.add(this._tick);
     }
 
@@ -72,7 +72,7 @@ export class SlotTooltip extends AbstractTooltipLayer {
      * @returns {void}
      * @private
      */
-    _update(deltaMS) {
+    _advance(deltaMS) {
         // A closed panel destroys its slots without a leave event.
         if (this._target !== null && this._target.destroyed) {
             this._target = null;

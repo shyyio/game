@@ -88,7 +88,7 @@ export class LogisticsWriter extends AbstractCacheWriter {
     toggleGate(objectRef) {
         const objects = this._state.view("objects");
         const next = objects.get(objectRef).data.open === 0 ? 1 : 0;
-        objects.update(objectRef, {open: next});
+        objects.apply(objectRef, {open: next});
         this._session.sendMessage(new SetGateOpenMessage(objectRef, next));
     }
 }

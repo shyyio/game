@@ -215,7 +215,7 @@ export class ProductionPanelLayer extends Container {
             this._selectedKey = null;
             this._chart.setHighlightKey(null);
         }
-        this._listHandle.update(entries);
+        this._listHandle.rebuild(entries);
     }
 
     /**

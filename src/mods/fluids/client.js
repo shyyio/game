@@ -40,7 +40,7 @@ export class FluidsClientMod extends AbstractClientMod {
      */
     onEvent(event, client) {
         if (event instanceof PipeNetworkRecalculateEvent) {
-            this._updateNetwork(event.networkId, event.parts);
+            this._applyNetworkParts(event.networkId, event.parts);
             this._debugLayer.markStale();
             return;
         }
@@ -127,7 +127,7 @@ export class FluidsClientMod extends AbstractClientMod {
      * @param {number[]} parts - member pipe ids
      * @returns {void}
      */
-    _updateNetwork(networkId, parts) {
+    _applyNetworkParts(networkId, parts) {
         for (const id of parts) {
             const previous = this._pipeToNetwork.get(id);
             if (previous !== undefined && previous !== networkId) {

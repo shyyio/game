@@ -76,13 +76,13 @@ test("set with multiple cells indexes every covered cell", () => {
     assert.strictEqual(cache.findObjectAt(6, 5, 0).id, 1);
 });
 
-test("update merges into a entry's data", () => {
+test("apply merges into a entry's data", () => {
     const cache = new ObjectsView(null);
     cache.set(1, 0, 0, cell(0, 0), {}, {a: 1});
-    cache.update(1, {b: 2});
+    cache.apply(1, {b: 2});
 
     assert.deepStrictEqual(cache.get(1).data, {a: 1, b: 2});
-    cache.update(99, {b: 3});
+    cache.apply(99, {b: 3});
     assert.strictEqual(cache.get(99), null);
 });
 

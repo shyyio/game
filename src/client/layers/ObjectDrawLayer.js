@@ -107,7 +107,7 @@ export class ObjectDrawLayer extends AbstractChunkedDrawLayer {
      * @param {number} deltaMS elapsed time since the previous tick, in ms
      * @returns {void}
      */
-    _updateSprites(frame, deltaMS) {
+    _drawSprites(frame, deltaMS) {
         for (const chunk of this._mounted) {
             for (const sprite of this._chunks.get(chunk).spriteList) {
                 sprite.tick(frame);

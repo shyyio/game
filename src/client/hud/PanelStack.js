@@ -147,7 +147,7 @@ export class PanelStack extends Container {
      * @param {boolean} [options.fixedHeight] keeps the section at `visibleRows` tall regardless of
      *     item count, so the row set can change later
      * @param {number|null} [options.centerRow] the index of a row to scroll into the middle
-     * @returns {ScrollSectionHandle|null} an update handle for a fixedHeight section, null otherwise
+     * @returns {ScrollSectionHandle|null} an rebuild handle for a fixedHeight section, null otherwise
      */
     scrollSection(items, describe, emptyLabel, {visibleRows, fixedHeight = false, centerRow = null} = {}) {
         const innerWidth = this._contentWidth - SECTION_PADDING_LEFT;
@@ -361,7 +361,7 @@ export class ScrollSectionHandle {
      * @param {Array} items
      * @returns {void}
      */
-    update(items) {
+    rebuild(items) {
         if (this._rows !== null) {
             this._rows.destroy({children: true});
         } else {

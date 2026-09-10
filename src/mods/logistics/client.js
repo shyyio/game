@@ -140,9 +140,9 @@ export class LogisticsClientMod extends AbstractClientMod {
         const hasItem = kinds.behind === CONVEYS_ITEM || kinds.front === CONVEYS_ITEM;
         const hasFluid = kinds.behind === CONVEYS_FLUID || kinds.front === CONVEYS_FLUID;
         if (hasFluid && !hasItem) {
-            client.objects.update(entry.id, {fluid: 1});
+            client.objects.apply(entry.id, {fluid: 1});
         } else if (hasItem && !hasFluid) {
-            client.objects.update(entry.id, {fluid: 0});
+            client.objects.apply(entry.id, {fluid: 0});
         }
     }
 

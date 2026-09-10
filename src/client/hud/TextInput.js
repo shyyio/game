@@ -68,7 +68,7 @@ export class TextInput extends Container {
         this._buildDomInput(maxLength, placeholder, numeric);
         this._buildContent(placeholder);
 
-        this._tick = () => this._update();
+        this._tick = () => this._advance();
         app.ticker.add(this._tick);
 
         this._drawBox();
@@ -308,7 +308,7 @@ export class TextInput extends Container {
      * @private
      * @returns {void}
      */
-    _update() {
+    _advance() {
         this._positionDomInput();
         if (!this._focused) {
             return;

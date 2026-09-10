@@ -80,7 +80,7 @@ export class ObjectsWriter extends AbstractCacheWriter {
         for (const [i, field] of entry.data.type.behavior.syncedFields.fields.entries()) {
             patch[field.name] = event.values[i];
         }
-        view.update(event.objectRef, patch);
+        view.apply(event.objectRef, patch);
     }
 
     /**
@@ -343,7 +343,7 @@ export class ObjectsView extends AbstractCacheView {
     }
 
     /**
-     * Registers a callback invoked with each entry whose `data` was patched via {@link update}.
+     * Registers a callback invoked with each entry whose `data` was patched via {@link apply}.
      * @param {function(CacheEntry): void} listener
      * @returns {function(): void} unsubscribe
      */
@@ -432,11 +432,11 @@ export class ObjectsView extends AbstractCacheView {
     }
 
     /**
-     * Merges `patch` into an entry's `data` and notifies update listeners; no-op for unknown ids.
+     * Merges `patch` into an entry's `data` and notifies apply listeners; no-op for unknown ids.
      * @param {number} id
      * @param {object} patch
      */
-    update(id, patch) {
+    apply(id, patch) {
         const entry = this._byId.get(id);
         if (entry === undefined) {
             return;

@@ -121,7 +121,7 @@ export class WireDrawLayer extends AbstractDrawLayer {
     }
 
     tick(frame, deltaMS, visibleChunks) {
-        this._updatePreview();
+        this._drawPreview();
         if (!this._stale) {
             return;
         }
@@ -146,7 +146,7 @@ export class WireDrawLayer extends AbstractDrawLayer {
      * @private
      * @returns {void}
      */
-    _updatePreview() {
+    _drawPreview() {
         if (this._previewFrom === null) {
             return;
         }

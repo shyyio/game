@@ -171,7 +171,7 @@ export class TerrainDrawLayer extends AbstractChunkedDrawLayer {
             return;
         }
         const fromRow = this._terrain.bakeOverworldRows(OVERWORLD_ROWS_PER_TICK);
-        this._overworld.updateRows(this._terrain.overworldBake, fromRow, OVERWORLD_ROWS_PER_TICK);
+        this._overworld.drawRows(this._terrain.overworldBake, fromRow, OVERWORLD_ROWS_PER_TICK);
     }
 
     /**

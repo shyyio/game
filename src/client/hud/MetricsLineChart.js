@@ -165,7 +165,7 @@ export class MetricsLineChart {
             return;
         }
         this._highlightKey = key;
-        this._updateLines();
+        this._drawLines();
     }
 
     /**
@@ -407,7 +407,7 @@ export class MetricsLineChart {
      * @returns {void}
      * @private
      */
-    _updateLines() {
+    _drawLines() {
         if (this._svg === null) {
             return;
         }
@@ -471,7 +471,7 @@ export class MetricsLineChart {
      * @returns {void}
      * @private
      */
-    _updateXAxis() {
+    _drawXAxis() {
         this._xScale.domain([-this._rangeTicks, 0]);
         const xTickCount = Math.max(2, Math.floor(this._plotWidth / 70));
         const xAxis = axisBottom(this._xScale)
@@ -486,7 +486,7 @@ export class MetricsLineChart {
      * @returns {void}
      * @private
      */
-    _updateYAxis() {
+    _drawYAxis() {
         if (this._latestSeriesData === null || this._latestSeriesData.ticks.length === 0) {
             this._gAxisY.selectAll("*").remove();
             this._gGridY.selectAll("*").remove();
@@ -533,10 +533,10 @@ export class MetricsLineChart {
             return;
         }
         this._resizeToContainer();
-        this._updateXAxis();
-        this._updateYAxis();
+        this._drawXAxis();
+        this._drawYAxis();
         this._applyThemeStrokes();
-        this._updateLines();
+        this._drawLines();
     }
 
     /**
@@ -565,16 +565,16 @@ export class MetricsLineChart {
      */
     _drawData() {
         this._latestSeriesData = buildSeries(this._rollup, this._metric);
-        this._updateYAxis();
+        this._drawYAxis();
         this._applyThemeStrokes();
-        this._updateLines();
+        this._drawLines();
     }
 
     /**
      * @private
      */
     _animationFrame() {
-        this._updateLines();
+        this._drawLines();
         this._rafHandle = requestAnimationFrame(this._animationFrame);
     }
 }

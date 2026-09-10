@@ -515,7 +515,7 @@ export class ToolbarLayer extends Container {
         this._panel.addChild(icon);
 
         const detachDrag = trackWindowDrag(e.nativeEvent, (deltaX, deltaY) => {
-            this._updateDrag(originX + deltaX, originY + deltaY);
+            this._moveDrag(originX + deltaX, originY + deltaY);
         }, () => this._endDrag());
 
         this._drag = new ToolReorderDrag(tool, icon, this._modTools, detachDrag);
@@ -528,7 +528,7 @@ export class ToolbarLayer extends Container {
      * @param {number} x
      * @param {number} y
      */
-    _updateDrag(x, y) {
+    _moveDrag(x, y) {
         const drag = this._drag;
         drag.icon.x = x;
         drag.icon.y = y;

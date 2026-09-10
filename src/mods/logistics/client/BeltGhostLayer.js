@@ -57,7 +57,7 @@ export class BeltGhostLayer extends AbstractDrawLayer {
         const tint = blocked ? GHOST_BLOCKED_TINT : GHOST_TINT;
         const alpha = blocked ? GHOST_BLOCKED_ALPHA : GHOST_ALPHA;
         this._addSprite(this._floatingContainer, tileX, tileY, direction, beltType, tint, bend, alpha);
-        this._updatePin();
+        this._layoutPin();
     }
 
     /**
@@ -78,7 +78,7 @@ export class BeltGhostLayer extends AbstractDrawLayer {
         for (const tile of undergroundTiles) {
             this._addSprite(this._gridContainer, tile.x, tile.y, direction, BELT_UNDERGROUND, undergroundTint, BeltBend.STRAIGHT);
         }
-        this._updatePin();
+        this._layoutPin();
     }
 
     /**
@@ -128,7 +128,7 @@ export class BeltGhostLayer extends AbstractDrawLayer {
      */
     setCenterLock(enabled) {
         this._centerLock = enabled;
-        this._updatePin();
+        this._layoutPin();
     }
 
     /**
@@ -141,14 +141,14 @@ export class BeltGhostLayer extends AbstractDrawLayer {
         for (const sprite of this._sprites) {
             sprite.setAnimationFrame(frame);
         }
-        this._updatePin();
+        this._layoutPin();
     }
 
     /**
      * Offsets the floating container so the anchor tile's center lands on its target.
      * @private
      */
-    _updatePin() {
+    _layoutPin() {
         const target = this._targetPoint();
         if (this._anchorTileX === null || target === null) {
             this._floatingContainer.position.set(0, 0);

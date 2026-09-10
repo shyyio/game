@@ -84,7 +84,7 @@ export class ChunkCursor {
             this._client.hud.chunkActionsLayer.showChunk(chunkKey);
         }
         // The active mode surfaces the new selection in its bars.
-        this._client.chunkMode.updateIndicators();
+        this._client.chunkMode.resyncIndicators();
     }
 
     /**

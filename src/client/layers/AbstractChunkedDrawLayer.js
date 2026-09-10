@@ -61,7 +61,7 @@ export class AbstractChunkedDrawLayer extends AbstractDrawLayer {
             this._tickMapMode();
             return;
         }
-        this._updateSprites(frame, deltaMS);
+        this._drawSprites(frame, deltaMS);
         this._flushDirtyChunks();
     }
 
@@ -80,7 +80,7 @@ export class AbstractChunkedDrawLayer extends AbstractDrawLayer {
      * @param {number} deltaMS elapsed time since the previous tick, in ms
      * @returns {void}
      */
-    _updateSprites(frame, deltaMS) {}
+    _drawSprites(frame, deltaMS) {}
 
     /**
      * Mounts the chunks that panned into view and unmounts those that panned out.

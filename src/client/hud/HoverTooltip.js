@@ -40,7 +40,7 @@ export class HoverTooltip extends AbstractTooltipLayer {
         this._label.x = TOOLTIP_PADDING;
         this._label.y = TOOLTIP_PADDING;
         this.addChild(this._label);
-        app.ticker.add(() => this._update(app.ticker.deltaMS));
+        app.ticker.add(() => this._advance(app.ticker.deltaMS));
     }
 
     /**
@@ -82,7 +82,7 @@ export class HoverTooltip extends AbstractTooltipLayer {
      * @returns {void}
      * @private
      */
-    _update(deltaMS) {
+    _advance(deltaMS) {
         // A removed or rebuilt target is destroyed without a leave event.
         if (this._target !== null && (this._target.destroyed || !this._target.visible)) {
             this._target = null;

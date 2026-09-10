@@ -72,14 +72,14 @@ export class SettleFlow {
         } else if (previous === ViewMode.WORLD) {
             this._cursor.selectCenterChunk();
         }
-        this.updateIndicators();
+        this.resyncIndicators();
     }
 
     /**
      * Syncs the center dot and the status bar to the flow.
      * @returns {void}
      */
-    updateIndicators() {
+    resyncIndicators() {
         this._client.centerLock.resyncMarker();
         this._client.hud.topStatusBar.setSection(FLOW_ID, this._statusBarSection());
     }
@@ -123,7 +123,7 @@ export class SettleFlow {
             this._cursor.clear();
             this._land();
         }
-        this.updateIndicators();
+        this.resyncIndicators();
     }
 
     /**

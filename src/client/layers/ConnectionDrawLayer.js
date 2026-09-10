@@ -89,12 +89,12 @@ export class ConnectionDrawLayer extends AbstractTileMeshDrawLayer {
      * @param {number} deltaMS elapsed time since the previous tick, in ms
      * @returns {void}
      */
-    _updateSprites(frame, deltaMS) {
+    _drawSprites(frame, deltaMS) {
         if (this.textureCache === null) {
             return;
         }
         this._flushDirty();
-        super._updateSprites(frame, deltaMS);
+        super._drawSprites(frame, deltaMS);
     }
 
     /**

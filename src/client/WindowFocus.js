@@ -41,17 +41,17 @@ class WindowFocus {
             return;
         }
         this._initialized = true;
-        window.addEventListener("blur", () => this._update());
-        window.addEventListener("focus", () => this._update());
-        document.addEventListener("visibilitychange", () => this._update());
-        this._update();
+        window.addEventListener("blur", () => this._apply());
+        window.addEventListener("focus", () => this._apply());
+        document.addEventListener("visibilitychange", () => this._apply());
+        this._apply();
     }
 
     /**
      * @private
      * @returns {void}
      */
-    _update() {
+    _apply() {
         const focused = document.hasFocus() && !document.hidden;
         if (focused === this._focused) {
             return;

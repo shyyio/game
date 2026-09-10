@@ -36,7 +36,7 @@ export class ViewModeController {
      * or {@link OVERWORLD_SCALE_THRESHOLD}, transitioning the data feeds with it.
      * @returns {void}
      */
-    update() {
+    resync() {
         const scale = this._client.viewport.scale.x;
         let mode;
         if (scale < OVERWORLD_SCALE_THRESHOLD) {

@@ -24,7 +24,7 @@ export class AbstractDebugDrawLayer extends AbstractDrawLayer {
      */
     setDebugMode(enabled) {
         this._debugMode = enabled;
-        this._updateVisibility();
+        this._resyncVisibility();
     }
 
     /**
@@ -32,7 +32,7 @@ export class AbstractDebugDrawLayer extends AbstractDrawLayer {
      */
     set mapMode(value) {
         this._mapMode = value;
-        this._updateVisibility();
+        this._resyncVisibility();
     }
 
     /**
@@ -47,7 +47,7 @@ export class AbstractDebugDrawLayer extends AbstractDrawLayer {
      * @private
      * @returns {void}
      */
-    _updateVisibility() {
+    _resyncVisibility() {
         this.visible = this._debugMode && !this._mapMode;
         this._stale = true;
     }

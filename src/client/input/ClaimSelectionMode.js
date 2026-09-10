@@ -57,7 +57,7 @@ export class ClaimSelectionMode {
         }
         this._on = false;
         this._cursor.clear();
-        this.updateIndicators();
+        this.resyncIndicators();
     }
 
     /**
@@ -75,7 +75,7 @@ export class ClaimSelectionMode {
     onEvent(event) {
         if (event instanceof FriendListEvent) {
             this._client.hud.chunkActionsLayer.rebuild();
-            this.updateIndicators();
+            this.resyncIndicators();
             return;
         }
         if (!(event instanceof OwnClaimsSyncEvent) && !(event instanceof ChunkClaimUpdateEvent)) {
@@ -87,7 +87,7 @@ export class ClaimSelectionMode {
         this._client.hud.resyncToolbarVisibility();
         this._client.hud.chunkActionsLayer.rebuild();
         this._client.chunkSelectionLayer.resync();
-        this.updateIndicators();
+        this.resyncIndicators();
     }
 
     /**
@@ -104,14 +104,14 @@ export class ClaimSelectionMode {
         if (previous === ViewMode.WORLD && this.active && this._cursor.chunkKey === null) {
             this._cursor.selectCenterChunk();
         }
-        this.updateIndicators();
+        this.resyncIndicators();
     }
 
     /**
      * Syncs the center dot, frontier dashes, map buttons, and both bars to the mode.
      * @returns {void}
      */
-    updateIndicators() {
+    resyncIndicators() {
         this._client.centerLock.resyncMarker();
         this._client.claimFrontierLayer.setModeActive(this.active);
         // Entry buttons only show outside the mode; inside, the bars own entry and exit.
@@ -199,7 +199,7 @@ export class ClaimSelectionMode {
             }
             this._on = true;
             this._cursor.selectCenterChunk();
-            this.updateIndicators();
+            this.resyncIndicators();
         };
         this._entering = true;
         const center = this._client.camera.ownClaimsCenter();

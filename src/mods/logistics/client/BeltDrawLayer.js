@@ -312,7 +312,7 @@ export class BeltSprite extends Sprite {
         this.texture = this.frames[frame % this.frames.length];
     }
 
-    update(x, y, direction, bend) {
+    draw(x, y, direction, bend) {
         this.direction = direction;
         this.angle = Direction.angle(direction);
         this.bend = bend;

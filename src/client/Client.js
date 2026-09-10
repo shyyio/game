@@ -403,10 +403,10 @@ export class Client {
         this.viewport.on("moved", () => this.viewportMoved());
         // "zoomed" fires mid-wheel with the over-zoomed scale, before clampZoom restores it;
         // reading the viewport here would briefly see an expanded area and subscribe chunks
-        // that aren't really on screen. The chunk update rides "moved", which fires after the
+        // that aren't really on screen. The chunk resync rides "moved", which fires after the
         // clamp with the settled scale, so only the view mode (thresholds well inside the zoom
         // limits, never mid-clamp) keys off "zoomed".
-        this.viewport.on("zoomed", () => this.viewMode.update());
+        this.viewport.on("zoomed", () => this.viewMode.resync());
         // Scale-only glides emit "zoomed" but never "moved"; the settled zoom (post-clamp)
         // catches the data feed up here.
         this.viewport.on("zoomed-end", () => this.viewportMoved());
@@ -416,7 +416,7 @@ export class Client {
         this.viewport.on("drag-end", () => this.hud.rotateButtonsLayer.setInteractive(true));
         this.app.ticker.add(() => this._tickAnimations());
         this.subscription.viewportMoved();
-        this.viewMode.update();
+        this.viewMode.resync();
         for (const mod of this.modRegistry.clientMods) {
             mod.onReady(this);
         }
@@ -466,13 +466,13 @@ export class Client {
     }
 
     /**
-     * Writes a player setting: optimistic local update plus the server write, so the echoed
-     * update is a no-op. Skips when the value is already current.
+     * Writes a player setting: optimistic local resync plus the server write, so the echoed
+     * resync is a no-op. Skips when the value is already current.
      * @param {number} key
      * @param {number} value
      * @returns {void}
      */
-    updatePlayerSetting(key, value) {
+    setPlayerSetting(key, value) {
         if (this.cache.view("playerSettings").getValueByKey(key) === value) {
             return;
         }
@@ -481,8 +481,8 @@ export class Client {
     }
 
     /**
-     * Writes a new custom order for the mod tools (toolbar drag reorder): optimistic local update
-     * plus the server write, so the echoed update is a no-op.
+     * Writes a new custom order for the mod tools (toolbar drag reorder): optimistic local resync
+     * plus the server write, so the echoed resync is a no-op.
      * @param {AbstractTool[]} tools - the mod tools in their new display order
      * @returns {void}
      */

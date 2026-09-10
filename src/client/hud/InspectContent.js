@@ -104,7 +104,7 @@ export class InspectContent extends Container {
      * @param {number|undefined} lastProduced - the machine's last produced item (output fallback)
      * @returns {void}
      */
-    update(event, lastProduced) {
+    apply(event, lastProduced) {
         for (const [i, slot] of this._inputSlots.entries()) {
             const portItem = event.inputPorts[i];
             this._inputHold[i] = holdAfter(this._inputHold[i], portItem !== 0);
@@ -131,7 +131,7 @@ export class InspectContent extends Container {
         this._outputSlot.setItem(outputItem, present);
 
         if (this._workerLabel !== null) {
-            this._updateWorkerRow(event);
+            this._applyWorkerRow(event);
         }
     }
 
@@ -158,7 +158,7 @@ export class InspectContent extends Container {
      * @returns {void}
      * @private
      */
-    _updateWorkerRow(event) {
+    _applyWorkerRow(event) {
         const staffed = event.workers === event.workerCost;
         this._workerStaffed = staffed;
         let text;

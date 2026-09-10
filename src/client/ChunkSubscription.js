@@ -61,7 +61,7 @@ export class ChunkSubscription {
         if (this._overworld) {
             this._requestOverworld(false);
         } else {
-            this._updateViewportChunks();
+            this._resyncViewportChunks();
         }
     }
 
@@ -85,7 +85,7 @@ export class ChunkSubscription {
     leaveOverworld() {
         this._overworld = false;
         this._lastVisibleKey = null;
-        this._updateViewportChunks();
+        this._resyncViewportChunks();
     }
 
     /**
@@ -100,7 +100,7 @@ export class ChunkSubscription {
             this._requestOverworld(true);
         } else {
             this._requestedChunks.clear();
-            this._updateViewportChunks();
+            this._resyncViewportChunks();
         }
     }
 
@@ -170,7 +170,7 @@ export class ChunkSubscription {
      * @private
      * @returns {void}
      */
-    _updateViewportChunks() {
+    _resyncViewportChunks() {
         if (this._overworld) {
             // No chunk subscriptions in overworld; enumerating the visible chunks at overworld
             // scale would also walk thousands of ids.

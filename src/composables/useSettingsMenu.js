@@ -121,10 +121,10 @@ export function useSettingsMenu() {
             const initial = controlModel(control, playerSettings.getValueByKey(control.key));
             mirror(control, initial, modelValue => {
                 if (control instanceof PlayerSettingChoice) {
-                    client.updatePlayerSetting(control.key, modelValue);
+                    client.setPlayerSetting(control.key, modelValue);
                     return;
                 }
-                client.updatePlayerSetting(control.key, modelValue ? SETTING_ON : SETTING_OFF);
+                client.setPlayerSetting(control.key, modelValue ? SETTING_ON : SETTING_OFF);
             });
         }
         settingsCategories.value = categories;

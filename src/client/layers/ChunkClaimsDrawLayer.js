@@ -65,7 +65,7 @@ export class ChunkClaimsDrawLayer extends AbstractDrawLayer {
                 this._removeBadge(chunk);
             } else {
                 this._drawChunk(chunk, owner);
-                this._updateBadge(chunk, owner);
+                this._resyncBadge(chunk, owner);
             }
             // Neighbors' edges shift too.
             this._dirtyChunks.add(chunk);
@@ -76,13 +76,13 @@ export class ChunkClaimsDrawLayer extends AbstractDrawLayer {
             if (permission === undefined) {
                 return;
             }
-            this._updateBadge(chunk, this._claims.getOwnerByChunkKey(chunk));
+            this._resyncBadge(chunk, this._claims.getOwnerByChunkKey(chunk));
         });
         // A grant toggling changes whether that owner's friends-only chunks read as buildable.
         state.subscribe("chunkClaims.grantedByIds", (playerRef) => {
             for (const chunk of this._graphics.keys()) {
                 if (this._claims.getOwnerByChunkKey(chunk) === playerRef) {
-                    this._updateBadge(chunk, playerRef);
+                    this._resyncBadge(chunk, playerRef);
                 }
             }
         });
@@ -348,7 +348,7 @@ export class ChunkClaimsDrawLayer extends AbstractDrawLayer {
      * @param {number} owner
      * @returns {void}
      */
-    _updateBadge(chunkKey, owner) {
+    _resyncBadge(chunkKey, owner) {
         const drawIcon = this._getBadgeIconByChunkKey(chunkKey, owner);
         if (drawIcon === null) {
             this._removeBadge(chunkKey);

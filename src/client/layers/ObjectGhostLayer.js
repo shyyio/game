@@ -69,7 +69,7 @@ export class ObjectGhostLayer extends AbstractDrawLayer {
         sprite.setGhost(ghostTint, ghostAlpha);
         this._sprite = sprite;
         this._spriteContainer.addChild(sprite);
-        this._updateCenterPin();
+        this._layoutCenterPin();
     }
 
     /**
@@ -126,7 +126,7 @@ export class ObjectGhostLayer extends AbstractDrawLayer {
      */
     setCenterLock(enabled) {
         this._centerLock = enabled;
-        this._updateCenterPin();
+        this._layoutCenterPin();
     }
 
     /**
@@ -136,7 +136,7 @@ export class ObjectGhostLayer extends AbstractDrawLayer {
      * @param {Set<number>} visibleChunks
      */
     tick(frame, deltaMS, visibleChunks) {
-        this._updateCenterPin();
+        this._layoutCenterPin();
     }
 
     /**
@@ -144,7 +144,7 @@ export class ObjectGhostLayer extends AbstractDrawLayer {
      * center-lock — snapping placement to the tile nearest that target (re-evaluating on each new tile).
      * @private
      */
-    _updateCenterPin() {
+    _layoutCenterPin() {
         if (this._sprite === null || this.viewport === null) {
             this._spriteContainer.position.set(0, 0);
             return;

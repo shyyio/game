@@ -49,7 +49,7 @@ export class LoadedAtlas {
      * Re-uploads the canvas.
      * @returns {void}
      */
-    update() {
+    resync() {
         this.source.update();
     }
 }
@@ -211,7 +211,7 @@ export class TextureCache {
             atlas.context.clearRect(rect.x, rect.y, rect.w, rect.h);
             atlas.context.drawImage(pixels, rect.x, rect.y);
         }
-        atlas.update();
+        atlas.resync();
     }
 
     /**
@@ -230,7 +230,7 @@ export class TextureCache {
         }
         atlas.context.clearRect(0, 0, atlas.canvas.width, atlas.canvas.height);
         atlas.context.drawImage(image, 0, 0);
-        atlas.update();
+        atlas.resync();
     }
 }
 

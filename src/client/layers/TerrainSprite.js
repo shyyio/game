@@ -296,7 +296,7 @@ export class TerrainSprite extends Sprite {
      * @param {number} rowCount
      * @returns {void}
      */
-    updateRows(bake, fromRow, rowCount) {
+    drawRows(bake, fromRow, rowCount) {
         const fromCell = fromRow * this._cellsPerAxis;
         const toCell = Math.min(fromCell + rowCount * this._cellsPerAxis, bake.biomes.length);
         this._palette.paintInto(bake, this._pixels, fromCell, toCell, this._shadeAt, this._ditherAt);

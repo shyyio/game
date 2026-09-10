@@ -111,7 +111,7 @@ export class AbstractTileMeshDrawLayer extends AbstractChunkedDrawLayer {
      * @param {number} deltaMS elapsed time since the previous tick, in ms
      * @returns {void}
      */
-    _updateSprites(frame, deltaMS) {
+    _drawSprites(frame, deltaMS) {
         if (this._shader !== null) {
             this._shader.frame = frame;
         }

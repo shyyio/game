@@ -48,7 +48,7 @@ function build() {
 function modeAt(scale) {
     const {viewMode, client} = build();
     client.viewport.scale.x = scale;
-    viewMode.update();
+    viewMode.resync();
     return viewMode.current;
 }
 
@@ -67,14 +67,14 @@ test("each zoom band picks its mode, thresholds belonging to the band below", ()
 test("a zoom staying inside the band tells nobody", () => {
     const {viewMode, client} = build();
     client.viewport.scale.x = WORLD_SCALE * 2;
-    viewMode.update();
+    viewMode.resync();
     assert.deepEqual(client.told, []);
 });
 
 test("crossing a band fans the new mode out to every consumer", () => {
     const {viewMode, client} = build();
     client.viewport.scale.x = MAP_SCALE;
-    viewMode.update();
+    viewMode.resync();
     assert.deepEqual(client.told, [
         ["layers", ViewMode.MAP],
         ["mapButtons", ViewMode.MAP],
@@ -87,7 +87,7 @@ test("crossing a band fans the new mode out to every consumer", () => {
 test("the chunk-picking modes are handed the mode being left, not the new one", () => {
     const {viewMode, client} = build();
     client.viewport.scale.x = MAP_SCALE;
-    viewMode.update();
+    viewMode.resync();
     assert.deepEqual(client.previous, [
         ["claimSelection", ViewMode.WORLD],
         ["settleFlow", ViewMode.WORLD],
@@ -99,29 +99,29 @@ test("the change handler sees each new mode once", () => {
     const seen = [];
     viewMode.onChange(mode => seen.push(mode));
     client.viewport.scale.x = MAP_SCALE;
-    viewMode.update();
-    viewMode.update();
+    viewMode.resync();
+    viewMode.resync();
     client.viewport.scale.x = OVERWORLD_SCALE;
-    viewMode.update();
+    viewMode.resync();
     assert.deepEqual(seen, [ViewMode.MAP, ViewMode.OVERWORLD]);
 });
 
 test("the overworld swaps the data feed on the way in and back out", () => {
     const {viewMode, client} = build();
     client.viewport.scale.x = OVERWORLD_SCALE;
-    viewMode.update();
+    viewMode.resync();
     assert.deepEqual(client.subscribed, ["enter"]);
 
     client.viewport.scale.x = MAP_SCALE;
-    viewMode.update();
+    viewMode.resync();
     assert.deepEqual(client.subscribed, ["enter", "leave"]);
 });
 
 test("moving between world and map never touches the data feed", () => {
     const {viewMode, client} = build();
     client.viewport.scale.x = MAP_SCALE;
-    viewMode.update();
+    viewMode.resync();
     client.viewport.scale.x = WORLD_SCALE;
-    viewMode.update();
+    viewMode.resync();
     assert.deepEqual(client.subscribed, []);
 });

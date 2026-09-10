@@ -35,7 +35,7 @@ export class InspectTooltipLayer extends AbstractTooltipLayer {
         this._text.x = TOOLTIP_PADDING;
         this._text.y = TOOLTIP_PADDING;
         this.addChild(this._text);
-        this._tick = () => this._update(this._app.ticker.deltaMS);
+        this._tick = () => this._advance(this._app.ticker.deltaMS);
         app.ticker.add(this._tick);
     }
 
@@ -54,7 +54,7 @@ export class InspectTooltipLayer extends AbstractTooltipLayer {
      * @param {number} deltaMS
      * @returns {void}
      */
-    _update(deltaMS) {
+    _advance(deltaMS) {
         const item = this._inspect.lockedItem;
         if (item === null || this.viewport === null) {
             this.visible = false;

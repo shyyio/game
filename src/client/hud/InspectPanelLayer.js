@@ -39,7 +39,7 @@ export class InspectPanelLayer extends ConnectedPanelLayer {
                         lastProduced = entry.data.lastOutput;
                     }
                 }
-                this.update(heartbeat, lastProduced, machineTile, title);
+                this.apply(heartbeat, lastProduced, machineTile, title);
             }
         });
         /**
@@ -74,7 +74,7 @@ export class InspectPanelLayer extends ConnectedPanelLayer {
      * @param {{x: number, y: number}|undefined} machineTile - the machine's tile position, for the connectors
      * @param {string} title - the machine's object type label
      */
-    update(event, lastProduced, machineTile, title) {
+    apply(event, lastProduced, machineTile, title) {
         const key = String(event.objectRef);
         let entry = this._panels.get(key);
         if (entry === undefined) {
@@ -92,7 +92,7 @@ export class InspectPanelLayer extends ConnectedPanelLayer {
             });
         }
         entry.position = machineTile;
-        entry.content.update(event, lastProduced);
+        entry.content.apply(event, lastProduced);
     }
 
     /**

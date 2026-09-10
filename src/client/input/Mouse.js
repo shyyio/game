@@ -162,7 +162,7 @@ class Mouse {
         // A release over a HUD element (or off the canvas) must still end the gesture.
         this._viewport.on("pointerupoutside", event => this._onPointerUp(event));
 
-        this._app.ticker.add(() => this._updateCurrentMousePos());
+        this._app.ticker.add(() => this._resyncCurrentMousePos());
     }
 
     /**
@@ -253,7 +253,7 @@ class Mouse {
      */
     setCenterLock(enabled) {
         this._centerLock = enabled;
-        this._updateHoverTile();
+        this._resyncHoverTile();
     }
 
     /**
@@ -461,7 +461,7 @@ class Mouse {
         return this._pointerWasOverInteractive;
     }
 
-    _updateCurrentMousePos() {
+    _resyncCurrentMousePos() {
         const world = this._viewport.toWorld(
             this._app.renderer.events.pointer.global.x,
             this._app.renderer.events.pointer.global.y,
@@ -474,11 +474,11 @@ class Mouse {
         // over a panel or a world marker, unless a press is in flight (a drag crossing the HUD
         // keeps its hover).
         if (this._centerLock) {
-            this._updateHoverTile();
+            this._resyncHoverTile();
         } else if (this._clickStartX == null && this._isPointerRestingOverInteractive()) {
             this._notifyTileExit();
         } else {
-            this._updateHoverTile();
+            this._resyncHoverTile();
         }
 
         if (this._clickStartX == null) {
@@ -503,7 +503,7 @@ class Mouse {
         }
 
         const speed = this._sampleDragSpeed();
-        this._updateAxisLock(speed);
+        this._resyncAxisLock(speed);
 
         // A locked drag paints toward the pointer projected onto the axis, so the
         // perpendicular drift is dropped and the run stays straight.
@@ -579,7 +579,7 @@ class Mouse {
      * @param {number} speed - world px per ms from the last frame
      * @returns {void}
      */
-    _updateAxisLock(speed) {
+    _resyncAxisLock(speed) {
         const vx = this.currentX - this._clickStartX;
         const vy = this.currentY - this._clickStartY;
         const horizontal = Math.abs(vx) > Math.abs(vy);
@@ -622,7 +622,7 @@ class Mouse {
      * Fires tile enter/exit callbacks when the hovered tile changes.
      * @private
      */
-    _updateHoverTile() {
+    _resyncHoverTile() {
         let tileX = this.tileX;
         let tileY = this.tileY;
         if (this._centerLock) {
