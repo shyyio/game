@@ -69,10 +69,10 @@ export class LogicScenario extends AbstractScenario {
         const blender = place(engine, BlenderType, TERMINAL_X - 3, TERMINAL_Y + 3);
         const tank = place(engine, TankType, TERMINAL_X + 2, TERMINAL_Y + 3);
 
-        const tankDef = engine.components.get("Tank");
-        const tankRow = tankDef.row(engine.placed.eidByObjectRef(tank));
-        tankDef.store.fluidType[tankRow] = ITEM_TYPE_WATER;
-        tankDef.store.amount[tankRow] = TANK_WATER_AMOUNT;
+        const tanks = engine.components.get("Tank");
+        const tankRow = tanks.row(engine.placed.eidByObjectRef(tank));
+        tanks.store.fluidType[tankRow] = ITEM_TYPE_WATER;
+        tanks.store.amount[tankRow] = TANK_WATER_AMOUNT;
 
         const session = new CapturingSession(LOGIC_PLAYER_REF);
         for (const deviceId of [gateA, gateB, blender, tank]) {
