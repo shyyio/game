@@ -18,19 +18,19 @@ export class NodeAccountStore {
         this.db.pragma(`busy_timeout = ${BUSY_TIMEOUT_MS}`);
         this.db.exec(`
             CREATE TABLE IF NOT EXISTS "Account" (
-                account_id INTEGER PRIMARY KEY,
+                accountId INTEGER PRIMARY KEY,
                 username TEXT NOT NULL UNIQUE,
-                created_at INTEGER NOT NULL
+                createdAt INTEGER NOT NULL
             )
         `);
-        this._findByUsername = this.db.prepare("SELECT account_id, username, created_at FROM \"Account\" WHERE username = ?");
-        this._findById = this.db.prepare("SELECT account_id, username, created_at FROM \"Account\" WHERE account_id = ?");
-        this._insert = this.db.prepare("INSERT INTO \"Account\" (username, created_at) VALUES (?, ?)");
+        this._findByUsername = this.db.prepare("SELECT accountId, username, createdAt FROM \"Account\" WHERE username = ?");
+        this._findById = this.db.prepare("SELECT accountId, username, createdAt FROM \"Account\" WHERE accountId = ?");
+        this._insert = this.db.prepare("INSERT INTO \"Account\" (username, createdAt) VALUES (?, ?)");
     }
 
     /**
      * @param {string} username
-     * @returns {{account_id: number, username: string, created_at: number}|undefined}
+     * @returns {{accountId: number, username: string, createdAt: number}|undefined}
      */
     findByUsername(username) {
         return this._findByUsername.get(username);
@@ -38,7 +38,7 @@ export class NodeAccountStore {
 
     /**
      * @param {number} accountId
-     * @returns {{account_id: number, username: string, created_at: number}|undefined}
+     * @returns {{accountId: number, username: string, createdAt: number}|undefined}
      */
     findById(accountId) {
         return this._findById.get(accountId);
@@ -47,7 +47,7 @@ export class NodeAccountStore {
     /**
      * @param {string} username
      * @param {number} createdAt
-     * @returns {number} the new account_id
+     * @returns {number} the new accountId
      */
     insert(username, createdAt) {
         return this._insert.run(username, createdAt).lastInsertRowid;

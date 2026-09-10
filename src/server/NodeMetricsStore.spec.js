@@ -164,9 +164,9 @@ test("buckets from a tier this build doesn't bake are rebuilt instead of folded 
     // Stands in for a build whose ladder has changed since the file was written.
     const offLadderTier = TIER_LADDER[TIER_LADDER.length - 1] + 1;
     store.db.prepare(`
-        INSERT INTO "MetricsBucket" (tier, type, player_id, bucket_tick, category, tag, count, sum)
-        VALUES (@tier, @type, @player_id, 0, 1, 0, 999, 999)
-    `).run({tier: offLadderTier, type: TYPE, player_id: PLAYER});
+        INSERT INTO "MetricsBucket" (tier, type, playerRef, bucketTick, category, tag, count, sum)
+        VALUES (@tier, @type, @playerRef, 0, 1, 0, 999, 999)
+    `).run({tier: offLadderTier, type: TYPE, playerRef: PLAYER});
     await store.close();
 
     const reopened = new NodeMetricsStore(path);

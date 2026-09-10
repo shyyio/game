@@ -30,22 +30,22 @@ function bucketFloor(column) {
  */
 function rollupSql(playerPredicate, bucketIndex) {
     return `
-        SELECT bucket_tick, category, tag, SUM(count) AS count, SUM(sum) AS sum
+        SELECT bucketTick, category, tag, SUM(count) AS count, SUM(sum) AS sum
         FROM (
-            SELECT bucket_tick, category, tag, count, sum
+            SELECT bucketTick, category, tag, count, sum
             FROM "MetricsBucket" ${bucketIndex}
             WHERE tier = @tier AND type = @type${playerPredicate}
-                AND bucket_tick >= @from_bucket AND bucket_tick <= @to_tick
+                AND bucketTick >= @fromBucket AND bucketTick <= @toTick
             UNION ALL
             SELECT
-                ${bucketFloor("tick")} AS bucket_tick,
+                ${bucketFloor("tick")} AS bucketTick,
                 category, tag, COUNT(*) AS count, SUM(amount) AS sum
             FROM "MetricsFact" INDEXED BY "idx_MetricsFact_tick"
-            WHERE tick >= @tail_from_tick AND tick <= @to_tick AND type = @type${playerPredicate}
-            GROUP BY bucket_tick, category, tag
+            WHERE tick >= @tailFromTick AND tick <= @toTick AND type = @type${playerPredicate}
+            GROUP BY bucketTick, category, tag
         )
-        GROUP BY bucket_tick, category, tag
-        ORDER BY bucket_tick
+        GROUP BY bucketTick, category, tag
+        ORDER BY bucketTick
     `;
 }
 
@@ -74,9 +74,9 @@ export class NodeMetricsStore extends AbstractMetricsStore {
 
         const bounds = this.db.prepare(`
             SELECT
-                (SELECT MAX(bucket_tick) FROM "MetricsBucket" WHERE tier = @tier) AS baked,
-                (SELECT MIN(tick) FROM "MetricsFact") AS oldest_fact,
-                (SELECT MAX(tick) FROM "MetricsFact") AS latest_fact
+                (SELECT MAX(bucketTick) FROM "MetricsBucket" WHERE tier = @tier) AS baked,
+                (SELECT MIN(tick) FROM "MetricsFact") AS oldestFact,
+                (SELECT MAX(tick) FROM "MetricsFact") AS latestFact
         `).get({tier: METRICS_FOLD_TIER});
         /**
          * First tick no bucket covers yet; every fold window before it is complete. With no buckets
@@ -86,7 +86,7 @@ export class NodeMetricsStore extends AbstractMetricsStore {
          */
         this._foldedThrough = this._startOfFolding(bounds);
         // Folds what an existing file holds ahead of its buckets, at open rather than inside a tick.
-        this._foldThrough(bounds.latest_fact);
+        this._foldThrough(bounds.latestFact);
     }
 
     /**
@@ -97,10 +97,10 @@ export class NodeMetricsStore extends AbstractMetricsStore {
     _createSchema() {
         this.db.exec(`
             CREATE TABLE IF NOT EXISTS "MetricsFact" (
-                metrics_fact_id INTEGER PRIMARY KEY,
+                metricsFactId INTEGER PRIMARY KEY,
                 type INTEGER NOT NULL,
                 tick INTEGER NOT NULL,
-                player_id INTEGER NOT NULL,
+                playerRef INTEGER NOT NULL,
                 category INTEGER NOT NULL,
                 amount INTEGER NOT NULL,
                 tag INTEGER NOT NULL
@@ -120,13 +120,13 @@ export class NodeMetricsStore extends AbstractMetricsStore {
             CREATE TABLE IF NOT EXISTS "MetricsBucket" (
                 tier INTEGER NOT NULL,
                 type INTEGER NOT NULL,
-                player_id INTEGER NOT NULL,
-                bucket_tick INTEGER NOT NULL,
+                playerRef INTEGER NOT NULL,
+                bucketTick INTEGER NOT NULL,
                 category INTEGER NOT NULL,
                 tag INTEGER NOT NULL,
                 count INTEGER NOT NULL,
                 sum INTEGER NOT NULL,
-                PRIMARY KEY (tier, type, player_id, bucket_tick, category, tag)
+                PRIMARY KEY (tier, type, playerRef, bucketTick, category, tag)
             ) WITHOUT ROWID
         `);
         // Earlier column orders, replaced by the two below.
@@ -138,12 +138,12 @@ export class NodeMetricsStore extends AbstractMetricsStore {
         // the primary key instead.
         this.db.exec(`
             CREATE INDEX IF NOT EXISTS "idx_MetricsBucket_tier_type_tick_agg"
-                ON "MetricsBucket" (tier, type, bucket_tick, category, tag, count, sum)
+                ON "MetricsBucket" (tier, type, bucketTick, category, tag, count, sum)
         `);
         // Folding a coarse tier and pruning both walk one tier by tick, with the type left free.
         this.db.exec(`
             CREATE INDEX IF NOT EXISTS "idx_MetricsBucket_tier_tick"
-                ON "MetricsBucket" (tier, bucket_tick)
+                ON "MetricsBucket" (tier, bucketTick)
         `);
     }
 
@@ -154,13 +154,13 @@ export class NodeMetricsStore extends AbstractMetricsStore {
      */
     _prepareWrites() {
         this._insert = this.db.prepare(`
-            INSERT INTO "MetricsFact" (type, tick, player_id, category, amount, tag)
-            VALUES (@type, @tick, @player_id, @category, @amount, @tag)
+            INSERT INTO "MetricsFact" (type, tick, playerRef, category, amount, tag)
+            VALUES (@type, @tick, @playerRef, @category, @amount, @tag)
         `);
         this._insertBatch = this.db.transaction(facts => {
             for (const fact of facts) {
                 this._insert.run({
-                    type: fact.type, tick: fact.tick, player_id: fact.playerRef,
+                    type: fact.type, tick: fact.tick, playerRef: fact.playerRef,
                     category: fact.category, amount: fact.amount, tag: fact.tag,
                 });
             }
@@ -173,12 +173,12 @@ export class NodeMetricsStore extends AbstractMetricsStore {
      * @returns {void}
      */
     _prepareQueries() {
-        // Baked rows cover whole buckets, so an answer starts at the bucket @from_bucket names
+        // Baked rows cover whole buckets, so an answer starts at the bucket @fromBucket names
         // rather than mid-bucket.
         this._queryRollupAllPlayers = this.db.prepare(
             rollupSql("", `INDEXED BY "idx_MetricsBucket_tier_type_tick_agg"`),
         );
-        this._queryRollupForPlayer = this.db.prepare(rollupSql(" AND player_id = @player_id", ""));
+        this._queryRollupForPlayer = this.db.prepare(rollupSql(" AND playerRef = @playerRef", ""));
     }
 
     /**
@@ -188,40 +188,40 @@ export class NodeMetricsStore extends AbstractMetricsStore {
      */
     _prepareFold() {
         this._foldFacts = this.db.prepare(`
-            INSERT INTO "MetricsBucket" (tier, type, player_id, bucket_tick, category, tag, count, sum)
+            INSERT INTO "MetricsBucket" (tier, type, playerRef, bucketTick, category, tag, count, sum)
             SELECT
                 @tier,
                 type,
-                player_id,
-                ${bucketFloor("tick")} AS fold_bucket_tick,
+                playerRef,
+                ${bucketFloor("tick")} AS foldBucketTick,
                 category,
                 tag,
                 COUNT(*),
                 SUM(amount)
             FROM "MetricsFact" INDEXED BY "idx_MetricsFact_tick"
-            WHERE tick >= @from_tick AND tick < @to_tick
-            GROUP BY type, player_id, fold_bucket_tick, category, tag
-            ON CONFLICT (tier, type, player_id, bucket_tick, category, tag) DO UPDATE SET
+            WHERE tick >= @fromTick AND tick < @toTick
+            GROUP BY type, playerRef, foldBucketTick, category, tag
+            ON CONFLICT (tier, type, playerRef, bucketTick, category, tag) DO UPDATE SET
                 count = "MetricsBucket".count + excluded.count,
                 sum = "MetricsBucket".sum + excluded.sum
         `);
         // Coarse tiers fold from the fold tier's rows for the same window: complete already, and
         // orders of magnitude fewer than the facts behind them.
         this._foldCoarseTier = this.db.prepare(`
-            INSERT INTO "MetricsBucket" (tier, type, player_id, bucket_tick, category, tag, count, sum)
+            INSERT INTO "MetricsBucket" (tier, type, playerRef, bucketTick, category, tag, count, sum)
             SELECT
                 @tier,
                 type,
-                player_id,
-                ${bucketFloor("bucket_tick")} AS fold_bucket_tick,
+                playerRef,
+                ${bucketFloor("bucketTick")} AS foldBucketTick,
                 category,
                 tag,
                 SUM(count),
                 SUM(sum)
             FROM "MetricsBucket" INDEXED BY "idx_MetricsBucket_tier_tick"
-            WHERE tier = @source_tier AND bucket_tick >= @from_tick AND bucket_tick < @to_tick
-            GROUP BY type, player_id, fold_bucket_tick, category, tag
-            ON CONFLICT (tier, type, player_id, bucket_tick, category, tag) DO UPDATE SET
+            WHERE tier = @sourceTier AND bucketTick >= @fromTick AND bucketTick < @toTick
+            GROUP BY type, playerRef, foldBucketTick, category, tag
+            ON CONFLICT (tier, type, playerRef, bucketTick, category, tag) DO UPDATE SET
                 count = "MetricsBucket".count + excluded.count,
                 sum = "MetricsBucket".sum + excluded.sum
         `);
@@ -231,15 +231,15 @@ export class NodeMetricsStore extends AbstractMetricsStore {
         );
         this._deleteBucketsBefore = this.db.prepare(`
             DELETE FROM "MetricsBucket" INDEXED BY "idx_MetricsBucket_tier_tick"
-            WHERE tier = @tier AND bucket_tick < @cutoff
+            WHERE tier = @tier AND bucketTick < @cutoff
         `);
 
         // Retention rides the fold: both tables age out together, once per fold window.
         this._foldWindow = this.db.transaction((fromTick, toTick, cutoff) => {
-            this._foldFacts.run({tier: METRICS_FOLD_TIER, from_tick: fromTick, to_tick: toTick});
+            this._foldFacts.run({tier: METRICS_FOLD_TIER, fromTick, toTick});
             for (const tier of METRICS_COARSE_TIERS) {
                 this._foldCoarseTier.run({
-                    tier, source_tier: METRICS_FOLD_TIER, from_tick: fromTick, to_tick: toTick,
+                    tier, sourceTier: METRICS_FOLD_TIER, fromTick, toTick,
                 });
             }
             if (cutoff > 0) {
@@ -284,17 +284,17 @@ export class NodeMetricsStore extends AbstractMetricsStore {
         const params = {
             tier,
             type,
-            from_bucket: bucketTickFor(fromTick, tier),
-            tail_from_tick: tailFromTick,
-            to_tick: toTick,
+            fromBucket: bucketTickFor(fromTick, tier),
+            tailFromTick: tailFromTick,
+            toTick,
         };
         let rows;
         if (playerRef === null) {
             rows = this._queryRollupAllPlayers.all(params);
         } else {
-            rows = this._queryRollupForPlayer.all({...params, player_id: playerRef});
+            rows = this._queryRollupForPlayer.all({...params, playerRef});
         }
-        return rows.map(row => new MetricsRollupRow(row.bucket_tick, row.category, row.tag, row.count, row.sum));
+        return rows.map(row => new MetricsRollupRow(row.bucketTick, row.category, row.tag, row.count, row.sum));
     }
 
     /**
@@ -324,7 +324,7 @@ export class NodeMetricsStore extends AbstractMetricsStore {
     }
 
     /**
-     * @param {{baked: number|null, oldest_fact: number|null}} bounds
+     * @param {{baked: number|null, oldestFact: number|null}} bounds
      * @returns {number} tick folding resumes from
      * @private
      */
@@ -332,8 +332,8 @@ export class NodeMetricsStore extends AbstractMetricsStore {
         if (bounds.baked !== null) {
             return bounds.baked + METRICS_FOLD_TIER;
         }
-        if (bounds.oldest_fact !== null) {
-            return bucketTickFor(bounds.oldest_fact, METRICS_FOLD_TIER);
+        if (bounds.oldestFact !== null) {
+            return bucketTickFor(bounds.oldestFact, METRICS_FOLD_TIER);
         }
         return 0;
     }

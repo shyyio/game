@@ -2,7 +2,7 @@ import BetterSqlite3 from "better-sqlite3";
 
 /**
  * Node persistence for anonymous client error reports. Rows are deduplicated by fingerprint
- * within a time window (recordReport bumps count/last_seen instead of inserting a duplicate),
+ * within a time window (recordReport bumps count/lastSeen instead of inserting a duplicate),
  * so a crash loop grows one row's counter rather than the table.
  */
 export class NodeErrorReportStore {
@@ -14,50 +14,50 @@ export class NodeErrorReportStore {
         this.db = new BetterSqlite3(path);
         this.db.exec(`
             CREATE TABLE IF NOT EXISTS "ErrorReport" (
-                error_report_id INTEGER PRIMARY KEY,
+                errorReportId INTEGER PRIMARY KEY,
                 fingerprint TEXT NOT NULL,
                 message TEXT NOT NULL,
                 stack TEXT NOT NULL,
-                resolved_stack TEXT,
-                build_version TEXT NOT NULL,
+                resolvedStack TEXT,
+                buildVersion TEXT NOT NULL,
                 url TEXT NOT NULL,
                 extra TEXT,
                 count INTEGER NOT NULL,
-                first_seen INTEGER NOT NULL,
-                last_seen INTEGER NOT NULL
+                firstSeen INTEGER NOT NULL,
+                lastSeen INTEGER NOT NULL
             )
         `);
         this.db.exec(`CREATE INDEX IF NOT EXISTS "idx_ErrorReport_fingerprint" ON "ErrorReport" (fingerprint)`);
 
         this._findRecentByFingerprint = this.db.prepare(`
-            SELECT error_report_id
+            SELECT errorReportId
             FROM "ErrorReport"
-            WHERE fingerprint = ? AND last_seen >= ?
-            ORDER BY last_seen DESC
+            WHERE fingerprint = ? AND lastSeen >= ?
+            ORDER BY lastSeen DESC
             LIMIT 1
         `);
-        this._bump = this.db.prepare(`UPDATE "ErrorReport" SET count = count + 1, last_seen = ? WHERE error_report_id = ?`);
+        this._bump = this.db.prepare(`UPDATE "ErrorReport" SET count = count + 1, lastSeen = ? WHERE errorReportId = ?`);
         this._insert = this.db.prepare(`
-            INSERT INTO "ErrorReport" (fingerprint, message, stack, build_version, url, extra, count, first_seen, last_seen)
+            INSERT INTO "ErrorReport" (fingerprint, message, stack, buildVersion, url, extra, count, firstSeen, lastSeen)
             VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?)
         `);
-        this._prune = this.db.prepare(`DELETE FROM "ErrorReport" WHERE last_seen < ?`);
+        this._prune = this.db.prepare(`DELETE FROM "ErrorReport" WHERE lastSeen < ?`);
         this._listGrouped = this.db.prepare(`
-            SELECT error_report_id, fingerprint, message, build_version, url, count, first_seen, last_seen
+            SELECT errorReportId, fingerprint, message, buildVersion, url, count, firstSeen, lastSeen
             FROM "ErrorReport"
-            ORDER BY last_seen DESC
+            ORDER BY lastSeen DESC
             LIMIT ?
         `);
         this._getById = this.db.prepare(`
-            SELECT error_report_id, fingerprint, message, stack, resolved_stack, build_version, url, extra, count, first_seen, last_seen
+            SELECT errorReportId, fingerprint, message, stack, resolvedStack, buildVersion, url, extra, count, firstSeen, lastSeen
             FROM "ErrorReport"
-            WHERE error_report_id = ?
+            WHERE errorReportId = ?
         `);
-        this._setResolvedStack = this.db.prepare(`UPDATE "ErrorReport" SET resolved_stack = ? WHERE error_report_id = ?`);
+        this._setResolvedStack = this.db.prepare(`UPDATE "ErrorReport" SET resolvedStack = ? WHERE errorReportId = ?`);
     }
 
     /**
-     * Bumps the matching row's count/last_seen if the same fingerprint was seen within
+     * Bumps the matching row's count/lastSeen if the same fingerprint was seen within
      * dedupWindowMs, otherwise inserts a new row.
      * @param {{fingerprint: string, message: string, stack: string, buildVersion: string, url: string, extra: string|null}} report
      * @param {number} nowMs
@@ -68,8 +68,8 @@ export class NodeErrorReportStore {
         const {fingerprint, message, stack, buildVersion, url, extra} = report;
         const recent = this._findRecentByFingerprint.get(fingerprint, nowMs - dedupWindowMs);
         if (recent !== undefined) {
-            this._bump.run(nowMs, recent.error_report_id);
-            return {errorReportId: recent.error_report_id, isNew: false};
+            this._bump.run(nowMs, recent.errorReportId);
+            return {errorReportId: recent.errorReportId, isNew: false};
         }
         const errorReportId = this._insert.run(fingerprint, message, stack, buildVersion, url, extra, nowMs, nowMs).lastInsertRowid;
         return {errorReportId, isNew: true};

@@ -325,13 +325,13 @@ export class ReportingHttpServer extends AbstractHttpServer {
             rejectRequest(res, "404 Not Found", "No such report");
             return;
         }
-        if (report.resolved_stack !== null) {
+        if (report.resolvedStack !== null) {
             res.cork(() => {
-                res.writeHeader("Content-Type", "text/html; charset=utf-8").end(this._renderDetail(report, report.resolved_stack));
+                res.writeHeader("Content-Type", "text/html; charset=utf-8").end(this._renderDetail(report, report.resolvedStack));
             });
             return;
         }
-        this._symbolicator.resolve(report.build_version, report.stack).then(resolvedStack => {
+        this._symbolicator.resolve(report.buildVersion, report.stack).then(resolvedStack => {
             if (res.aborted) {
                 return;
             }
@@ -360,10 +360,10 @@ export class ReportingHttpServer extends AbstractHttpServer {
         const items = rows.map(row => `
             <tr>
                 <td><span class="count-pill">${row.count}</span></td>
-                <td class="timestamp">${this._formatTimestamp(row.last_seen)}</td>
-                <td class="timestamp">${this._formatTimestamp(row.first_seen)}</td>
-                <td>${this._buildLink(row.build_version)}</td>
-                <td><a href="/admin/reports/${row.error_report_id}">${escapeHtml(row.message)}</a></td>
+                <td class="timestamp">${this._formatTimestamp(row.lastSeen)}</td>
+                <td class="timestamp">${this._formatTimestamp(row.firstSeen)}</td>
+                <td>${this._buildLink(row.buildVersion)}</td>
+                <td><a href="/admin/reports/${row.errorReportId}">${escapeHtml(row.message)}</a></td>
             </tr>
         `).join("");
         const body = rows.length === 0
@@ -389,15 +389,15 @@ export class ReportingHttpServer extends AbstractHttpServer {
 <h1>${escapeHtml(report.message)}</h1>
 <dl class="meta">
     <dt>Count</dt><dd><span class="count-pill">${report.count}</span></dd>
-    <dt>First seen</dt><dd class="timestamp">${this._formatTimestamp(report.first_seen)}</dd>
-    <dt>Last seen</dt><dd class="timestamp">${this._formatTimestamp(report.last_seen)}</dd>
-    <dt>Build</dt><dd>${this._buildLink(report.build_version)}</dd>
+    <dt>First seen</dt><dd class="timestamp">${this._formatTimestamp(report.firstSeen)}</dd>
+    <dt>Last seen</dt><dd class="timestamp">${this._formatTimestamp(report.lastSeen)}</dd>
+    <dt>Build</dt><dd>${this._buildLink(report.buildVersion)}</dd>
     <dt>URL</dt><dd><code>${escapeHtml(report.url)}</code></dd>
 </dl>
 <h2>Stack</h2>
 <pre>${escapeHtml(stack)}</pre>
 ${extra}`;
-        return this._page(`reportingserver — report ${report.error_report_id}`, body);
+        return this._page(`reportingserver — report ${report.errorReportId}`, body);
     }
 
     /**
@@ -430,8 +430,8 @@ ${bodyHtml}
     }
 
     /**
-     * A report's build_version linked to its GitHub commit. No commit-date lookup here — that
-     * would mean shelling out to git per unique build_version on every admin page load.
+     * A report's buildVersion linked to its GitHub commit. No commit-date lookup here — that
+     * would mean shelling out to git per unique buildVersion on every admin page load.
      * @private
      * @param {string} commitHash
      * @returns {string}

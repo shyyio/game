@@ -14,11 +14,11 @@ export class AccountEntry {
     }
 
     /**
-     * @param {{account_id: number, username: string, created_at: number}} row
+     * @param {{accountId: number, username: string, createdAt: number}} row
      * @returns {AccountEntry}
      */
     static parse(row) {
-        return new AccountEntry(row.account_id, row.username, row.created_at);
+        return new AccountEntry(row.accountId, row.username, row.createdAt);
     }
 }
 
