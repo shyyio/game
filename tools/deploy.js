@@ -167,8 +167,8 @@ function assertModsBuildable() {
  */
 function main() {
     // The pre-flight checks count as one step, then the builds, the tests, the tag, the push, and
-    // the remote check.
-    const steps = new StepLog(BUILDS.length + 5);
+    // the remote check, then the registry listing.
+    const steps = new StepLog(BUILDS.length + 6);
 
     steps.begin("pre-flight checks");
     assertOnMain();
@@ -200,6 +200,12 @@ function main() {
     steps.begin("check every remote took it");
     const {stdout: head} = capture("git", ["rev-parse", "main"]);
     assertRemotesAt(head);
+
+    steps.begin("add the release to the mod registry");
+    runStep("registry", "npm", ["run", "add-release"], {
+        cwd: ROOT,
+        hint: "The game is live. Run `npm run add-release` once ../spup-mods is checked out beside this repo.",
+    });
 
     console.log(`\n${GAME_VERSION} is live — check https://ca1.spupgame.com/status and /mods/index.json`);
 }
