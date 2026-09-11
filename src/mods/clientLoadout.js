@@ -6,12 +6,9 @@
 import {MOD_ROOTS} from "@/mods/modDirs.js";
 import {MOD_SOURCES} from "@/mods/modSources.js";
 import {clientPackagesFrom} from "@/mods/modPackages.js";
+import {DEV_MOD_CLIENTS} from "@/mods/devModSources.vite.js";
 
-const CLIENTS = Object.assign(
-    {},
-    import.meta.glob("/src/mods/*/client.js", {eager: true}),
-    import.meta.env.DEV ? import.meta.glob("/dev-mods/*/client.js", {eager: true}) : {},
-);
+const CLIENTS = Object.assign({}, import.meta.glob("/src/mods/*/client.js", {eager: true}), DEV_MOD_CLIENTS);
 
 /**
  * @param {string} dir

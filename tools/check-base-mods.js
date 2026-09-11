@@ -8,18 +8,23 @@
 
 import {mkdtempSync, rmSync} from "node:fs";
 import {tmpdir} from "node:os";
-import {join, resolve, dirname} from "node:path";
+import {join, resolve, dirname, basename} from "node:path";
 import {fileURLToPath} from "node:url";
 import {StepError, fail} from "./steps.js";
 import {buildMod, packageName} from "./build-mod.js";
 import {checkPackage} from "./mod-check.js";
 import {GAME_VERSION} from "../src/common/constants.js";
-import {dirsIn, MODS_ROOT} from "../src/mods/modDirs.js";
+import {dirsIn, MODS_ROOT, DEV_MODS_ROOT} from "../src/mods/modDirs.js";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
-// The mods this game ships; a checkout's own dev-mods belong to whoever is working on them.
-const BASE_MOD_DIRS = dirsIn(MODS_ROOT);
+// The mods this game ships, and the example mod it ships as source under dev-mods; a checkout's
+// other dev-mods belong to whoever is working on them.
+const EXAMPLE_MOD_DIR = "pebble-generator";
+const MOD_PATHS = [
+    ...dirsIn(MODS_ROOT).map(dir => join(MODS_ROOT, dir)),
+    join(DEV_MODS_ROOT, EXAMPLE_MOD_DIR),
+];
 
 const HINT = [
     "That mod cannot be built as a standalone package. A bundler error is printed above; a disallowed",
@@ -34,12 +39,13 @@ export async function checkBaseMods() {
     const scratch = mkdtempSync(join(tmpdir(), "spup-base-mods-"));
     const failures = [];
     try {
-        for (const dir of BASE_MOD_DIRS) {
+        for (const path of MOD_PATHS) {
+            const dir = basename(path);
             const name = packageName(dir);
             const packageDir = join(scratch, dir);
             let problems;
             try {
-                await buildMod(join(ROOT, "src/mods", dir), packageDir, {version: GAME_VERSION});
+                await buildMod(join(ROOT, path), packageDir, {version: GAME_VERSION});
                 ({problems} = await checkPackage(packageDir));
             }
             catch (error) {

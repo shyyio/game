@@ -19,6 +19,7 @@ import {chunkKeyAt} from "@/common/util.js";
 import {ModRegistry} from "@/common/ModRegistry.js";
 import {MOD_PART_SIM, MOD_PART_CLIENT} from "@/common/ModManifest.js";
 import {simLoadout, MOD_DIRS} from "@/mods/loadout.js";
+import {MOD_ROOTS} from "@/mods/modDirs.js";
 import * as sdk from "@/sdk/common.js";
 import {buildMod} from "../../tools/build-mod.js";
 
@@ -33,7 +34,7 @@ async function packagedRegistry(outRoot) {
     const bundles = [];
     for (const dir of MOD_DIRS) {
         const outDir = join(outRoot, dir);
-        const manifest = await buildMod(resolve("src/mods", dir), outDir, {version: "1.0.0"});
+        const manifest = await buildMod(resolve(MOD_ROOTS.get(dir), dir), outDir, {version: "1.0.0"});
         const bundle = await import(pathToFileURL(join(outDir, manifest.entry)).href);
         let sim;
         if (manifest.hasPart(MOD_PART_SIM)) {

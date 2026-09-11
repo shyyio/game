@@ -2,7 +2,7 @@ import {defineConfig} from "vite";
 import vue from "@vitejs/plugin-vue";
 import vuetify from "vite-plugin-vuetify";
 import {gitBuildInfo, packageVersion} from "./vite.build-defines.js";
-import {ALIASES} from "./vite.aliases.js";
+import {aliasesFor} from "./vite.aliases.js";
 
 const {commit: BUILD_COMMIT, date: BUILD_DATE} = gitBuildInfo();
 const APP_VERSION = packageVersion();
@@ -40,7 +40,7 @@ export default defineConfig(({mode}) => {
             // The SDK entries come first: mods import the engine by its published package name, and in
             // this repo that name resolves to the source it is packed from — never to an installed copy,
             // which would give a mod its own second set of engine classes.
-            alias: ALIASES,
+            alias: aliasesFor(mode),
         },
     };
 });

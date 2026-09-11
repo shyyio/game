@@ -3,7 +3,7 @@
 
 import {fileURLToPath} from "node:url";
 
-export const ALIASES = [
+const ALIASES = [
     // A bundle has no directory to read at runtime, so every vite build globs the mods instead.
     {find: /^@\/mods\/modDirs\.js$/, replacement: fileURLToPath(new URL("./src/mods/modDirs.vite.js", import.meta.url))},
     {find: /^@\/mods\/modSources\.js$/, replacement: fileURLToPath(new URL("./src/mods/modSources.vite.js", import.meta.url))},
@@ -11,3 +11,21 @@ export const ALIASES = [
     {find: /^@spup\/sdk\/client$/, replacement: fileURLToPath(new URL("./src/sdk/client.js", import.meta.url))},
     {find: /^@\//, replacement: `${fileURLToPath(new URL("./src", import.meta.url))}/`},
 ];
+
+// The dev-mods globs live in two modules of their own, which a production build swaps for an empty
+// one: vite expands a glob wherever it is written, so a mod being worked on cannot reach a bundle.
+const NO_DEV_MODS = {
+    find: /^@\/mods\/devMod(Dirs|Sources)\.vite\.js$/,
+    replacement: fileURLToPath(new URL("./src/mods/devMods.production.js", import.meta.url)),
+};
+
+/**
+ * @param {string} mode the vite mode
+ * @returns {object[]} the aliases for a build in that mode
+ */
+export function aliasesFor(mode) {
+    if (mode === "production") {
+        return [NO_DEV_MODS, ...ALIASES];
+    }
+    return ALIASES;
+}

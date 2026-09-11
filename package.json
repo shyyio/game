@@ -26,7 +26,7 @@
     "serve:auth:watch": "node --watch --import ./src/nodeservice/loader.js src/authserver/main.js",
     "serve:reporting": "node --import ./src/nodeservice/loader.js src/reportingserver/main.js",
     "serve:reporting:watch": "node --watch --import ./src/nodeservice/loader.js src/reportingserver/main.js",
-    "test": "node --import ./src/test/test-loader.js --test 'src/**/*.spec.js'",
+    "test": "node --import ./src/test/test-loader.js --test 'src/**/*.spec.js' 'dev-mods/**/*.spec.js'",
     "save:sample": "rm -f SAMPLE.sqlite3; node --import ./src/test/test-loader.js src/test/make-sample-save.js SAMPLE.sqlite3",
     "save:lines": "rm -f LINES.sqlite3; node --import ./src/test/test-loader.js src/test/make-lines-save.js LINES.sqlite3",
     "bench:lines": "node --expose-gc --import ./src/test/test-loader.js src/test/production-line-benchmark.js"

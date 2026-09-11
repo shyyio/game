@@ -4,7 +4,7 @@ import {mkdtempSync, mkdirSync, writeFileSync, rmSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {readdirSync} from "node:fs";
-import {MOD_DIRS, MOD_ROOTS, MODS_ROOT, dirsIn} from "@/mods/modDirs.js";
+import {MOD_DIRS, MOD_ROOTS, MODS_ROOT, DEV_MODS_ROOT, dirsIn} from "@/mods/modDirs.js";
 
 /**
  * @param {object} t the test context, for cleanup
@@ -21,13 +21,19 @@ function modsRoot(t, dirs) {
     return root;
 }
 
-test("MOD_DIRS is every mod directory, in alphabetical order", () => {
+test("MOD_DIRS is every mod directory, src/mods in alphabetical order and then dev-mods", () => {
     const dirs = readdirSync("src/mods", {withFileTypes: true})
         .filter(entry => entry.isDirectory())
-        .map(entry => entry.name);
+        .map(entry => entry.name)
+        .sort();
+    const devDirs = readdirSync("dev-mods", {withFileTypes: true})
+        .filter(entry => entry.isDirectory())
+        .map(entry => entry.name)
+        .sort();
 
-    assert.deepEqual(MOD_DIRS, dirs.sort());
+    assert.deepEqual(MOD_DIRS, [...dirs, ...devDirs]);
     assert.equal(MOD_ROOTS.get(MOD_DIRS[0]), MODS_ROOT);
+    assert.equal(MOD_ROOTS.get("pebble-generator"), DEV_MODS_ROOT);
 });
 
 test("dirsIn sorts a root by name, so a numeric prefix places a mod", (t) => {

@@ -153,4 +153,5 @@ profiles/
 
 # DevTools performance traces
 Trace-*.json
-dev-mods/
+dev-mods/*
+!dev-mods/pebble-generator/

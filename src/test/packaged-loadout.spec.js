@@ -15,6 +15,7 @@ import {ModCache, resolvePackage, sha256Hex} from "@/server/ModCache.js";
 import {loadPackagedMods} from "@/server/ModLoader.js";
 import {externalModList, modListJson} from "@/server/modList.js";
 import {simLoadout, MOD_DIRS} from "@/mods/loadout.js";
+import {MOD_ROOTS} from "@/mods/modDirs.js";
 import {modName} from "@/mods/modNames.js";
 import {buildMod} from "../../tools/build-mod.js";
 
@@ -25,7 +26,7 @@ after(() => rmSync(packageRoot, {recursive: true, force: true}));
 const packageUrls = [];
 for (const dir of MOD_DIRS) {
     const outDir = join(packageRoot, dir);
-    await buildMod(resolve("src/mods", dir), outDir, {version: "1.0.0"});
+    await buildMod(resolve(MOD_ROOTS.get(dir), dir), outDir, {version: "1.0.0"});
     packageUrls.push(pathToFileURL(outDir).href);
 }
 

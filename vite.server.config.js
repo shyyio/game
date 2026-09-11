@@ -1,6 +1,6 @@
 import {defineConfig} from "vite";
 import {gitBuildInfo} from "./vite.build-defines.js";
-import {ALIASES} from "./vite.aliases.js";
+import {aliasesFor} from "./vite.aliases.js";
 
 const {commit: BUILD_COMMIT, date: BUILD_DATE} = gitBuildInfo();
 
@@ -36,6 +36,6 @@ export default defineConfig(({mode}) => ({
     },
     resolve: {
         // See vite.config.js: the SDK package name resolves to this repo's own source.
-        alias: ALIASES,
+        alias: aliasesFor(mode),
     },
 }))

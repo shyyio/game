@@ -1,19 +1,13 @@
 // modSources.js for a vite build: the same export, globbed at build time instead of read from disk,
 // so a bundled client or server carries its mods and reads no directory at runtime. Every vite
-// config aliases @/mods/modSources.js to this file (see vite.aliases.js).
+// config aliases @/mods/modSources.js to this file (see vite.aliases.js). The dev-mods globs sit in
+// devModSources.vite.js, which a production build swaps for an empty module.
 
 import {MOD_DIRS, MOD_ROOTS} from "@/mods/modDirs.js";
+import {DEV_MOD_DECLARATIONS, DEV_MOD_SIMS} from "@/mods/devModSources.vite.js";
 
-const DECLARATIONS = Object.assign(
-    {},
-    import.meta.glob("/src/mods/*/declaration.js", {eager: true}),
-    import.meta.env.DEV ? import.meta.glob("/dev-mods/*/declaration.js", {eager: true}) : {},
-);
-const SIMS = Object.assign(
-    {},
-    import.meta.glob("/src/mods/*/sim.js", {eager: true}),
-    import.meta.env.DEV ? import.meta.glob("/dev-mods/*/sim.js", {eager: true}) : {},
-);
+const DECLARATIONS = Object.assign({}, import.meta.glob("/src/mods/*/declaration.js", {eager: true}), DEV_MOD_DECLARATIONS);
+const SIMS = Object.assign({}, import.meta.glob("/src/mods/*/sim.js", {eager: true}), DEV_MOD_SIMS);
 
 /**
  * @param {object} modules a glob's path -> module map
