@@ -5,7 +5,6 @@ import {
     BELT_TUNNEL_UP,
     BELT_TUNNEL_DOWN,
     BELT_UNDERGROUND,
-    getBeltKindEntryByKind,
     getBuildLevelByBeltKind,
     MAX_UNDERGROUND_LENGTH,
     tunnelStep,
@@ -111,62 +110,6 @@ export function inferElevatedBeltParent(cache, tileX, tileY, direction) {
         return {parentX: null, parentY: null, parentLevel: LANE_LEVEL_SURFACE};
     }
     return {parentX: parent.tileX, parentY: parent.tileY, parentLevel: parent.data.type.behavior.outLevel};
-}
-
-/**
- * Whether a belt facing `beltDirection` takes flow at `level` from a parent facing
- * `parentDirection`; a non-merging kind takes only its straight input.
- * @param {BeltType} kind
- * @param {Direction} beltDirection
- * @param {Direction} parentDirection
- * @param {LaneLevel} level
- * @returns {boolean}
- */
-function isTakingFlowAtLevel(kind, beltDirection, parentDirection, level) {
-    const entry = getBeltKindEntryByKind(kind);
-    if (entry.inLevel !== level) {
-        return false;
-    }
-    if (!entry.isMerging) {
-        return beltDirection === parentDirection;
-    }
-    return beltDirection !== Direction.invert(parentDirection);
-}
-
-/**
- * Whether an elevated belt at (tileX, tileY) facing `direction` would join a run at `level`: it has
- * a parent handing flow on at that level, or the cell ahead takes it as one. Shared by the sim
- * (`BeltBehavior`) and the client tool (`BeltTool`), each supplying its own belt lookup.
- * @param {number} tileX
- * @param {number} tileY
- * @param {Direction} direction
- * @param {LaneLevel} level
- * @param {function(number, number): {type: BeltType, direction: Direction}[]} beltsAt - candidates on a tile
- * @returns {boolean}
- */
-export function isElevatedBeltConnected(tileX, tileY, direction, level, beltsAt) {
-    // A parent facing `parentDirection` stands one tile back along it; the cell ahead pointing back
-    // head-on meets no input port, so that facing is skipped.
-    for (let parentDirection = 0; parentDirection < 4; parentDirection += 1) {
-        if (parentDirection === Direction.invert(direction)) {
-            continue;
-        }
-        const candidateX = tileX - Direction.dx(parentDirection);
-        const candidateY = tileY - Direction.dy(parentDirection);
-        for (const belt of beltsAt(candidateX, candidateY)) {
-            if (belt.direction === parentDirection && getBeltKindEntryByKind(belt.type).outLevel === level) {
-                return true;
-            }
-        }
-    }
-    const aheadX = tileX + Direction.dx(direction);
-    const aheadY = tileY + Direction.dy(direction);
-    for (const belt of beltsAt(aheadX, aheadY)) {
-        if (isTakingFlowAtLevel(belt.type, belt.direction, direction, level)) {
-            return true;
-        }
-    }
-    return false;
 }
 
 /**

@@ -501,7 +501,7 @@ export class LaneIndex extends AbstractSystem {
             if (this.cells.getRowByEid(candidate) < 0) {
                 continue;
             }
-            if (shouldConnectLevels(outLevel, direction, this._getBehaviorByCellEid(candidate).inLevel, position.direction[candidate])) {
+            if (shouldConnectLevels(outLevel, direction, this._getInLevelByEid(candidate), position.direction[candidate])) {
                 return candidate;
             }
         }
@@ -509,17 +509,96 @@ export class LaneIndex extends AbstractSystem {
     }
 
     /**
+     * Whether a cell of `type` placed at (tileX, tileY) facing `direction` joins a run: something at
+     * one of its input edges hands flow on at the level it takes, or something across an output edge
+     * takes what it gives.
+     * @param {ObjectType} type
+     * @param {number} tileX
+     * @param {number} tileY
+     * @param {Direction} direction
+     * @returns {boolean}
+     */
+    isJoiningRunAt(type, tileX, tileY, direction) {
+        return this._hasParentAt(type, tileX, tileY, direction)
+            || this._hasChildAt(type, tileX, tileY, direction);
+    }
+
+    /**
+     * @private
+     * @param {ObjectType} type
+     * @param {number} tileX
+     * @param {number} tileY
+     * @param {Direction} direction
+     * @returns {boolean} whether an object at an input edge hands flow on at the cell's in-level
+     */
+    _hasParentAt(type, tileX, tileY, direction) {
+        const engine = this.engine;
+        for (const definition of type.getActivePortsByKind("inputPorts")) {
+            const edge = portAt(definition, tileX, tileY, direction);
+            const portEid = engine.ports.getPortEidAtOrNull(edge.x, edge.y, edge.direction);
+            if (portEid === null) {
+                continue;
+            }
+            for (const producer of engine.ports.getProducerEidsByPortEid(portEid)) {
+                if (shouldConnectLevels(this._getOutLevelByEid(producer), engine.Position.direction[producer], type.behavior.inLevel, direction)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
+     * @private
+     * @param {ObjectType} type
+     * @param {number} tileX
+     * @param {number} tileY
+     * @param {Direction} direction
+     * @returns {boolean} whether an object across an output edge takes flow at the cell's out-level
+     */
+    _hasChildAt(type, tileX, tileY, direction) {
+        const engine = this.engine;
+        for (const definition of type.getActivePortsByKind("outputPorts")) {
+            const edge = portAt(definition, tileX, tileY, direction);
+            const portEid = engine.ports.getPortEidAtOrNull(edge.x, edge.y, edge.direction);
+            if (portEid === null) {
+                continue;
+            }
+            for (const consumer of engine.ports.getConsumerEidsByPortEid(portEid)) {
+                if (shouldConnectLevels(type.behavior.outLevel, direction, this._getInLevelByEid(consumer), engine.Position.direction[consumer])) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
      * The level an object gives flow at; anything but a lane cell gives it on the surface.
      * @private
      * @param {number} eid
-     * @returns {number}
+     * @returns {LaneLevel}
      */
-    _getOutLevelByCellEid(eid) {
+    _getOutLevelByEid(eid) {
         const behavior = this._getBehaviorByCellEid(eid);
         if (behavior.outLevel === undefined) {
             return LANE_LEVEL_SURFACE;
         }
         return behavior.outLevel;
+    }
+
+    /**
+     * The level an object takes flow at; anything but a lane cell takes it on the surface.
+     * @private
+     * @param {number} eid
+     * @returns {LaneLevel}
+     */
+    _getInLevelByEid(eid) {
+        const behavior = this._getBehaviorByCellEid(eid);
+        if (behavior.inLevel === undefined) {
+            return LANE_LEVEL_SURFACE;
+        }
+        return behavior.inLevel;
     }
 
     /**
@@ -533,14 +612,14 @@ export class LaneIndex extends AbstractSystem {
         const engine = this.engine;
         const position = engine.Position;
         const direction = position.direction[eid];
-        const inLevel = this._getBehaviorByCellEid(eid).inLevel;
+        const inLevel = this._getInLevelByEid(eid);
         const type = engine.placed.getObjectTypeByTypeId(engine.placed.getObjectTypeIdByEid(eid));
         const eids = [];
         const edges = [];
         for (const definition of type.getActivePortsByKind("inputPorts")) {
             const edge = portAt(definition, position.x[eid], position.y[eid], direction);
             for (const producer of engine.ports.getProducerEidsByPortEid(engine.ports.getPortEidAt(edge.x, edge.y, edge.direction))) {
-                if (this._getOutLevelByCellEid(producer) === inLevel) {
+                if (this._getOutLevelByEid(producer) === inLevel) {
                     eids.push(producer);
                     edges.push(edge);
                 }
@@ -574,7 +653,7 @@ export class LaneIndex extends AbstractSystem {
         const edge = candidates.edges[index];
         let parentCellEid = NO_EID;
         if (this.cells.getRowByEid(winnerEid) >= 0
-            && shouldConnectLevels(this._getOutLevelByCellEid(winnerEid), position.direction[winnerEid], this._getBehaviorByCellEid(eid).inLevel, direction)) {
+            && shouldConnectLevels(this._getOutLevelByEid(winnerEid), position.direction[winnerEid], this._getInLevelByEid(eid), direction)) {
             parentCellEid = winnerEid;
         }
         return {

@@ -22,10 +22,29 @@ import {BeltEntry} from "./BeltDrawLayer.js";
 import {
     inferBeltParent,
     inferElevatedBeltParent,
-    isElevatedBeltConnected,
     getTunnelPartnerOrNull,
     getUndergroundBeltsToCreate,
 } from "../common/geometry.js";
+
+/**
+ * Whether a belt facing `beltDirection` connects at `level` to a parent facing `parentDirection`;
+ * a non-merging kind has only its straight-axis parent.
+ * @param {BeltType} kind
+ * @param {Direction} beltDirection
+ * @param {Direction} parentDirection
+ * @param {LaneLevel} level
+ * @returns {boolean}
+ */
+function shouldBeltConnectToParent(kind, beltDirection, parentDirection, level) {
+    const entry = getBeltKindEntryByKind(kind);
+    if (entry.inLevel !== level) {
+        return false;
+    }
+    if (!entry.isMerging) {
+        return beltDirection === parentDirection;
+    }
+    return beltDirection !== Direction.invert(parentDirection);
+}
 
 const RAISE_HOTKEY = "k";
 const LOWER_HOTKEY = "j";
@@ -306,10 +325,39 @@ export class BeltTool extends AbstractTool {
         if (entry.inLevel !== entry.outLevel || entry.inLevel <= LANE_LEVEL_SURFACE) {
             return true;
         }
-        return isElevatedBeltConnected(
-            tileX, tileY, direction, entry.inLevel,
-            (x, y) => this._getBeltCandidatesAt(x, y),
-        );
+        return this._isElevatedConnected(tileX, tileY, direction, entry.inLevel);
+    }
+
+    /**
+     * Whether an elevated belt here facing `direction` would join a run at `level`: it has a parent
+     * handing flow on at that level, or the cell ahead takes it as one. The client preview of the
+     * sim gate `LaneBehavior.canSpawn`.
+     * @private
+     * @returns {boolean}
+     */
+    _isElevatedConnected(tileX, tileY, direction, level) {
+        // A parent facing `parentDirection` stands one tile back along it; the cell ahead pointing
+        // back head-on meets no input port, so that facing is skipped.
+        for (let parentDirection = 0; parentDirection < 4; parentDirection += 1) {
+            if (parentDirection === Direction.invert(direction)) {
+                continue;
+            }
+            const candidateX = tileX - Direction.dx(parentDirection);
+            const candidateY = tileY - Direction.dy(parentDirection);
+            for (const belt of this._getBeltCandidatesAt(candidateX, candidateY)) {
+                if (belt.direction === parentDirection && getBeltKindEntryByKind(belt.type).outLevel === level) {
+                    return true;
+                }
+            }
+        }
+        const aheadX = tileX + Direction.dx(direction);
+        const aheadY = tileY + Direction.dy(direction);
+        for (const belt of this._getBeltCandidatesAt(aheadX, aheadY)) {
+            if (shouldBeltConnectToParent(belt.type, belt.direction, direction, level)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**

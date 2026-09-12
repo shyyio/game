@@ -1,8 +1,6 @@
 import {
     LaneBehavior,
-    LANE_LEVEL_SURFACE,
     LANE_LEVEL_BURIED,
-    LANE_LEVEL_ELEVATED_1,
     LAYER_SURFACE,
     Direction,
     NO_EID,
@@ -20,15 +18,13 @@ import {
     getTunnelPartnerOrNull,
     getUndergroundBeltsToCreate,
     isTunnelMouth,
-    isElevatedBeltConnected,
 } from "../common/geometry.js";
 
-// Every layer a belt can stand on: the surface, the two buried axes and the elevated one.
+// The layers a tunnel's mouths and undergrounds stand on: the surface and the two buried axes.
 const BELT_LAYERS = [
     LAYER_SURFACE,
     getLaneLevelLayer(LANE_LEVEL_BURIED, Direction.UP),
     getLaneLevelLayer(LANE_LEVEL_BURIED, Direction.RIGHT),
-    getLaneLevelLayer(LANE_LEVEL_ELEVATED_1, Direction.UP),
 ];
 
 /**
@@ -46,16 +42,6 @@ export class BeltBehavior extends LaneBehavior {
         const entry = getBeltKindEntryByKind(beltKind);
         super({inLevel: entry.inLevel, outLevel: entry.outLevel});
         this.beltKind = beltKind;
-    }
-
-    canSpawn(engine, type, message) {
-        if (this.inLevel <= LANE_LEVEL_SURFACE || this.outLevel <= LANE_LEVEL_SURFACE) {
-            return true;
-        }
-        return isElevatedBeltConnected(
-            message.x, message.y, message.direction, this.inLevel,
-            (x, y) => BeltBehavior._getBeltsAt(engine, x, y),
-        );
     }
 
     onSpawn(engine, eid, type, message) {
@@ -129,7 +115,7 @@ export class BeltBehavior extends LaneBehavior {
     }
 
     /**
-     * Every belt standing on a tile, as partner-scan candidates.
+     * Every belt standing on a tile a tunnel runs through, as partner-scan candidates.
      * @private
      * @param {GameEngine} engine
      * @param {number} x

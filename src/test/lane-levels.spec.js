@@ -218,10 +218,27 @@ test("an elevated cell does not link to the surface cell ahead", async () => {
     assert.equal(engine.lanes.getLaneRefs().length, 2, "the elevated run and the surface cell are separate lanes");
 });
 
+// An elevated cell stands only where it joins a run: a parent hands it flow at its level, or the
+// cell ahead takes what it gives.
+test("an elevated cell joining nothing is refused", async () => {
+    const engine = await setup();
+    assert.equal(placeLane(engine, 7, 7, Direction.RIGHT, TestLaneElevatedType), NO_EID, "nothing stands there");
+});
+
+test("an elevated cell stands where the cell ahead takes its flow", async () => {
+    const engine = await setup();
+    placeLane(engine, 1, 1, Direction.RIGHT, TestLaneRampUpType);
+    placeLane(engine, 2, 1, Direction.RIGHT, TestLaneElevatedType);
+
+    // Parented by nothing, but its output meets the run beside it.
+    assert.notEqual(placeLane(engine, 2, 0, Direction.DOWN, TestLaneElevatedType), NO_EID, "the joining cell stands");
+});
+
 // One layer per unsplit level, so two elevated cells cannot share a tile; crossing needs a level of
 // its own.
 test("two elevated cells cannot occupy the same tile", async () => {
     const engine = await setup();
+    placeLane(engine, 6, 7, Direction.RIGHT, TestLaneRampUpType);
     assert.notEqual(placeLane(engine, 7, 7, Direction.RIGHT, TestLaneElevatedType), NO_EID, "the first is placed");
     assert.equal(placeLane(engine, 7, 7, Direction.UP, TestLaneElevatedType), NO_EID, "the second is refused");
 });

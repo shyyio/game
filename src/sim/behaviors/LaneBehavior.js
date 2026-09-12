@@ -26,6 +26,21 @@ export class LaneBehavior extends AbstractBehavior {
     }
 
     /**
+     * A cell standing off the surface at both ends may only join a run; a cell with an end on the
+     * surface stands anywhere.
+     * @param {GameEngine} engine
+     * @param {ObjectType} type
+     * @param {CreateObjectMessage} message
+     * @returns {boolean}
+     */
+    canSpawn(engine, type, message) {
+        if (this.inLevel <= LANE_LEVEL_SURFACE || this.outLevel <= LANE_LEVEL_SURFACE) {
+            return true;
+        }
+        return engine.lanes.isJoiningRunAt(type, message.x, message.y, message.direction);
+    }
+
+    /**
      * Which of several candidate parents continues its lane into this cell; the newest wins. Called
      * on a rebuild, never per tick.
      * @param {GameEngine} engine
