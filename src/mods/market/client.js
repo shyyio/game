@@ -3,6 +3,8 @@ import {MARKET_SETTING_BALANCE} from "./common/constants.js";
 import {MARKET_SCHEMA, MarketWriter} from "./client/MarketState.js";
 import {drawCoinIcon, COIN_COLOR} from "./client/icons.js";
 import {TradingTerminalConfigLayer} from "./client/TradingTerminalConfigLayer.js";
+import {formatTradeAmount, getSplatColorByAmount, TRADE_SPLAT_JITTER} from "./client/splats.js";
+import {TradeSettledEvent} from "./common/events.js";
 
 // This mod's row in the core counter list.
 const BALANCE_COUNTER = "marketBalance";
@@ -49,5 +51,30 @@ export class MarketClientMod extends AbstractClientMod {
      */
     hudLayers(client) {
         return [this._configLayer];
+    }
+
+    /**
+     * Floats a settled trade's credit movement over the terminal that traded.
+     * @param {AbstractEvent} event
+     * @param {Client} client
+     * @returns {void}
+     */
+    onEvent(event, client) {
+        if (!(event instanceof TradeSettledEvent)) {
+            return;
+        }
+        const entry = client.objects.get(event.objectRef);
+        if (entry === null) {
+            return;
+        }
+        client.hitsplatLayer.drawHitsplat({
+            tileX: entry.tileX,
+            tileY: entry.tileY,
+            text: formatTradeAmount(event.amount),
+            color: getSplatColorByAmount(event.amount),
+            jitter: TRADE_SPLAT_JITTER,
+            drawIcon: drawCoinIcon,
+            iconColor: COIN_COLOR,
+        });
     }
 }

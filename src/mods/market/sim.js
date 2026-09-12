@@ -1,8 +1,8 @@
-import {AbstractSimMod, chunkKeyAt, NO_EID, PLAYER_REF_NONE, PlayerSettingsUpdateEvent} from "@spup/sdk";
+import {AbstractSimMod, chunkKeyAt, getOrCreate, NO_EID, PLAYER_REF_NONE, PlayerSettingsUpdateEvent} from "@spup/sdk";
 import {MarketBook} from "./sim/MarketBook.js";
 import {TradingTerminalType} from "./common/objectTypes.js";
 import {ConfigureTradingTerminalMessage, MarketSnapshotRequestMessage} from "./common/messages.js";
-import {MarketSnapshotEvent, MARKET_SNAPSHOT_NONE} from "./common/events.js";
+import {MarketSnapshotEvent, TradeSettledBatchEvent, MARKET_SNAPSHOT_NONE} from "./common/events.js";
 import {
     MARKET_MODE_NONE, MARKET_MODE_SELL, MARKET_MODE_BUY, MARKET_SETTING_BALANCE,
     MARKET_STARTING_BALANCE, METRICS_ENTRY_TYPE_TRADE_EXECUTED, METRICS_TRADE_SIDE_SELL,
@@ -69,10 +69,15 @@ export class MarketSimMod extends AbstractSimMod {
     onTick(game) {
         const engine = game.simEngine;
         const book = engine.resolve(MarketBook);
-        // Shared across both passes: one chunk-owner lookup per terminal, not two.
+        // Shared across both passes: one chunk-owner lookup per terminal, not two, and one splat
+        // batch per chunk however many passes settle in it.
         const owners = new Map();
-        this._settle(book, engine, game, owners);
-        this._settlePurchases(book, engine, game, owners);
+        const batches = new Map();
+        this._settle({book, engine, game, owners, batches});
+        this._settlePurchases({book, engine, game, owners, batches});
+        for (const batch of batches.values()) {
+            game.bus.publish(batch);
+        }
         this._applyBalances(engine, game, owners);
         book.advanceTick();
     }
@@ -199,14 +204,22 @@ export class MarketSimMod extends AbstractSimMod {
      * owner — an unclaimed chunk has nobody to pay, so that side of the trade is simply skipped.
      * Deltas are batched per player so a player with several terminals
      * confirming in the same tick gets one balance update, not one per trade.
-     * @param {MarketBook} book
-     * @param {GameEngine} engine
-     * @param {Game} game
-     * @param {Map<number, number>} owners this tick's eid -> playerRef cache
+     * @param {Object} pass
+     * @param {MarketBook} pass.book
+     * @param {GameEngine} pass.engine
+     * @param {Game} pass.game
+     * @param {Map<number, number>} pass.owners this tick's eid -> playerRef cache
+     * @param {Map<number, TradeSettledBatchEvent>} pass.batches this tick's splat batch per chunk
      * @private
      * @returns {void}
      */
-    _settle(book, engine, game, owners) {
+    _settle({
+        book,
+        engine,
+        game,
+        owners,
+        batches,
+    }) {
         const settlements = book.drainSettlements();
         if (settlements.length === 0) {
             return;
@@ -216,6 +229,7 @@ export class MarketSimMod extends AbstractSimMod {
             const sellerOwner = this._getOwnerByEid(settlement.sellerEid, engine, game, owners);
             if (sellerOwner !== PLAYER_REF_NONE) {
                 deltas.set(sellerOwner, (deltas.get(sellerOwner) || 0) + settlement.price);
+                this._addTradeSplat(batches, engine, settlement.sellerEid, settlement.price);
                 engine.emitMetrics(
                     METRICS_ENTRY_TYPE_TRADE_EXECUTED, sellerOwner,
                     settlement.itemTypeId, settlement.price, METRICS_TRADE_SIDE_SELL,
@@ -225,6 +239,7 @@ export class MarketSimMod extends AbstractSimMod {
                 const buyerOwner = this._getOwnerByEid(settlement.buyerEid, engine, game, owners);
                 if (buyerOwner !== PLAYER_REF_NONE) {
                     deltas.set(buyerOwner, (deltas.get(buyerOwner) || 0) - settlement.price);
+                    this._addTradeSplat(batches, engine, settlement.buyerEid, -settlement.price);
                     engine.emitMetrics(
                         METRICS_ENTRY_TYPE_TRADE_EXECUTED, buyerOwner,
                         settlement.itemTypeId, settlement.price, METRICS_TRADE_SIDE_BUY,
@@ -246,14 +261,22 @@ export class MarketSimMod extends AbstractSimMod {
      * when the chunk was unclaimed after this terminal's cached owner/balance
      * were last refreshed, since that cache is a tick stale). Deltas are batched per player, same as
      * _settle.
-     * @param {MarketBook} book
-     * @param {GameEngine} engine
-     * @param {Game} game
-     * @param {Map<number, number>} owners this tick's eid -> playerRef cache
+     * @param {Object} pass
+     * @param {MarketBook} pass.book
+     * @param {GameEngine} pass.engine
+     * @param {Game} pass.game
+     * @param {Map<number, number>} pass.owners this tick's eid -> playerRef cache
+     * @param {Map<number, TradeSettledBatchEvent>} pass.batches this tick's splat batch per chunk
      * @private
      * @returns {void}
      */
-    _settlePurchases(book, engine, game, owners) {
+    _settlePurchases({
+        book,
+        engine,
+        game,
+        owners,
+        batches,
+    }) {
         const purchases = book.drainPurchases();
         if (purchases.length === 0) {
             return;
@@ -263,6 +286,7 @@ export class MarketSimMod extends AbstractSimMod {
             const buyerOwner = this._getOwnerByEid(purchase.buyerEid, engine, game, owners);
             if (buyerOwner !== PLAYER_REF_NONE) {
                 deltas.set(buyerOwner, (deltas.get(buyerOwner) || 0) - purchase.price);
+                this._addTradeSplat(batches, engine, purchase.buyerEid, -purchase.price);
                 engine.emitMetrics(
                     METRICS_ENTRY_TYPE_TRADE_EXECUTED, buyerOwner,
                     purchase.itemTypeId, purchase.price, METRICS_TRADE_SIDE_BUY,
@@ -275,6 +299,27 @@ export class MarketSimMod extends AbstractSimMod {
             game.playerSettings.setPlayerValue(playerRef, MARKET_SETTING_BALANCE, next);
             game.bus.publishToPlayer(playerRef, new PlayerSettingsUpdateEvent(MARKET_SETTING_BALANCE, next));
         }
+    }
+
+    /**
+     * Queues a settled trade's credit movement onto its terminal's chunk batch, so the client floats
+     * it over that terminal.
+     * @param {Map<number, TradeSettledBatchEvent>} batches chunkKey -> this pass's batch
+     * @param {GameEngine} engine
+     * @param {number} eid the terminal that traded
+     * @param {number} amount credits moved, negative when the terminal bought
+     * @private
+     * @returns {void}
+     */
+    _addTradeSplat(batches, engine, eid, amount) {
+        const position = engine.Position;
+        const x = position.x[eid];
+        const y = position.y[eid];
+        if (!engine.isTileSubscribed(x, y)) {
+            return;
+        }
+        const batch = getOrCreate(batches, chunkKeyAt(x, y), () => new TradeSettledBatchEvent(x, y));
+        batch.add(engine.placed.getObjectRefByEid(eid), amount);
     }
 
     /**

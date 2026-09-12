@@ -102,6 +102,8 @@ const UNCHECKED_TEXTS = {
     "src/client/hud/IconPicker.js": 1,
     "src/client/hud/VersionWatermarkLayer.js": 1,
     "src/client/layers/ChunkClaimsDrawLayer.js": 1,
+    // A splat floats over whatever the player built under it, and carries its own black outline.
+    "src/client/layers/HitsplatLayer.js": 1,
     "src/client/layers/WorkerDebugLayer.js": 1,
     "src/mods/cursor-sync/client/RemoteCursorsDrawLayer.js": 1,
     "src/mods/fluids/client/NetworkDebugDrawLayer.js": 1,

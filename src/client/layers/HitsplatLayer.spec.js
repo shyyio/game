@@ -6,11 +6,11 @@ import {
     hitsplatOffsetY,
     hitsplatAlpha,
     hitsplatJitterOffset,
-    measureHitsplat,
+    hitsplatRunWidth,
+    isRenderStalled,
+    HITSPLAT_ICON_SIZE,
+    HITSPLAT_STALL_MS,
 } from "@/client/layers/HitsplatLayer.js";
-
-// A stand-in for the installed bitmap font: the advances the layout reads, nothing else.
-const FONT = {chars: {"1": {xAdvance: 30}, "2": {xAdvance: 40}, "k": {xAdvance: 50}}};
 
 test("a splat starts on its tile and ends a full rise above it", () => {
     // === so the signed zero the rise starts at still reads as no offset.
@@ -42,11 +42,13 @@ test("no jitter puts the splat dead center, and the random extremes reach the ra
     assert.ok(hitsplatJitterOffset(0, 0) === 0);
 });
 
-test("a run measures the sum of its glyph advances", () => {
-    assert.equal(measureHitsplat(FONT, "12k"), 120);
-    assert.equal(measureHitsplat(FONT, ""), 0);
+test("a trailing icon widens the run by its own box, and nothing widens it without one", () => {
+    assert.equal(hitsplatRunWidth(100, false), 100);
+    assert.ok(hitsplatRunWidth(100, true) > 100 + HITSPLAT_ICON_SIZE);
 });
 
-test("a character the font has no glyph for takes no width", () => {
-    assert.equal(measureHitsplat(FONT, "1?2"), 70);
+test("a frame gap only counts as stalled once it is past a dropped-frames pause", () => {
+    assert.equal(isRenderStalled(16), false);
+    assert.equal(isRenderStalled(HITSPLAT_STALL_MS), false);
+    assert.equal(isRenderStalled(HITSPLAT_STALL_MS + 1), true);
 });

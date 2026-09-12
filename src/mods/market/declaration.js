@@ -4,7 +4,7 @@ import {
 } from "./common/constants.js";
 import {TradingTerminalType} from "./common/objectTypes.js";
 import {ConfigureTradingTerminalMessage, MarketSnapshotRequestMessage} from "./common/messages.js";
-import {MarketSnapshotEvent} from "./common/events.js";
+import {MarketSnapshotEvent, TradeSettledBatchEvent} from "./common/events.js";
 
 export class MarketDeclaration extends AbstractModDeclaration {
 
@@ -24,6 +24,7 @@ export class MarketDeclaration extends AbstractModDeclaration {
             ConfigureTradingTerminalMessage,
             MarketSnapshotRequestMessage,
             MarketSnapshotEvent,
+            TradeSettledBatchEvent,
         ];
     }
 

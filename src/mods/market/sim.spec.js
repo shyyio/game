@@ -2,13 +2,14 @@ import {test} from "node:test";
 import assert from "node:assert/strict";
 import {makeGame} from "@/test/ecsSim.js";
 import {CapturingSession} from "@/test/CapturingSession.js";
+import {flattenBatches} from "@/test/EventCollector.js";
 import {
     EMPTY, Direction, CHUNK_SIZE, chunkKeyAt, CreateObjectMessage, ClaimChunkMessage,
-    PlayerSettingsUpdateEvent, ModPackage, AbstractModDeclaration, MarketListingEntry,
+    PlayerSettingsUpdateEvent, ModPackage, AbstractModDeclaration, MarketListingEntry, SetViewportMessage,
 } from "@spup/sdk";
 import {TradingTerminalType} from "./common/objectTypes.js";
 import {ConfigureTradingTerminalMessage, MarketSnapshotRequestMessage} from "./common/messages.js";
-import {MarketSnapshotEvent, MARKET_SNAPSHOT_NONE} from "./common/events.js";
+import {MarketSnapshotEvent, TradeSettledEvent, TradeSettledBatchEvent, MARKET_SNAPSHOT_NONE} from "./common/events.js";
 import {
     MARKET_MODE_SELL, MARKET_MODE_BUY, MARKET_SETTING_BALANCE, MARKET_STARTING_BALANCE,
 } from "./common/constants.js";
@@ -257,4 +258,79 @@ test("a first-time player is granted a starting balance, a returning one is not 
     game.playerSettings.setPlayerValue(player.playerRef, MARKET_SETTING_BALANCE, 0);
     game.connect(new CapturingSession(1));
     assert.equal(getBalanceByEid(game, player.playerRef), 0, "a player who spent down to 0 is not re-granted");
+});
+
+test("a settled sale floats its credit over the seller's terminal", async () => {
+    const {game, seller} = await gameWithSessions([new ModPackage(new NpcPriceFixtureDeclaration())]);
+    const sellerEid = placeTerminal(game, seller, 5, 5, MARKET_MODE_SELL, ITEM, PRICE);
+    game.dispatchMessage(new SetViewportMessage([chunkKeyAt(5, 5)]), seller);
+    const def = game.simEngine.components.getComponentByName("MarketTerminal");
+    game.simEngine.ports.setItem(def.store.inputPort[def.getRowByEid(sellerEid)], ITEM);
+    game.runTick();
+    game.runTick();
+
+    const settled = flattenBatches(seller.events).filter(event => event instanceof TradeSettledEvent);
+    assert.equal(settled.length, 1);
+    assert.equal(settled[0].objectRef, game.simEngine.placed.getObjectRefByEid(sellerEid));
+    assert.equal(settled[0].amount, PRICE, "a sale credits, so the amount is positive");
+});
+
+test("an NPC purchase floats its debit over the buying terminal", async () => {
+    const {game, buyer} = await gameWithSessions([new ModPackage(new NpcPriceFixtureDeclaration())]);
+    const buyerEid = placeTerminal(game, buyer, 5, 5, MARKET_MODE_BUY, ITEM, PRICE);
+    game.dispatchMessage(new SetViewportMessage([chunkKeyAt(5, 5)]), buyer);
+    game.playerSettings.setPlayerValue(buyer.playerRef, MARKET_SETTING_BALANCE, 1000);
+    game.runTick();
+    game.runTick();
+
+    const settled = flattenBatches(buyer.events).filter(event => event instanceof TradeSettledEvent);
+    assert.equal(settled.length, 1);
+    assert.equal(settled[0].objectRef, game.simEngine.placed.getObjectRefByEid(buyerEid));
+    assert.equal(settled[0].amount, -PRICE, "a purchase debits, so the amount is negative");
+});
+
+test("a player-market trade floats each side over its own terminal", async () => {
+    const {game, seller, buyer} = await gameWithSessions();
+    const sellerEid = placeTerminal(game, seller, 5, 5, MARKET_MODE_SELL, ITEM, PRICE);
+    const buyerEid = placeTerminal(game, buyer, 5 + CHUNK_SIZE * 4, 5, MARKET_MODE_BUY, ITEM, PRICE);
+    game.dispatchMessage(new SetViewportMessage([chunkKeyAt(5, 5)]), seller);
+    game.dispatchMessage(new SetViewportMessage([chunkKeyAt(5 + CHUNK_SIZE * 4, 5)]), buyer);
+    game.playerSettings.setPlayerValue(buyer.playerRef, MARKET_SETTING_BALANCE, 1000);
+
+    const def = game.simEngine.components.getComponentByName("MarketTerminal");
+    game.simEngine.ports.setItem(def.store.inputPort[def.getRowByEid(sellerEid)], ITEM);
+    game.runTick();
+    game.runTick();
+
+    const credits = flattenBatches(seller.events).filter(event => event instanceof TradeSettledEvent);
+    assert.equal(credits.length, 1);
+    assert.equal(credits[0].objectRef, game.simEngine.placed.getObjectRefByEid(sellerEid));
+    assert.equal(credits[0].amount, PRICE);
+    const debits = flattenBatches(buyer.events).filter(event => event instanceof TradeSettledEvent);
+    assert.equal(debits.length, 1);
+    assert.equal(debits[0].objectRef, game.simEngine.placed.getObjectRefByEid(buyerEid));
+    assert.equal(debits[0].amount, -PRICE);
+});
+
+test("a chunk that buys and sells in the same tick sends one batch carrying both", async () => {
+    const {game, seller} = await gameWithSessions([new ModPackage(new NpcPriceFixtureDeclaration())]);
+    const sellerEid = placeTerminal(game, seller, 5, 5, MARKET_MODE_SELL, ITEM, PRICE);
+    const buyerEid = placeTerminal(game, seller, 9, 9, MARKET_MODE_BUY, ITEM, PRICE);
+    game.dispatchMessage(new SetViewportMessage([chunkKeyAt(5, 5)]), seller);
+    game.playerSettings.setPlayerValue(seller.playerRef, MARKET_SETTING_BALANCE, 1000);
+    const def = game.simEngine.components.getComponentByName("MarketTerminal");
+    game.runTick();
+    game.simEngine.ports.setItem(def.store.inputPort[def.getRowByEid(sellerEid)], ITEM);
+    game.runTick();
+
+    const batches = seller.events.filter(event => event instanceof TradeSettledBatchEvent);
+    assert.equal(batches.length, 1, "one envelope for the chunk, not one per settlement pass");
+    const settled = flattenBatches(batches).filter(event => event instanceof TradeSettledEvent);
+    assert.deepEqual(
+        settled.map(event => event.objectRef).sort((a, b) => a - b),
+        [
+            game.simEngine.placed.getObjectRefByEid(sellerEid),
+            game.simEngine.placed.getObjectRefByEid(buyerEid),
+        ].sort((a, b) => a - b),
+    );
 });
