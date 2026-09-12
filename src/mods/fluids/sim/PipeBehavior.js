@@ -2,7 +2,7 @@ import {AbstractBehavior} from "@spup/sdk";
 import {PipeNetworkIndex} from "./PipeNetworkIndex.js";
 
 /**
- * A pipe cell: spawn/despawn feed the shared Pipes network engine; placement is rejected when it
+ * A pipe cell: spawn/despawn drive the shared Pipes network engine; placement is rejected when it
  * would merge same-chunk networks holding different fluids.
  */
 export class PipeBehavior extends AbstractBehavior {

@@ -634,7 +634,7 @@ export class ObjectsView extends AbstractCacheView {
     }
 
     /**
-     * The entry with an output port reaching (tileX, tileY) facing `direction`, or null. The feeder
+     * The entry with an output port reaching (tileX, tileY) facing `direction`, or null. The parent
      * sits one tile back (its output reaches forward).
      * @param {number} tileX
      * @param {number} tileY
@@ -705,9 +705,9 @@ export class ObjectsView extends AbstractCacheView {
 
         for (const port of type.getSurfacePortsByKind("inputPorts")) {
             const placed = portAt(port, entry.tileX, entry.tileY, direction);
-            const feeder = this.getOutputPortAtOrNull(placed.x, placed.y, placed.direction);
-            if (feeder !== null) {
-                // An input port's stub sits on its own cell; the feeder is the tile behind it.
+            const parent = this.getOutputPortAtOrNull(placed.x, placed.y, placed.direction);
+            if (parent !== null) {
+                // An input port's stub sits on its own cell; the parent is the tile behind it.
                 connections.push({
                     key: port.name,
                     isOutput: false,
@@ -715,7 +715,7 @@ export class ObjectsView extends AbstractCacheView {
                     tileY: placed.y,
                     neighborX: placed.x - Direction.dx(placed.direction),
                     neighborY: placed.y - Direction.dy(placed.direction),
-                    neighbor: feeder.entry,
+                    neighbor: parent.entry,
                 });
             }
         }

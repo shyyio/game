@@ -152,7 +152,7 @@ test("a mod-emptied port refilled the same tick emits clear then set", async () 
     assert.equal(events[1].itemTypeId, ITEM);
 });
 
-// The splitter transfers out of its input port like any consumer, so the rendered feed item glides
+// The splitter transfers out of its input port like any consumer, so the rendered parent item glides
 // into the splitter instead of vanishing in place.
 test("a splitter draining its rendered input port emits a consumed clear", async () => {
     const engine = new GameEngine();

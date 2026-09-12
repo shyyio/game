@@ -8,7 +8,7 @@ import {Direction, CONVEYS_ITEM, CONVEYS_FLUID} from "@spup/sdk";
  * @param {ObjectType} type
  * @param {Direction} direction - the transport's facing
  * @param {Direction} gateDirection
- * @param {boolean} isBehind - behind feeds the input port; front receives from the output port
+ * @param {boolean} isBehind - behind hands into the input port; front receives from the output port
  * @returns {boolean}
  */
 export function canTransportsCouple(type, direction, gateDirection, isBehind) {

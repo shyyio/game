@@ -13,7 +13,7 @@ import {BeltType} from "@/mods/logistics/common/objectTypes.js";
 
 export const LANES_PER_LINE = 3;
 // A lane's vertical extent, relative to its extractor at row 0: the extractor's output lands at
-// row -1, three belts climb rows -1..-3 (row -3 is the Bake's feeder tile), the Bake sits at row
+// row -1, three belts climb rows -1..-3 (row -3 is the Bake's parent tile), the Bake sits at row
 // -BAKE_DY, and its own output lands one further row north (see lineSinkPort).
 const BAKE_DY = 4;
 

@@ -126,7 +126,7 @@ test("a drain empties its source", async () => {
     assert.equal(engine.ports.getItemByPortEid(ports[0]), EMPTY);
 });
 
-// A sink drains before POST_RESOLVE, so a producer feeding the same port refills it the same tick.
+// A sink drains before POST_RESOLVE, so a producer handing into the same port refills it the same tick.
 test("a drained sink is empty by POST_RESOLVE", async () => {
     const {engine, ports} = await setup(1, [1]);
     let itemAtPostResolve = ITEM;

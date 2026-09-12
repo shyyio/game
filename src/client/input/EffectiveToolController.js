@@ -1,5 +1,6 @@
 import Mobile from "@/client/Mobile.js";
 import Mouse from "@/client/input/Mouse.js";
+import Keyboard from "@/client/input/Keyboard.js";
 import {EXIT_HOTKEY, ViewMode} from "@/client/constants.js";
 import {StatusBarSection, hotkeyButton} from "@/client/hud/TopStatusBarLayer.js";
 
@@ -33,6 +34,9 @@ export class EffectiveToolController {
         // toolbar selection, so the cursor acts as if nothing were selected and the tool resumes on
         // zoom-in. The effective tool (null when zoomed out) drives the side effects below.
         this.isMapMode = false;
+        // The active tool's action keys, bound while it is active, and the tool they belong to.
+        this._actionBindings = [];
+        this._boundTool = null;
     }
 
     /**
@@ -67,11 +71,12 @@ export class EffectiveToolController {
      */
     applyEffectiveTool() {
         const tool = this.inputHandler.activeTool;
+        this._bindToolActions(tool);
         this.inputHandler.clearToolPreview();
         this.inputHandler.clearInspect();
         this.inputHandler.resyncHover();
         this.client.hud.rotateButtonsLayer.setVisible(tool != null && tool.orientable);
-        this.client.hud.topStatusBar.setSection(SECTION_ID, this._statusBarSection(tool));
+        this._resyncStatusBar();
         const mobile = Mobile.isEnabled;
         // Map mode locks the "cursor" to the screen center too.
         this.client.centerLock.setEnabled(mobile && (this.isMapMode || (tool != null && tool.usesCenterLock)));
@@ -87,7 +92,8 @@ export class EffectiveToolController {
     }
 
     /**
-     * The tool's status-bar contribution: its text and its Back button. Null with no tool.
+     * The tool's status-bar contribution: its text, its Back button and its own actions. Null with
+     * no tool.
      * @private
      * @param {AbstractTool|null} tool
      * @returns {StatusBarSection|null}
@@ -96,8 +102,58 @@ export class EffectiveToolController {
         if (tool == null) {
             return null;
         }
-        const back = hotkeyButton("Back", EXIT_HOTKEY, () => this.toolbar.setActiveTool(null));
-        return new StatusBarSection(tool.statusText, [back]);
+        const buttons = [hotkeyButton("Back", EXIT_HOTKEY, () => this.toolbar.setActiveTool(null))];
+        for (const action of tool.actions) {
+            buttons.push(hotkeyButton(action.label, action.key, () => this._pressToolAction(action)));
+        }
+        return new StatusBarSection(tool.statusText, buttons);
+    }
+
+    /**
+     * Rebinds the action keys to whichever tool is active now.
+     * @private
+     * @param {AbstractTool|null} tool
+     * @returns {void}
+     */
+    _bindToolActions(tool) {
+        for (const [key, callback] of this._actionBindings) {
+            Keyboard.off(key, callback);
+        }
+        this._actionBindings = [];
+        if (this._boundTool !== null) {
+            this._boundTool.onStatusChange(null);
+        }
+        this._boundTool = tool;
+        if (tool == null) {
+            return;
+        }
+        tool.onStatusChange(() => this._resyncStatusBar());
+        for (const action of tool.actions) {
+            const callback = () => this._pressToolAction(action);
+            Keyboard.on(action.key, callback);
+            this._actionBindings.push([action.key, callback]);
+        }
+    }
+
+    /**
+     * Redraws the bar from the active tool's current status line and actions.
+     * @private
+     * @returns {void}
+     */
+    _resyncStatusBar() {
+        this.client.hud.topStatusBar.setSection(SECTION_ID, this._statusBarSection(this.inputHandler.activeTool));
+    }
+
+    /**
+     * Fires a tool action and redraws the bar, whose text and buttons the action may have changed.
+     * @private
+     * @param {ToolActionEntry} action
+     * @returns {void}
+     */
+    _pressToolAction(action) {
+        action.onPress();
+        this._resyncStatusBar();
+        this.inputHandler.resyncHover();
     }
 
     /**

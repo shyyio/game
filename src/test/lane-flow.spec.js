@@ -53,8 +53,8 @@ test("a lane carries fed items to its output port one slot per tick", async () =
     assert.deepEqual(stream, [EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, CARGO, CARGO, EMPTY, EMPTY, EMPTY]);
 });
 
-// A lane bending out of a producer's output takes the feed on its flank edge, not its straight one.
-test("a lane head ingests a producer feeding its flank", async () => {
+// A lane bending out of a producer's output takes its parent on its flank edge, not its straight one.
+test("a lane head ingests a producer parenting its flank", async () => {
     const engine = await setup();
     placeLane(engine, 5, 4, Direction.UP);
     placeLane(engine, 5, 5, Direction.UP);
@@ -86,7 +86,7 @@ test("a machine on the flank of a head with a parent cell is inert until that ce
     for (let i = 0; i < 8; i += 1) {
         engine.tick();
     }
-    assert.equal(engine.ports.getItemByPortEid(producerOut), CARGO, "the flank feed waits: the head's input is the seam");
+    assert.equal(engine.ports.getItemByPortEid(producerOut), CARGO, "the flank parent waits: the head's input is the seam");
     assert.equal(engine.lanes.getItemCountByLaneRef(head), 0);
 
     deleteLane(engine, 0, 64);
@@ -98,8 +98,8 @@ test("a machine on the flank of a head with a parent cell is inert until that ce
     assert.equal(engine.lanes.getParentEdgeByCellEid(engine.placed.getEidAt(0, 63, LAYER_SURFACE)), Direction.RIGHT);
 });
 
-// Flanks feed the head cell only: a feeder dead-ending into a cell mid-lane backs up.
-test("a feeder into a mid-lane cell's flank backs up", async () => {
+// Flanks parent the head cell only: a parent dead-ending into a cell mid-lane backs up.
+test("a parent into a mid-lane cell's flank backs up", async () => {
     const engine = await setup();
     placeLane(engine, 5, 4, Direction.UP);
     placeLane(engine, 5, 5, Direction.UP);
@@ -111,7 +111,7 @@ test("a feeder into a mid-lane cell's flank backs up", async () => {
         engine.tick();
     }
 
-    assert.equal(engine.ports.getItemByPortEid(producerOut), CARGO, "the feed stays in the producer's port");
+    assert.equal(engine.ports.getItemByPortEid(producerOut), CARGO, "the item stays in the producer's port");
     assert.equal(itemCells(engine), 0, "nothing reached the lane");
 });
 
@@ -195,10 +195,10 @@ test("a lane does not ingest an input port item something else took", async () =
     assert.equal(engine.lanes.getItemCountByLaneRef(lane), packed, "nothing reached the lane");
 });
 
-// A lane popping empties its ingest port, so a feeder pushing the next item into that port the same
+// A lane popping empties its ingest port, so a parent pushing the next item into that port the same
 // tick lands on an empty one. If the pop only marked the port as emptying, the item resting there
 // would be overwritten and lost.
-test("a feeder never overwrites the input port item of a lane that is popping", async () => {
+test("a parent never overwrites the input port item of a lane that is popping", async () => {
     const engine = await setup();
     for (const y of [0, 1, 2]) {
         placeLane(engine, 0, y, Direction.UP);

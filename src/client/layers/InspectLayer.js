@@ -37,6 +37,7 @@ export class InspectLayer extends AbstractDrawLayer {
             }
             const texture = this.textureCache.get(`inspect/${highlight.type.geometryName}${variantSuffix}`);
             const sprite = new ObjectSprite(0, highlight.tileX, highlight.tileY, highlight.direction, texture, highlight.type);
+            sprite.y -= highlight.drawHeight;
             this.addChild(sprite);
             this._sprites.push(sprite);
         }

@@ -254,7 +254,7 @@ class Scenario {
     }
 
     /**
-     * Plugs a lane's output port and feeds its input port until every slot holds an item.
+     * Plugs a lane's output port and fills its input port until every slot holds an item.
      * @param {number} laneRef
      * @returns {void}
      */
@@ -358,7 +358,7 @@ test("deleting a saturated lane's head keeps the downstream sprites", async () =
 
 test("a junction steal on a saturated lane renders the stolen run and the orphan", async () => {
     const scenario = await saturatedLine();
-    // A newer cell feeding the middle cell's flank wins it, orphaning the head.
+    // A newer cell parenting the middle cell's flank wins it, orphaning the head.
     scenario.place(9, Direction.LEFT, COLUMN_X + 1);
     scenario.assertRendered("after the junction steal");
 });

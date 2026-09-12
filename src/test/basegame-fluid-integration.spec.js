@@ -111,7 +111,7 @@ test("Brew produces both Basic Potion Base and Overload Mix, one machine", async
     const in1Port = def.store.inputPort1[row];
     const outputPort = def.store.outputPort[row];
 
-    // Only feed a port once it's actually empty (gathered): feeding on every tick regardless would
+    // Only fill a port once it's actually empty (gathered): filling on every tick regardless would
     // let the machine pipeline-gather a second Mushroom+Water craft before this one's even read.
     let basicPotionBase = false;
     for (let i = 0; i < 40 && !basicPotionBase; i += 1) {

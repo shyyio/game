@@ -50,9 +50,9 @@ test("a straight run builds one lane of the right length", async () => {
     assert.equal(engine.lanes.getSlotCountByLaneRef(lane), 3 * 2 - 1);
 });
 
-// Placing a cell that feeds the middle of a run steals the downstream: its lane bends through the
+// Placing a cell that parents the middle of a run steals the downstream: its lane bends through the
 // junction to the old tail, and the upstream is left a shorter lane.
-test("a cell feeding a run's middle splits it and steals the downstream", async () => {
+test("a cell parenting a run's middle splits it and steals the downstream", async () => {
     const engine = await setup();
     placeLane(engine, 0, 0, Direction.RIGHT);
     placeLane(engine, 1, 0, Direction.RIGHT);
@@ -274,7 +274,7 @@ test("deleting the machine returns the head to its back edge", async () => {
     engine.applyMessage(new CreateObjectMessage(TestMachineType.objectTypeId, 4, 5, Direction.RIGHT));
     const head = engine.placed.getEidAt(5, 5, LAYER_SURFACE);
     const machine = engine.placed.getEidAt(4, 5, LAYER_SURFACE);
-    assert.equal(engine.lanes.getParentEdgeByCellEid(head), Direction.RIGHT, "the machine feeds the head's flank");
+    assert.equal(engine.lanes.getParentEdgeByCellEid(head), Direction.RIGHT, "the machine parents the head's flank");
 
     engine.applyMessage(new DeleteObjectMessage(engine.placed.getObjectRefByEid(machine)));
 

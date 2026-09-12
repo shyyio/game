@@ -214,7 +214,7 @@ export class ItemDrawLayer extends AbstractDrawLayer {
      * @param {number} move.tileX
      * @param {number} move.tileY
      * @param {boolean} move.halfTile
-     * @param {Direction} move.sourceDirection - toward the belt feeding this one (the input/bend edge)
+     * @param {Direction} move.sourceDirection - toward the parent belt (the input/bend edge)
      * @param {number} move.type - item type, selecting the texture
      * @param {boolean} [move.snap] - place at the target without animating (a re-sync)
      * @param {boolean} [move.isHidden] - the item is under cover (in a tunnel)
@@ -291,7 +291,7 @@ export class ItemDrawLayer extends AbstractDrawLayer {
      * Glides a consumed item a half-tile on into the consumer, then drops it; the key frees
      * immediately, so the port's next item can take it while the exit plays out.
      * @param {number|string} key
-     * @param {Direction} sourceDirection - toward the belt/port feeding the item (as in moveItem)
+     * @param {Direction} sourceDirection - toward the parent belt/port (as in moveItem)
      * @returns {void}
      */
     consumeItem(key, sourceDirection) {
@@ -499,7 +499,7 @@ class ItemParticle extends Particle {
 
     /**
      * Aims the item at a belt tile. When straddling (half-tile) it sits a half-tile
-     * toward `sourceDirection` — the belt feeding this one — so on a bend it lands on the
+     * toward `sourceDirection` — the parent belt — so on a bend it lands on the
      * input edge, not simply opposite the flow. A new item glides in from a further
      * half-tile that way; later moves glide from the item's current position.
      * @param {number} tileX

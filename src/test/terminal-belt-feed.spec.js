@@ -46,17 +46,17 @@ test("a belt-fed seller loses no items when a pop and a sale share a tick", asyn
     const sellerInputPort = terminal.inputPort[sellerRow];
     const buyerOutputPort = terminal.outputPort[buyerRow];
 
-    // Belt line (5,7)->(5,6) facing UP feeds tile (5,5): the seller adopts the shared port.
+    // Belt line (5,7)->(5,6) facing UP parents tile (5,5): the seller adopts the shared port.
     placeBelt(engine, 5, 7, Direction.UP);
     placeBelt(engine, 5, 6, Direction.UP);
-    const feed = beltLaneAt(engine, 5, 7);
-    assert.equal(feed.outputPort, sellerInputPort, "the belt feeds the seller's input port");
+    const parent = beltLaneAt(engine, 5, 7);
+    assert.equal(parent.outputPort, sellerInputPort, "the belt parents the seller's input port");
 
     let fed = 0;
     let delivered = 0;
     for (let tick = 0; tick < TICKS; tick += 1) {
-        if (engine.ports.getItemByPortEid(feed.inputPort) === EMPTY) {
-            engine.ports.setItem(feed.inputPort, ITEM);
+        if (engine.ports.getItemByPortEid(parent.inputPort) === EMPTY) {
+            engine.ports.setItem(parent.inputPort, ITEM);
             fed += 1;
         }
         engine.tick();
@@ -66,7 +66,7 @@ test("a belt-fed seller loses no items when a pop and a sale share a tick", asyn
         }
     }
 
-    const inTransit = engine.lanes.getItemCountByLaneRef(feed.laneRef) + held(engine, feed.inputPort) + held(engine, sellerInputPort);
+    const inTransit = engine.lanes.getItemCountByLaneRef(parent.laneRef) + held(engine, parent.inputPort) + held(engine, sellerInputPort);
     assert.equal(delivered + inTransit, fed, "every fed item is delivered or still on the way");
     assert.ok(delivered >= TICKS / 2, "the line sells at a sustained rate");
 });

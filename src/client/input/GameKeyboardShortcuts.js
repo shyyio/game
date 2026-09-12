@@ -43,7 +43,7 @@ export function bindGameKeyboardShortcuts(client, game, toolbar) {
         });
     } else if (DEV) {
         // Dev-only: force-closes the socket to test the reconnect flow without touching the server.
-        on("k", () => {
+        on("x", () => {
             client.session.debugDisconnect();
         });
     }

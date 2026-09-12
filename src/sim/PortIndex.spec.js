@@ -53,14 +53,14 @@ test("endpoints are rebuilt after a load", async () => {
 // must keep it, or the next lane rebuild reads an emptied edge and detaches the run.
 test("the sweep keeps a port that a live object still produces into or consumes from", async () => {
     const engine = await setup();
-    // A cell at (5,5) UP feeding the flank of a cell at (5,4) RIGHT: their shared edge is (5,4) UP,
+    // A cell at (5,5) UP parenting the flank of a cell at (5,4) RIGHT: their shared edge is (5,4) UP,
     // an interior turn edge stored in no eid field.
     engine.applyMessage(new CreateObjectMessage(TestLaneType.objectTypeId, 5, 5, Direction.UP));
     engine.applyMessage(new CreateObjectMessage(TestLaneType.objectTypeId, 5, 4, Direction.RIGHT));
-    const feeder = engine.placed.getEidsByTypeId(TestLaneType.objectTypeId)[0];
+    const parent = engine.placed.getEidsByTypeId(TestLaneType.objectTypeId)[0];
     const turn = engine.placed.getEidsByTypeId(TestLaneType.objectTypeId)[1];
     const edge = engine.ports.getPortEidAt(5, 4, Direction.UP);
-    assert.deepEqual(engine.ports.getProducerEidsByPortEid(edge), [feeder], "the feeder produces into the turn edge");
+    assert.deepEqual(engine.ports.getProducerEidsByPortEid(edge), [parent], "the parent produces into the turn edge");
     assert.deepEqual(engine.ports.getConsumerEidsByPortEid(edge), [turn], "the turn cell consumes it");
 
     // A delete somewhere else fires the global sweep; the still-bound interior edge must survive.
@@ -69,6 +69,6 @@ test("the sweep keeps a port that a live object still produces into or consumes 
         engine.placed.getEidsByTypeId(TestMachineType.objectTypeId)[0])));
 
     assert.equal(engine.ports.getPortEidAt(5, 4, Direction.UP), edge, "the interior edge port keeps its identity");
-    assert.deepEqual(engine.ports.getProducerEidsByPortEid(edge), [feeder], "and its bindings survive the sweep");
+    assert.deepEqual(engine.ports.getProducerEidsByPortEid(edge), [parent], "and its bindings survive the sweep");
     assert.deepEqual(engine.ports.getConsumerEidsByPortEid(edge), [turn]);
 });

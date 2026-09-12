@@ -174,6 +174,14 @@ const LANE_LEVELS = [
     new LaneLevelEntry(LANE_LEVEL_ELEVATED_2, LAYER_LANE_ELEVATED_2, LAYER_LANE_ELEVATED_2),
 ];
 
+// The layers a lane stands on at and above the surface, highest level first: what a pointer on a
+// tile means is the first of these holding something. Buried cells are derived from the mouths
+// that spawned them, so they are not in it.
+export const LANE_LAYERS_HIGHEST_FIRST = LANE_LEVELS
+    .filter(entry => entry.level >= LANE_LEVEL_SURFACE)
+    .sort((a, b) => b.level - a.level)
+    .map(entry => entry.horizontalLayer);
+
 /**
  * @param {LaneLevel} level
  * @returns {LaneLevelEntry}
@@ -542,9 +550,9 @@ export class LaneIndex extends AbstractSystem {
     }
 
     /**
-     * The feed a cell takes: the edge its chooseParent winner hands it, in the cell's own frame, the
-     * port on it, and the winner when it also continues a lane into the cell. A cell nothing feeds is
-     * fed on its straight back edge.
+     * A cell's link to its parent: the edge its chooseParent winner hands it, in the cell's own
+     * frame, the port on it, and the winner when it also continues a lane into the cell. A cell with
+     * no parent links on its straight back edge.
      * @private
      * @param {number} eid
      * @returns {ParentLink}
@@ -577,7 +585,7 @@ export class LaneIndex extends AbstractSystem {
     }
 
     /**
-     * The lane cells that feed `eid`, whose own lanes a change at `eid` can move.
+     * The lane cells that are parents of `eid`, whose own lanes a change at `eid` can move.
      * @private
      * @param {number} eid
      * @returns {number[]}
@@ -609,9 +617,9 @@ export class LaneIndex extends AbstractSystem {
     }
 
     /**
-     * Re-derives the lanes an object's output edges feed, so a machine placed or taken away beside a
-     * lane head moves that head's parent edge and input port with it. Lane cells come through
-     * {@link addCell} and {@link removeCell} instead, and a lane whose feed is unchanged is left
+     * Re-derives the lanes an object's output edges reach, so a machine placed or taken away beside
+     * a lane head moves that head's parent edge and input port with it. Lane cells come through
+     * {@link addCell} and {@link removeCell} instead, and a lane whose parent is unchanged is left
      * alone.
      * @param {number} eid - the object spawned or being despawned
      * @returns {void}

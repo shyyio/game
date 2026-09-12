@@ -680,7 +680,12 @@ export class Client {
             for (const bundle of this.bundles) {
                 const entry = this.objects.getObjectByTypeAtOrNull(tileX, tileY, bundle.type);
                 if (entry !== null) {
-                    derived.push(new InspectHighlightSprite(entry.tileX, entry.tileY, entry.data.direction, bundle.type));
+                    derived.push(new InspectHighlightSprite({
+                        tileX: entry.tileX,
+                        tileY: entry.tileY,
+                        direction: entry.data.direction,
+                        type: bundle.type,
+                    }));
                 }
             }
         }

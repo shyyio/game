@@ -49,17 +49,17 @@ function gateMode(engine, eid) {
 
 test("an item flows through an open belt gate", async () => {
     const engine = await makeGameEngine();
-    // Belt at (5,6) UP feeds the gate at (5,5); belt at (5,4) carries onward.
+    // Belt at (5,6) UP parents the gate at (5,5); belt at (5,4) carries onward.
     placeBelt(engine, 5, 6, Direction.UP);
     const gate = placeGate(engine, 5, 5, Direction.UP);
     placeBelt(engine, 5, 4, Direction.UP);
-    const feed = beltLaneAt(engine, 5, 6);
+    const parent = beltLaneAt(engine, 5, 6);
     const onward = beltLaneAt(engine, 5, 4);
 
-    assert.equal(gate.inputPort, feed.outputPort, "the gate adopted the feeding belt's output port");
+    assert.equal(gate.inputPort, parent.outputPort, "the gate adopted the parent belt's output port");
     assert.equal(gate.outputPort, onward.inputPort, "the onward belt adopted the gate's output port");
 
-    engine.ports.setItem(feed.inputPort, RED);
+    engine.ports.setItem(parent.inputPort, RED);
     let arrived = false;
     for (let i = 0; i < 12 && !arrived; i += 1) {
         engine.tick();
@@ -73,9 +73,9 @@ test("an item rests one tick inside the gate between the in- and output port", a
     placeBelt(engine, 5, 6, Direction.UP);
     const gate = placeGate(engine, 5, 5, Direction.UP);
     placeBelt(engine, 5, 4, Direction.UP);
-    const feed = beltLaneAt(engine, 5, 6);
+    const parent = beltLaneAt(engine, 5, 6);
 
-    engine.ports.setItem(feed.inputPort, RED);
+    engine.ports.setItem(parent.inputPort, RED);
     let atMouth = false;
     for (let i = 0; i < 8 && !atMouth; i += 1) {
         engine.tick();
@@ -96,11 +96,11 @@ test("a closed belt gate jams the upstream belt and releases on open", async () 
     placeBelt(engine, 5, 6, Direction.UP);
     const gate = placeGate(engine, 5, 5, Direction.UP);
     placeBelt(engine, 5, 4, Direction.UP);
-    const feed = beltLaneAt(engine, 5, 6);
+    const parent = beltLaneAt(engine, 5, 6);
     const onward = beltLaneAt(engine, 5, 4);
 
     gateBehavior(engine).setOpen(engine, gate.eid, false);
-    engine.ports.setItem(feed.inputPort, RED);
+    engine.ports.setItem(parent.inputPort, RED);
     for (let i = 0; i < 12; i += 1) {
         engine.tick();
     }
@@ -119,15 +119,15 @@ test("a closed belt gate jams the upstream belt and releases on open", async () 
 
 test("a belt gate works across a chunk seam", async () => {
     const engine = await makeGameEngine();
-    // Feed belt in the chunk below the seam, gate and onward belt above it.
+    // Parent belt in the chunk below the seam, gate and onward belt above it.
     placeBelt(engine, 0, 64, Direction.UP);
     placeGate(engine, 0, 63, Direction.UP);
     placeBelt(engine, 0, 62, Direction.UP);
-    const feed = beltLaneAt(engine, 0, 64);
+    const parent = beltLaneAt(engine, 0, 64);
     const onward = beltLaneAt(engine, 0, 62);
-    assert.notEqual(chunkKeyAt(0, 64), chunkKeyAt(0, 63), "the gate sits across the seam from its feed");
+    assert.notEqual(chunkKeyAt(0, 64), chunkKeyAt(0, 63), "the gate sits across the seam from its parent");
 
-    engine.ports.setItem(feed.inputPort, RED);
+    engine.ports.setItem(parent.inputPort, RED);
     let arrived = false;
     for (let i = 0; i < 12 && !arrived; i += 1) {
         engine.tick();

@@ -6,17 +6,24 @@ import {
     RoadBehavior,
     HousingBehavior,
     CONVEYS_ITEM,
+    LANE_LEVEL_SURFACE,
 } from "@spup/sdk";
 import {
     BELT_NORMAL,
     BELT_TUNNEL_DOWN,
     BELT_TUNNEL_UP,
     BELT_UNDERGROUND,
+    BELT_RAMP_UP_1,
+    BELT_ELEVATED_1,
+    BELT_RAMP_DOWN_1,
+    getBeltKindEntryByKind,
     HOUSING_WORKER_SUPPLY,
     MAP_COLOR_HOUSING,
     MAP_COLOR_ROAD,
     MAP_COLOR_BELT,
     MAP_COLOR_BELT_TUNNEL,
+    MAP_COLOR_BELT_RAMP,
+    MAP_COLOR_BELT_ELEVATED_1,
     DRAW_LAYER_ROAD,
 } from "./constants.js";
 import {SplitterBehavior} from "../sim/SplitterBehavior.js";
@@ -53,34 +60,27 @@ class BeltObjectType extends ObjectType {
         this.beltKind = beltKind;
     }
 
-    // A mouth/underground never merges from the side: only its straight-axis input (local UP)
-    // stays active; outputs are unchanged.
+    // A non-merging kind takes only its straight-axis input (local UP); outputs are unchanged.
     getActivePortsByKind(portKind) {
-        if (portKind === "inputPorts" && this.beltKind !== BELT_NORMAL) {
+        if (portKind === "inputPorts" && !getBeltKindEntryByKind(this.beltKind).isMerging) {
             return this.inputPorts.filter(port => port.direction === Direction.UP);
         }
         return this[portKind];
     }
 
-    // Ports a surface neighbor can connect to: a mouth buries one end, so TUNNEL_DOWN exposes only
-    // its input, TUNNEL_UP only its output, and an underground nothing (fully buried).
+    // Ports a surface neighbor can connect to: only the end this kind keeps on the surface.
     getSurfacePortsByKind(portKind) {
-        if (this.beltKind === BELT_TUNNEL_DOWN) {
-            if (portKind === "inputPorts") {
+        const entry = getBeltKindEntryByKind(this.beltKind);
+        if (portKind === "inputPorts") {
+            if (entry.inLevel === LANE_LEVEL_SURFACE) {
                 return this.getActivePortsByKind(portKind);
             }
             return [];
         }
-        if (this.beltKind === BELT_TUNNEL_UP) {
-            if (portKind === "outputPorts") {
-                return this.outputPorts;
-            }
-            return [];
+        if (entry.outLevel === LANE_LEVEL_SURFACE) {
+            return this.outputPorts;
         }
-        if (this.beltKind === BELT_UNDERGROUND) {
-            return [];
-        }
-        return this.getActivePortsByKind(portKind);
+        return [];
     }
 }
 
@@ -93,29 +93,88 @@ export function isBeltType(type) {
     return type instanceof BeltObjectType;
 }
 
+/**
+ * The position layer a belt occupies: its level's when it stands off the surface at both ends, the
+ * surface otherwise, ramps included.
+ * @param {ObjectType} type
+ * @param {Direction} direction
+ * @returns {string}
+ */
+export function getLayerByBeltType(type, direction) {
+    return type.behavior.getPositionLayersByDirection(direction)[0];
+}
+
+/**
+ * @param {BeltType} kind
+ * @returns {ObjectType} the belt type of that kind
+ */
+export function getBeltTypeByKind(kind) {
+    // Declared in kind order, so the ordinal indexes the table.
+    const type = BELT_TYPES[kind];
+    if (type === undefined) {
+        throw new Error(`No belt type of kind ${kind}`);
+    }
+    return type;
+}
+
 export const BeltType = new BeltObjectType({
     name: "Belt",
     beltKind: BELT_NORMAL,
+    label: "Belt",
     mapColor: MAP_COLOR_BELT,
 });
 
 export const BeltTunnelDownType = new BeltObjectType({
     name: "BeltTunnelDown",
     beltKind: BELT_TUNNEL_DOWN,
+    label: "Tunnel entrance",
     mapColor: MAP_COLOR_BELT_TUNNEL,
 });
 
 export const BeltTunnelUpType = new BeltObjectType({
     name: "BeltTunnelUp",
     beltKind: BELT_TUNNEL_UP,
+    label: "Tunnel exit",
     mapColor: MAP_COLOR_BELT_TUNNEL,
 });
 
 export const BeltUndergroundType = new BeltObjectType({
     name: "BeltUnderground",
     beltKind: BELT_UNDERGROUND,
+    label: "Underground belt",
     overworldVisible: false,
 });
+
+export const BeltRampUp1Type = new BeltObjectType({
+    name: "BeltRampUp1",
+    beltKind: BELT_RAMP_UP_1,
+    label: "Ramp to level 1",
+    mapColor: MAP_COLOR_BELT_RAMP,
+});
+
+export const BeltElevated1Type = new BeltObjectType({
+    name: "BeltElevated1",
+    beltKind: BELT_ELEVATED_1,
+    label: "Level 1 belt",
+    mapColor: MAP_COLOR_BELT_ELEVATED_1,
+});
+
+export const BeltRampDown1Type = new BeltObjectType({
+    name: "BeltRampDown1",
+    beltKind: BELT_RAMP_DOWN_1,
+    label: "Ramp to ground",
+    mapColor: MAP_COLOR_BELT_RAMP,
+});
+
+const BELT_TYPES = [
+    BeltType,
+    BeltTunnelDownType,
+    BeltTunnelUpType,
+    BeltUndergroundType,
+    BeltRampUp1Type,
+    BeltElevated1Type,
+    BeltRampDown1Type,
+];
 
 // A 1x2 router; each item flows in_X -> int_X -> out_Y, resting a tick in int_X and a visible
 // tick in out_Y.

@@ -7,16 +7,24 @@ import {
     AbstractTileMeshDrawLayer,
     LaneCreatedEvent,
 } from "@spup/sdk/client";
-import {chunkKeyAt, getOrCreate, removeFromGroup} from "@spup/sdk";
+import {
+    chunkKeyAt,
+    getOrCreate,
+    removeFromGroup,
+} from "@spup/sdk";
 import {
     BeltBend,
-    BELT_NORMAL,
     BELT_TUNNEL_DOWN,
     BELT_TUNNEL_UP,
     BELT_UNDERGROUND,
+    getBeltKindEntryByKind,
+    isBeltRamp,
     MAP_COLOR_BELT,
     MAP_COLOR_BELT_TUNNEL,
+    MAP_COLOR_BELT_RAMP,
+    MAP_COLOR_BELT_ELEVATED_1,
 } from "../common/constants.js";
+import {getBeltTypeByKind} from "../common/objectTypes.js";
 
 // Every beltFrameBase result except the never-drawn buried underground.
 const BELT_SEQUENCES = [
@@ -25,6 +33,16 @@ const BELT_SEQUENCES = [
     "belt-right",
     "belt-tunnel-up",
     "belt-tunnel-down",
+    "belt-ramp-up",
+    "belt-ramp-down",
+];
+
+// Map-mode fills a chunk's belts draw, one pass per color.
+const BELT_MAP_COLORS = [
+    MAP_COLOR_BELT,
+    MAP_COLOR_BELT_TUNNEL,
+    MAP_COLOR_BELT_RAMP,
+    MAP_COLOR_BELT_ELEVATED_1,
 ];
 
 /**
@@ -43,6 +61,13 @@ export function beltFrameBase(bend, type) {
     if (type === BELT_TUNNEL_DOWN) {
         return "belt-tunnel-down";
     }
+    if (isBeltRamp(type)) {
+        const ramp = getBeltKindEntryByKind(type);
+        if (ramp.outLevel > ramp.inLevel) {
+            return "belt-ramp-up";
+        }
+        return "belt-ramp-down";
+    }
     if (bend === BeltBend.LEFT) {
         return "belt-left";
     }
@@ -53,7 +78,7 @@ export function beltFrameBase(bend, type) {
 }
 
 /**
- * The bend a belt draws for the edge its lane feeds it over, in the belt's own frame: a feed
+ * The bend a belt draws for the edge its parent hands it over, in the belt's own frame: a parent
  * heading LEFT comes off the right flank.
  * @param {Direction} parentEdge
  * @returns {BeltBend}
@@ -77,8 +102,10 @@ export class BeltEntry {
      * @param {Direction} direction
      * @param {BeltBend} bend
      * @param {BeltType} type
+     * @param {number} mapColor
      */
-    constructor(id, x, y, direction, bend, type) {
+    constructor(id, x, y, direction, bend, type, mapColor) {
+        this.mapColor = mapColor;
         this.id = id;
         this.x = x;
         this.y = y;
@@ -114,30 +141,51 @@ export class BeltEntry {
     }
 }
 
+// Pixels an elevated cell's sprite sits above its tile, so it reads as standing over the ground.
+export const ELEVATED_DRAW_HEIGHT = 24;
+
 /**
- * Draws the belts; a belt's bend is the edge the sim's lane feeds it over, taken from the lane
- * geometry feed.
+ * Draws the belts of one level; a belt's bend is the edge its parent hands it over, taken from the
+ * lane geometry feed.
  */
 export class BeltDrawLayer extends AbstractTileMeshDrawLayer {
 
-    constructor() {
+    /**
+     * @param {number} layerIndex
+     * @param {number} drawHeight - pixels the level's sprites sit above their tiles
+     * @param {Map<number, Direction>} parentEdges - belt id -> the edge its parent hands it over,
+     *     shared by every level's layer; geometry may land before the belt is cached
+     */
+    constructor(layerIndex, drawHeight, parentEdges) {
         super();
+        this._layerIndex = layerIndex;
+        this._drawHeight = drawHeight;
         /**
          * @type {Map<number, BeltEntry>}
          */
         this._belts = new Map();
         // The belts each chunk holds.
         this._chunkBelts = new Map();
-        // Belt id -> the edge its lane feeds it over; geometry may land before the belt is cached.
-        this._parentEdges = new Map();
+        this._parentEdges = parentEdges;
     }
 
     get layerIndex() {
-        return 10;
+        return this._layerIndex;
     }
 
     get meshSequences() {
         return BELT_SEQUENCES;
+    }
+
+    /**
+     * Lifts the chunk's sprites off their tiles; the map-mode geometry stays on the grid.
+     * @param {ChunkNode} node
+     * @param {number} chunkKey
+     * @returns {void}
+     */
+    _initChunkNode(node, chunkKey) {
+        super._initChunkNode(node, chunkKey);
+        node.sprites.y = -this._drawHeight;
     }
 
     get eventClasses() {
@@ -170,11 +218,10 @@ export class BeltDrawLayer extends AbstractTileMeshDrawLayer {
      * @returns {void}
      */
     _drawChunkGeometry(chunkKey, graphics) {
-        for (const color of [MAP_COLOR_BELT, MAP_COLOR_BELT_TUNNEL]) {
+        for (const color of BELT_MAP_COLORS) {
             let drew = false;
             for (const belt of this._getBeltsByChunkKey(chunkKey)) {
-                const beltColor = belt.type === BELT_NORMAL ? MAP_COLOR_BELT : MAP_COLOR_BELT_TUNNEL;
-                if (beltColor !== color) {
+                if (belt.mapColor !== color) {
                     continue;
                 }
                 graphics.rect(belt.x * TILE_SIZE, belt.y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
@@ -237,7 +284,7 @@ export class BeltDrawLayer extends AbstractTileMeshDrawLayer {
         } else {
             bend = beltBendOf(edge);
         }
-        const belt = new BeltEntry(id, x, y, direction, bend, type);
+        const belt = new BeltEntry(id, x, y, direction, bend, type, getBeltTypeByKind(type).mapColor);
         this._belts.set(id, belt);
 
         const chunkKey = chunkKeyAt(x, y);
@@ -249,11 +296,11 @@ export class BeltDrawLayer extends AbstractTileMeshDrawLayer {
      * @param {number} id
      */
     removeBelt(id) {
-        this._parentEdges.delete(id);
         const belt = this._belts.get(id);
         if (belt === undefined) {
             return;
         }
+        this._parentEdges.delete(id);
 
         const chunkKey = chunkKeyAt(belt.x, belt.y);
         this._belts.delete(id);

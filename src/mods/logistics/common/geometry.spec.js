@@ -1,15 +1,54 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
 import {Direction, LAYER_SURFACE, ObjectType, PortDefinition, ObjectsView} from "@spup/sdk/client";
-import {inferBeltParent} from "./geometry.js";
-import {BeltType, BeltTunnelDownType, BeltTunnelUpType, SplitterType} from "./objectTypes.js";
+import {inferBeltParent, inferElevatedBeltParent} from "./geometry.js";
+import {
+    BeltType,
+    BeltTunnelDownType,
+    BeltTunnelUpType,
+    BeltElevated1Type,
+    BeltRampUp1Type,
+    SplitterType,
+} from "./objectTypes.js";
 
 // Register a single-tile surface object in the cache.
 function surface(cache, id, x, y, data) {
     cache.set(id, x, y, [{x, y, layer: LAYER_SURFACE}], {}, data);
 }
 
-test("inferBeltParent finds a splitter feeding a belt that bends out of it", () => {
+// Register a belt on the layers its own type occupies.
+function belt(cache, id, x, y, type, direction) {
+    const cells = type.getPositionLayerTilesByDirection(direction).flatMap(group =>
+        group.cells.map(cell => ({x: x + cell.x, y: y + cell.y, layer: group.layer})));
+    cache.set(id, x, y, cells, {}, {type, direction});
+}
+
+test("inferElevatedBeltParent picks the elevated cell parenting it from behind", () => {
+    const cache = new ObjectsView(null);
+    belt(cache, 5, 5, 6, BeltElevated1Type, Direction.UP);
+
+    const parent = inferElevatedBeltParent(cache, 5, 5, Direction.UP);
+    assert.deepEqual([parent.parentX, parent.parentY], [5, 6]);
+});
+
+test("inferElevatedBeltParent takes a ramp up as a parent and ignores a surface belt", () => {
+    const cache = new ObjectsView(null);
+    belt(cache, 5, 5, 6, BeltRampUp1Type, Direction.UP);
+    belt(cache, 6, 4, 5, BeltType, Direction.RIGHT);
+
+    const parent = inferElevatedBeltParent(cache, 5, 5, Direction.UP);
+    assert.deepEqual([parent.parentX, parent.parentY], [5, 6], "the ramp parents it, the surface belt does not");
+});
+
+test("inferElevatedBeltParent ignores an elevated cell running away from the tile", () => {
+    const cache = new ObjectsView(null);
+    belt(cache, 5, 5, 6, BeltElevated1Type, Direction.DOWN);
+
+    const parent = inferElevatedBeltParent(cache, 5, 5, Direction.UP);
+    assert.deepEqual([parent.parentX, parent.parentY], [null, null]);
+});
+
+test("inferBeltParent finds a splitter parenting a belt that bends out of it", () => {
     const cache = new ObjectsView(null);
     // Splitter at (13,5) facing UP occupies (13,5) and (14,5).
     cache.set(1, 13, 5, [
@@ -23,7 +62,7 @@ test("inferBeltParent finds a splitter feeding a belt that bends out of it", () 
     assert.deepEqual([parent.parentX, parent.parentY], [14, 5]);
 });
 
-test("inferBeltParent picks a straight upstream belt feeder", () => {
+test("inferBeltParent picks a straight upstream belt parent", () => {
     const cache = new ObjectsView(null);
     surface(cache, 5, 5, 6, {type: BeltType, direction: Direction.UP});
 
@@ -31,9 +70,9 @@ test("inferBeltParent picks a straight upstream belt feeder", () => {
     assert.deepEqual([parent.parentX, parent.parentY], [5, 6]);
 });
 
-test("inferBeltParent ignores a tunnel entrance (it does not feed forward) and empty tiles", () => {
+test("inferBeltParent ignores a tunnel entrance (it does not parent forward) and empty tiles", () => {
     const cache = new ObjectsView(null);
-    // A tunnel-down behind faces UP but buries the flow, so it is not a feeder.
+    // A tunnel-down behind faces UP but buries the flow, so it is not a parent.
     surface(cache, 7, 5, 6, {type: BeltTunnelDownType, direction: Direction.UP});
 
     const parent = inferBeltParent(cache, 5, 5, Direction.UP);
@@ -62,7 +101,7 @@ test("a machine between a tunnel's mouths connects to neither buried end", () =>
 
 test("a machine connects to a mouth's exposed surface ports along its axis", () => {
     const cache = new ObjectsView(null);
-    // TUNNEL_DOWN entrance takes a straight feed from behind (its output is buried, not its input).
+    // TUNNEL_DOWN entrance takes a straight parent from behind (its output is buried, not its input).
     surface(cache, 1, 5, 4, {type: BeltTunnelDownType, direction: Direction.UP});
     surface(cache, 2, 5, 5, {type: machineType, direction: Direction.UP});
     // TUNNEL_UP exit emits forward onto the surface (its input is buried, not its output).
@@ -75,17 +114,17 @@ test("a machine connects to a mouth's exposed surface ports along its axis", () 
 test("a machine beside a mouth does not connect from the side", () => {
     const cache = new ObjectsView(null);
     // TUNNEL_DOWN entrance facing UP; a machine to its left points right into the mouth's tile.
-    // A normal belt would merge in from the side, but a mouth only takes a straight feed.
+    // A normal belt would merge in from the side, but a mouth only takes a straight parent.
     surface(cache, 1, 5, 5, {type: BeltTunnelDownType, direction: Direction.UP});
     surface(cache, 2, 4, 5, {type: machineType, direction: Direction.RIGHT});
 
     assert.deepEqual(cache.connectedPorts(cache.get(2)), []);
 });
 
-test("inferBeltParent recognizes a non-belt object (a machine) feeding a belt", () => {
+test("inferBeltParent recognizes a non-belt object (a machine) parenting a belt", () => {
     // The belt must bend toward the machine without any belt-side knowledge of the machine's type.
     const cache = new ObjectsView(null);
-    // Machine to the left of the belt, facing right — feeds the belt from the side (a bend).
+    // Machine to the left of the belt, facing right — parents the belt from the side (a bend).
     surface(cache, 9, 4, 5, {type: machineType, direction: Direction.RIGHT});
 
     const parent = inferBeltParent(cache, 5, 5, Direction.UP);

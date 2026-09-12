@@ -12,7 +12,7 @@ const RED = 1;
 test("an item tunnels through a tunnel-down / underground / tunnel-up run", async () => {
     const engine = await makeGameEngine();
 
-    // UP tunnel: tunnel-down (0,4), tunnel-up (0,1) fills undergrounds (0,3),(0,2); normal feeder (0,5).
+    // UP tunnel: tunnel-down (0,4), tunnel-up (0,1) fills undergrounds (0,3),(0,2); normal parent (0,5).
     placeBelt(engine, 0, 4, Direction.UP, BeltTunnelDownType);
     placeBelt(engine, 0, 1, Direction.UP, BeltTunnelUpType);
     placeBelt(engine, 0, 5, Direction.UP);

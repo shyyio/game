@@ -234,6 +234,8 @@ function onKeyDown(event) {
     state.grid = !state.grid;
   } else if (key === "o") {
     state.onion = !state.onion;
+  } else if (key === "a") {
+    state.allFrames = !state.allFrames;
   } else if (key === " ") {
     state.playing = !state.playing;
     event.preventDefault();
@@ -476,6 +478,9 @@ async function resetAll() {
         <label>Zoom <input v-model.number="state.zoom" type="range" :min="ZOOM_MIN" :max="ZOOM_MAX"></label>
         <label><input v-model="state.grid" type="checkbox"> Grid</label>
         <label><input v-model="state.onion" type="checkbox" :disabled="sequence.length < 2"> Onion</label>
+        <label
+            title="Paint every frame of this animation at once (A)"
+        ><input v-model="state.allFrames" type="checkbox" :disabled="sequence.length < 2"> All frames</label>
       </div>
       <div
           ref="scroll"

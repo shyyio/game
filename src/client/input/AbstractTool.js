@@ -2,6 +2,23 @@ import {Direction} from "@/common/constants.js";
 import {NotImplementedError} from "@/common/error.js";
 
 /**
+ * One action a tool offers while it is active: a top status bar button and the key that fires it.
+ */
+export class ToolActionEntry {
+
+    /**
+     * @param {string} label
+     * @param {string} key
+     * @param {function(): void} onPress
+     */
+    constructor(label, key, onPress) {
+        this.label = label;
+        this.key = key;
+        this.onPress = onPress;
+    }
+}
+
+/**
  * @abstract
  *
  * Contract: onDragTile is called at most once per tile per drag, and always
@@ -19,6 +36,28 @@ export class AbstractTool {
         // facing persists across tool switches; tools with no orientation leave it
         // null and rotate() is a no-op for them.
         this._rotation = null;
+        // Set by the host while this tool is active, to redraw its status line.
+        this._onStatusChange = null;
+    }
+
+    /**
+     * Registers the host callback that redraws this tool's status line; null unregisters.
+     * @param {function(): void|null} callback
+     * @returns {void}
+     */
+    onStatusChange(callback) {
+        this._onStatusChange = callback;
+    }
+
+    /**
+     * Tells the host that {@link statusText} or {@link actions} changed, for a tool whose state
+     * moves on its own placements rather than only on a status-bar action.
+     * @returns {void}
+     */
+    notifyStatusChange() {
+        if (this._onStatusChange !== null) {
+            this._onStatusChange();
+        }
     }
 
     /**
@@ -55,6 +94,15 @@ export class AbstractTool {
      */
     get statusText() {
         return this.label;
+    }
+
+    /**
+     * Actions the top status bar offers beside Back while this tool is active; their keys are
+     * bound with the tool and the bar redraws after one fires.
+     * @returns {ToolActionEntry[]}
+     */
+    get actions() {
+        return [];
     }
 
     /**

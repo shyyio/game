@@ -30,7 +30,7 @@ test("a lane's in and output ports are the shared edge ports a neighbor would ad
     assert.equal(engine.lanes.getOutputPortEidByLaneRef(lane), engine.ports.getPortEidAt(0, -1, Direction.UP), "output port = the edge past the tail");
 });
 
-// A machine placed on the tile a lane feeds adopts the same port with no wiring, and takes the item.
+// A machine placed on the tile a lane hands into adopts the same port with no wiring, and takes the item.
 test("a machine placed at a lane's output adopts its output port and receives items", async () => {
     const engine = await setup();
     placeLane(engine, 5, 6, Direction.UP);

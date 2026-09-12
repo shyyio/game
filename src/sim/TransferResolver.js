@@ -168,7 +168,7 @@ export class TransferResolver {
     }
 
     /**
-     * Submits a destination-less drain: `source` is emptied this tick, so whatever feeds it can
+     * Submits a destination-less drain: `source` is emptied this tick, so its producer can
      * resolve.
      * @param {number} source
      * @returns {number} the intent row, for {@link isIntentResolved}

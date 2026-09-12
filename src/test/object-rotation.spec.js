@@ -19,7 +19,7 @@ async function setup() {
 
 test("a RIGHT-facing machine adopts a RIGHT belt and cooks", async () => {
     const engine = await setup();
-    // Belt (5,5) RIGHT feeds (6,5); machine at (6,5) facing RIGHT.
+    // Belt (5,5) RIGHT parents (6,5); machine at (6,5) facing RIGHT.
     engine.applyMessage(new CreateObjectMessage(TestMachineType.objectTypeId, 6, 5, Direction.RIGHT));
     engine.applyMessage(new CreateObjectMessage(BeltType.objectTypeId, 5, 5, Direction.RIGHT));
     const belt = beltLaneAt(engine, 5, 5);
@@ -37,7 +37,7 @@ test("a RIGHT-facing machine adopts a RIGHT belt and cooks", async () => {
 
 test("a RIGHT-facing splitter adopts a RIGHT belt on its inputPortA", async () => {
     const engine = await setup();
-    // Splitter at (6,5) facing RIGHT; inputPortA is its own tile edge. Belt (5,5) RIGHT feeds it.
+    // Splitter at (6,5) facing RIGHT; inputPortA is its own tile edge. Belt (5,5) RIGHT parents it.
     engine.applyMessage(new CreateObjectMessage(SplitterType.objectTypeId, 6, 5, Direction.RIGHT));
     engine.applyMessage(new CreateObjectMessage(BeltType.objectTypeId, 5, 5, Direction.RIGHT));
     const belt = beltLaneAt(engine, 5, 5);

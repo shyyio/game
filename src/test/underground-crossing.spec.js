@@ -13,7 +13,7 @@ const BLUE = 3;
 test("a vertical tunnel and a horizontal belt cross on the same tile and flow independently", async () => {
     const engine = await makeGameEngine();
 
-    // Vertical UP tunnel down column x=0: tunnel-down (0,4), tunnel-up (0,1) -> undergrounds (0,3),(0,2); feeder (0,5).
+    // Vertical UP tunnel down column x=0: tunnel-down (0,4), tunnel-up (0,1) -> undergrounds (0,3),(0,2); parent (0,5).
     placeBelt(engine, 0, 4, Direction.UP, BeltTunnelDownType);
     placeBelt(engine, 0, 1, Direction.UP, BeltTunnelUpType);
     placeBelt(engine, 0, 5, Direction.UP);
@@ -31,7 +31,7 @@ test("a vertical tunnel and a horizontal belt cross on the same tile and flow in
     assert.equal(beltLaneAt(engine, 0, 5).laneRef, tunnel.laneRef);
     assert.equal(beltLaneAt(engine, 2, 3).laneRef, horizontal.laneRef);
 
-    // Feed both; each output receives its own item, uncrossed.
+    // Fill both; each output receives its own item, uncrossed.
     engine.ports.setItem(tunnel.inputPort, RED);
     engine.ports.setItem(horizontal.inputPort, BLUE);
     let tunnelOut = false;

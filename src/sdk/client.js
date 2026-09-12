@@ -85,7 +85,7 @@ export {DeviceSettingSlider} from "@/client/hud/DeviceSettingSlider.js";
 export {default as DeviceSettings} from "@/client/state/DeviceSettings.js";
 
 // Base class for a placement/interaction tool shown in the toolbar.
-export {AbstractTool} from "@/client/input/AbstractTool.js";
+export {AbstractTool, ToolActionEntry} from "@/client/input/AbstractTool.js";
 // The derived-default tap-to-place tool (with center-lock); knobs come from the type's PlacementRule.
 export {ObjectTool} from "@/client/input/ObjectTool.js";
 // The shared pointer singleton; ghost layers read `currentX`/`currentY` (world coordinates) to float on the cursor.

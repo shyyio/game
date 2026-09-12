@@ -14,7 +14,7 @@ import {
 import {makeGameEngine} from "@/test/ecsSim.js";
 import {LAYER_RESOURCE} from "@/sim/behaviors/ResourceBehavior.js";
 
-test("a volcano feeds a primary extractor (sulfur) and a deep extractor (brine) on its ring", async () => {
+test("a volcano parents a primary extractor (sulfur) and a deep extractor (brine) on its ring", async () => {
     const engine = await makeGameEngine([new ModPackage(new VolcanoFixtureDeclaration())]);
 
     // Volcano 2x2 at (5,5); (5,4) and (6,4) are ring extraction tiles (offset {0,-1},{1,-1}).

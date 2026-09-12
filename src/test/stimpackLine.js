@@ -1,6 +1,6 @@
 // Builds the full production chain, end to end, as a real placed factory
 // (extractors, machines, belts, pipes, Trading Terminals) — not scripted item-shuttling. Every
-// producer instance feeds exactly one consumer port (a tree, never a shared fan-out network), so
+// producer instance hands into exactly one consumer port (a tree, never a shared fan-out network), so
 // placement uses a simple tree layout: each leaf gets its own horizontal lane, each internal node
 // inherits its leftmost child's lane, and depth-from-root sets the row (root/Fill north, leaves
 // south, matching this game's north-flowing port convention — see project_pipe_port_geometry).

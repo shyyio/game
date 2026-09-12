@@ -343,7 +343,7 @@ function layBelts(engine, x, fromY, beltLength) {
 
 /**
  * Trade terminal -> two 0-tick machines in series -> sink, with `belts` belt tiles between stages
- * and, when it fits, a Splitter after the Press feeding a mirror column of machine and sink.
+ * and, when it fits, a Splitter after the Press parenting a mirror column of machine and sink.
  * `n` copies of the chain tile a near-square rectangle.
  */
 export class ThroughputScenario extends AbstractScenario {

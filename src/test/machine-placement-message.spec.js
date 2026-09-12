@@ -18,7 +18,7 @@ test("a machine placed via message adopts a belt, cooks its input, and deletes",
     const engine = await makeGameEngine([new ModPackage(new MachineFixtureDeclaration())]);
     const collector = new EventCollector(engine);
 
-    // Machine at (5,5); belt at (5,6) UP feeds its input edge (5,5).
+    // Machine at (5,5); belt at (5,6) UP parents its input edge (5,5).
     assert.equal(engine.applyMessage(new CreateObjectMessage(TestMachineType.objectTypeId, 5, 5, Direction.UP)), true);
     const insert = collector.drain().find(event => event instanceof ObjectInsertEvent);
     assert.ok(insert, "ObjectInsertEvent emitted");
@@ -26,7 +26,7 @@ test("a machine placed via message adopts a belt, cooks its input, and deletes",
 
     placeBelt(engine, 5, 6, Direction.UP);
     const belt = beltLaneAt(engine, 5, 6);
-    // Feed the machine's recipe input; it should produce the cooked output.
+    // Fill the machine's recipe input; it should produce the cooked output.
     engine.ports.setItem(belt.inputPort, ITEM_TYPE_TEST_MACHINE_INPUT);
     const outputPort = engine.ports.getPortEidAt(5, 4, Direction.UP);
     let cooked = false;

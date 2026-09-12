@@ -1,16 +1,22 @@
-import {BeltDrawLayer} from "./client/BeltDrawLayer.js";
+import {BeltDrawLayer, ELEVATED_DRAW_HEIGHT} from "./client/BeltDrawLayer.js";
 import {BeltOverlayDrawLayer} from "./client/BeltOverlayDrawLayer.js";
 import {BeltGhostLayer} from "./client/BeltGhostLayer.js";
 import {BeltTool} from "./client/BeltTool.js";
-import {UndergroundBeltTool} from "./client/UndergroundBeltTool.js";
 import {LOGISTICS_SCHEMA, LogisticsWriter} from "./client/LogisticsState.js";
 import {WireDrawLayer} from "./client/WireDrawLayer.js";
 import {WireTool} from "./client/WireTool.js";
 import {LogicTerminalConfigLayer} from "./client/LogicTerminalConfigLayer.js";
 import {isBeltType, isGateType, isTerminalType} from "./common/objectTypes.js";
 import {LogicWireSetEvent, LogicWireClearEvent} from "./common/events.js";
-import {tunnelStep, BELT_TUNNEL_UP} from "./common/constants.js";
-import {walkTunnel, isTunnelMouth} from "./common/geometry.js";
+import {
+    tunnelStep,
+    BELT_TUNNEL_UP,
+    getBuildLevelByBeltKind,
+    getDrawLevelByBeltKind,
+    DRAW_LAYER_BELT,
+    DRAW_LAYER_BELT_ELEVATED_1,
+} from "./common/constants.js";
+import {walkTunnel, isTunnelMouth, getTopBeltAtOrNull} from "./common/geometry.js";
 import {isPlacementBlockedByGate, gateConnections} from "./common/gateConnections.js";
 import {
     AbstractClientMod,
@@ -30,31 +36,58 @@ export class LogisticsClientMod extends AbstractClientMod {
         // Shared between drawLayers (renders it) and tools (drive it).
         this._ghostLayer = new BeltGhostLayer();
         // Fed by the object cache; items ride the core's lane item layer.
-        this._beltLayer = new BeltDrawLayer();
+        // One layer per level, indexed by it: each elevated one draws over the objects its run
+        // passes and sits a level's height further off the ground. Lane geometry names a belt
+        // without its level, so the parent edges it carries are shared across the levels.
+        const parentEdges = new Map();
+        this._beltLayers = [
+            new BeltDrawLayer(DRAW_LAYER_BELT, 0, parentEdges),
+            new BeltDrawLayer(DRAW_LAYER_BELT_ELEVATED_1, ELEVATED_DRAW_HEIGHT, parentEdges),
+        ];
         // Reveals buried tunnel belts under a hovered mouth.
         this._overlayLayer = new BeltOverlayDrawLayer();
         // Catenary overlay for the logic network, fed in init.
         this._wireLayer = new WireDrawLayer();
         // Screen-space terminal panel, built in init.
         this._terminalConfigLayer = null;
+        // The one belt tool, held so a tap on a belt can open it on that belt's level.
+        this._beltTool = null;
     }
 
     drawLayers(client) {
-        return [
-            this._beltLayer,
+        return this._beltLayers.concat([
             this._overlayLayer,
             this._ghostLayer,
             this._wireLayer,
-        ];
+        ]);
     }
 
     tools(client) {
         // TODO: Filter to the tools available for the player (playerSettings state).
+        this._beltTool = new BeltTool(client, this._ghostLayer);
         return [
-            new BeltTool(client, this._ghostLayer),
-            new UndergroundBeltTool(client, this._ghostLayer),
+            this._beltTool,
             new WireTool(client, this._wireLayer),
         ];
+    }
+
+    /**
+     * Tool-less tap on a belt: opens the belt tool on that belt's own level, so laying more of the
+     * line carries on where it left off.
+     * @param {number} tileX
+     * @param {number} tileY
+     * @param {Client} client
+     * @returns {boolean}
+     */
+    onObjectTap(tileX, tileY, client) {
+        const belt = getTopBeltAtOrNull(client.objects, tileX, tileY);
+        if (belt === null || this._beltTool === null) {
+            return false;
+        }
+        // Set before selecting: the toolbar renders the tool's status line as it activates.
+        this._beltTool.setLevel(getBuildLevelByBeltKind(belt.data.type.beltKind));
+        client.hud.toolbarLayer.setActiveTool(this._beltTool);
+        return true;
     }
 
     /**
@@ -193,10 +226,21 @@ export class LogisticsClientMod extends AbstractClientMod {
      */
     _onBeltSet(client, entry) {
         const kind = entry.data.type.beltKind;
-        this._beltLayer.addBelt(entry.id, entry.tileX, entry.tileY, entry.data.direction, kind);
+        this._getBeltLayerByKind(kind)
+            .addBelt(entry.id, entry.tileX, entry.tileY, entry.data.direction, kind);
         if (isTunnelMouth(kind)) {
             this._addTunnelMasks(client, entry);
         }
+    }
+
+    /**
+     * The draw layer a belt of this kind renders in.
+     * @param {BeltType} kind
+     * @returns {BeltDrawLayer}
+     * @private
+     */
+    _getBeltLayerByKind(kind) {
+        return this._beltLayers[getDrawLevelByBeltKind(kind)];
     }
 
     /**
@@ -206,7 +250,7 @@ export class LogisticsClientMod extends AbstractClientMod {
      * @private
      */
     _onBeltRemoved(client, entry) {
-        this._beltLayer.removeBelt(entry.id);
+        this._getBeltLayerByKind(entry.data.type.beltKind).removeBelt(entry.id);
         if (isTunnelMouth(entry.data.type.beltKind)) {
             this._removeTunnelMasks(client, entry.id);
         }
@@ -244,8 +288,8 @@ export class LogisticsClientMod extends AbstractClientMod {
     }
 
     /**
-     * Tool-less hover: reveal the buried tunnel under a hovered mouth and highlight both its ends.
-     * Plain belts draw no highlight.
+     * Tool-less hover: highlight the belt under the pointer, and for a tunnel mouth reveal its
+     * buried span and highlight the mouth it pairs with.
      * @param {number|null} tileX
      * @param {number|null} tileY
      * @param {Client} client
@@ -269,21 +313,34 @@ export class LogisticsClientMod extends AbstractClientMod {
         } else {
             this._overlayLayer.showUndergroundReveal(tunnel.tiles, mouth.data.direction);
         }
-        if (mouth === undefined) {
+        const belt = getTopBeltAtOrNull(client.objects, tileX, tileY);
+        if (belt === null) {
             return [];
         }
-        // The hovered mouth, plus the mouth it tunnels to (alternate highlight).
-        const highlights = [new InspectHighlightSprite(mouth.tileX, mouth.tileY, mouth.data.direction, mouth.data.type)];
+        const highlights = [this._createBeltHighlight(belt, false)];
+        // The mouth it tunnels to takes the alternate highlight.
         if (tunnel !== null && tunnel.pair !== null) {
-            highlights.push(new InspectHighlightSprite(
-                tunnel.pair.tileX,
-                tunnel.pair.tileY,
-                tunnel.pair.data.direction,
-                tunnel.pair.data.type,
-                true,
-            ));
+            highlights.push(this._createBeltHighlight(tunnel.pair, true));
         }
         return highlights;
+    }
+
+    /**
+     * A belt's hover highlight, riding as far off the ground as the belt itself draws.
+     * @private
+     * @param {CacheEntry} belt
+     * @param {boolean} alt
+     * @returns {InspectHighlightSprite}
+     */
+    _createBeltHighlight(belt, alt) {
+        return new InspectHighlightSprite({
+            tileX: belt.tileX,
+            tileY: belt.tileY,
+            direction: belt.data.direction,
+            type: belt.data.type,
+            alt,
+            drawHeight: getDrawLevelByBeltKind(belt.data.type.beltKind) * ELEVATED_DRAW_HEIGHT,
+        });
     }
 }
 

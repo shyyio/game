@@ -27,7 +27,7 @@ engine.applyMessage(new CreateObjectMessage(SplitterType.objectTypeId, 3, 8, Dir
 for (const cell of [{x: 20, y: 20}, {x: 20, y: 21}, {x: 20, y: 22}, {x: 20, y: 23}]) {
     engine.applyMessage(new CreateObjectMessage(BeltType.objectTypeId, cell.x, cell.y, Direction.UP));
 }
-// A pipe run feeding a tank at (30, 30), 2x2 covering (30..31, 30..31).
+// A pipe run into a tank at (30, 30), 2x2 covering (30..31, 30..31).
 engine.applyMessage(new CreateObjectMessage(PipeType.objectTypeId, 30, 32, Direction.UP));
 engine.applyMessage(new CreateObjectMessage(PipeType.objectTypeId, 30, 33, Direction.UP));
 engine.applyMessage(new CreateObjectMessage(TankType.objectTypeId, 30, 30, Direction.UP));

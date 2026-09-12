@@ -2,6 +2,7 @@ import {
     LaneBehavior,
     LANE_LEVEL_SURFACE,
     LANE_LEVEL_BURIED,
+    LANE_LEVEL_ELEVATED_1,
     LAYER_SURFACE,
     Direction,
     NO_EID,
@@ -9,39 +10,25 @@ import {
     DeleteObjectMessage,
     getLaneLevelLayer,
 } from "@spup/sdk";
-import {BELT_TUNNEL_DOWN, BELT_TUNNEL_UP, BELT_UNDERGROUND, tunnelStep} from "../common/constants.js";
+import {
+    BELT_UNDERGROUND,
+    getBeltKindEntryByKind,
+    tunnelStep,
+} from "../common/constants.js";
 import {BeltUndergroundType} from "../common/objectTypes.js";
-import {getTunnelPartnerOrNull, getUndergroundBeltsToCreate, isTunnelMouth} from "../common/geometry.js";
+import {
+    getTunnelPartnerOrNull,
+    getUndergroundBeltsToCreate,
+    isTunnelMouth,
+    isElevatedBeltConnected,
+} from "../common/geometry.js";
 
-/**
- * The level a belt kind takes flow from.
- * @param {BeltType} beltKind
- * @returns {number}
- */
-function beltInLevel(beltKind) {
-    if (beltKind === BELT_UNDERGROUND || beltKind === BELT_TUNNEL_UP) {
-        return LANE_LEVEL_BURIED;
-    }
-    return LANE_LEVEL_SURFACE;
-}
-
-/**
- * The level a belt kind gives flow to.
- * @param {BeltType} beltKind
- * @returns {number}
- */
-function beltOutLevel(beltKind) {
-    if (beltKind === BELT_UNDERGROUND || beltKind === BELT_TUNNEL_DOWN) {
-        return LANE_LEVEL_BURIED;
-    }
-    return LANE_LEVEL_SURFACE;
-}
-
-// Every layer a belt can stand on: the surface and the two buried axes.
+// Every layer a belt can stand on: the surface, the two buried axes and the elevated one.
 const BELT_LAYERS = [
     LAYER_SURFACE,
     getLaneLevelLayer(LANE_LEVEL_BURIED, Direction.UP),
     getLaneLevelLayer(LANE_LEVEL_BURIED, Direction.RIGHT),
+    getLaneLevelLayer(LANE_LEVEL_ELEVATED_1, Direction.UP),
 ];
 
 /**
@@ -56,8 +43,19 @@ export class BeltBehavior extends LaneBehavior {
      * @param {BeltType} config.beltKind
      */
     constructor({beltKind}) {
-        super({inLevel: beltInLevel(beltKind), outLevel: beltOutLevel(beltKind)});
+        const entry = getBeltKindEntryByKind(beltKind);
+        super({inLevel: entry.inLevel, outLevel: entry.outLevel});
         this.beltKind = beltKind;
+    }
+
+    canSpawn(engine, type, message) {
+        if (this.inLevel <= LANE_LEVEL_SURFACE || this.outLevel <= LANE_LEVEL_SURFACE) {
+            return true;
+        }
+        return isElevatedBeltConnected(
+            message.x, message.y, message.direction, this.inLevel,
+            (x, y) => BeltBehavior._getBeltsAt(engine, x, y),
+        );
     }
 
     onSpawn(engine, eid, type, message) {

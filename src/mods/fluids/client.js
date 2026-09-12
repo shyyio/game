@@ -75,9 +75,9 @@ export class FluidsClientMod extends AbstractClientMod {
                     candidates.push(this._networkFluidType(pipe.id));
                 }
             }
-            const feeder = client.objects.getOutputPortAtOrNull(tileX, tileY, Direction.invert(neighborDirection));
-            if (feeder !== null) {
-                candidates.push(this._producedFluidType(client, feeder.entry));
+            const parent = client.objects.getOutputPortAtOrNull(tileX, tileY, Direction.invert(neighborDirection));
+            if (parent !== null) {
+                candidates.push(this._producedFluidType(client, parent.entry));
             }
             return candidates;
         }) !== null;

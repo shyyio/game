@@ -1,11 +1,12 @@
 import {AbstractTool} from "@/client/input/AbstractTool.js";
-import {Direction, LAYER_SURFACE} from "@/common/constants.js";
+import {Direction} from "@/common/constants.js";
+import {LANE_LAYERS_HIGHEST_FIRST} from "@/sim/LaneIndex.js";
 import {DeleteObjectMessage} from "@/common/CoreMessages.js";
 import Haptics from "@/client/Haptics.js";
 
 /**
- * Paint-eraser: a tap or drag deletes every surface object on each tile touched, any type. Only
- * surface objects, so buried undergrounds are untouched (their mouth is the deletable surface).
+ * Paint-eraser: a tap or drag deletes, on each tile touched, every object on the highest layer
+ * holding one, any type. Buried undergrounds are untouched; their mouth is what a player deletes.
  */
 export class EraserTool extends AbstractTool {
 
@@ -52,7 +53,7 @@ export class EraserTool extends AbstractTool {
     onTileEnter(tileX, tileY) {
         // Mirrors the sim's delete gate: no erasing outside buildable chunks.
         const erasable = this._client.canBuildAt(tileX, tileY)
-            && this._cache.getObjectAtOrNull(tileX, tileY, LAYER_SURFACE) !== null;
+            && this._isErasableAt(tileX, tileY);
         let blocked;
         if (erasable) {
             blocked = [{x: tileX, y: tileY}];
@@ -76,15 +77,45 @@ export class EraserTool extends AbstractTool {
     }
 
     /**
-     * Deletes every surface object stacked on (tileX, tileY), if any (an extractor and the
-     * non-solid resource beneath it go together).
+     * Whether any layer holds something the tap would delete.
+     * @private
+     * @returns {boolean}
+     */
+    _isErasableAt(tileX, tileY) {
+        for (const layer of LANE_LAYERS_HIGHEST_FIRST) {
+            if (this._cache.getObjectAtOrNull(tileX, tileY, layer) !== null) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * The objects a tap on (tileX, tileY) deletes: the stack on the highest layer holding one, so
+     * an elevated run goes before the ground it passes over.
+     * @private
+     * @returns {CacheEntry[]}
+     */
+    _getTargetsAt(tileX, tileY) {
+        for (const layer of LANE_LAYERS_HIGHEST_FIRST) {
+            const targets = this._cache.getObjectsAt(tileX, tileY, layer);
+            if (targets.length > 0) {
+                return targets;
+            }
+        }
+        return [];
+    }
+
+    /**
+     * Deletes the objects stacked on the tile's highest occupied layer, if any (an extractor and
+     * the non-solid resource beneath it go together).
      * @private
      */
     _erase(tileX, tileY) {
         if (!this._client.canBuildAt(tileX, tileY)) {
             return;
         }
-        const targets = this._cache.getObjectsAt(tileX, tileY, LAYER_SURFACE);
+        const targets = this._getTargetsAt(tileX, tileY);
         if (targets.length === 0) {
             return;
         }

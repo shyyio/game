@@ -76,15 +76,20 @@ export class SpriteEditorSession {
          */
         this._redo = new Map();
         /**
-         * @type {ImageData|null}
+         * The working pixels of every frame this session has touched, the selected one included.
+         * @type {Map<string, ImageData>}
          */
-        this.pixels = null;
+        this._pixelsByFrame = new Map();
         /**
-         * @type {ImageData|null}
+         * Each painted frame's pixels as the current stroke found them, for undo and for shapes
+         * that redraw from their base.
+         * @type {Map<string, ImageData>}
          */
-        this._strokeBase = null;
+        this._strokeBases = new Map();
         this._strokeStart = null;
         this._strokeLast = null;
+        // Frames edited since the last write, flushed together.
+        this._dirtyFrames = new Set();
         this._persistTimer = null;
 
         this.state = reactive({
@@ -97,6 +102,8 @@ export class SpriteEditorSession {
             zoom: 12,
             grid: true,
             onion: false,
+            // Paints every frame of the selected frame's animation, not the selected one alone.
+            allFrames: false,
             playing: false,
             playIndex: 0,
             filter: "",
@@ -107,6 +114,44 @@ export class SpriteEditorSession {
             canUndo: false,
             canRedo: false,
         });
+    }
+
+    /**
+     * The selected frame's working pixels, null with no selection.
+     * @returns {ImageData|null}
+     */
+    get pixels() {
+        if (this.state.frameName === null) {
+            return null;
+        }
+        const pixels = this._pixelsByFrame.get(this.state.frameName);
+        if (pixels === undefined) {
+            return null;
+        }
+        return pixels;
+    }
+
+    /**
+     * @param {ImageData} pixels
+     */
+    set pixels(pixels) {
+        this._pixelsByFrame.set(this.state.frameName, pixels);
+    }
+
+    /**
+     * The frames a stroke paints: the selected one, or every frame of its animation while the
+     * all-frames option is on.
+     * @returns {FrameEntry[]}
+     */
+    get paintTargets() {
+        const frame = this.frame;
+        if (frame === null) {
+            return [];
+        }
+        if (!this.state.allFrames || this.sequence.length === 0) {
+            return [frame];
+        }
+        return this.sequence;
     }
 
     /**
@@ -151,7 +196,8 @@ export class SpriteEditorSession {
         }
         this.flushPersist();
         this.state.frameName = frameName;
-        this.pixels = this.textureCache.frameImageData(frameName);
+        this._pixelsByFrame.clear();
+        this._pixelsByFrame.set(frameName, this.textureCache.frameImageData(frameName));
         this.state.playIndex = 0;
         this._rebuildPalette();
         this._applyStacks();
@@ -176,15 +222,19 @@ export class SpriteEditorSession {
             }
             return;
         }
-        this._strokeBase = clone(this.pixels);
+        this._strokeBases.clear();
+        for (const target of this.paintTargets) {
+            const pixels = this._getPixelsByFrame(target);
+            this._strokeBases.set(target.name, clone(pixels));
+            if (this.state.tool === TOOL_FILL) {
+                floodFill(pixels, x, y, this.rgba, SOURCE_BLOCK);
+            } else {
+                this._paintSegment(pixels, x, y, x, y);
+            }
+            this._push(target.name, pixels);
+        }
         this._strokeStart = [x, y];
         this._strokeLast = [x, y];
-        if (this.state.tool === TOOL_FILL) {
-            floodFill(this.pixels, x, y, this.rgba, SOURCE_BLOCK);
-        } else {
-            this._paintSegment(x, y, x, y);
-        }
-        this._push();
     }
 
     /**
@@ -193,29 +243,38 @@ export class SpriteEditorSession {
      * @returns {void}
      */
     moveStroke(x, y) {
-        if (this._strokeBase === null || this.state.tool === TOOL_FILL) {
+        if (this._strokeBases.size === 0 || this.state.tool === TOOL_FILL) {
             return;
         }
-        if (this.state.tool === TOOL_LINE || this.state.tool === TOOL_RECT) {
-            // Shapes preview from the stroke's base so dragging reshapes rather than accumulates.
-            this.pixels.data.set(this._strokeBase.data);
-            this._paintSegment(this._strokeStart[0], this._strokeStart[1], x, y);
-        } else {
-            this._paintSegment(this._strokeLast[0], this._strokeLast[1], x, y);
+        // The stroke stays on the frames it began on, whatever the option does mid-drag.
+        for (const [frameName, base] of this._strokeBases) {
+            const pixels = this._getPixelsByFrame(this.frameByName.get(frameName));
+            if (this.state.tool === TOOL_LINE || this.state.tool === TOOL_RECT) {
+                // Shapes preview from the stroke's base so dragging reshapes rather than accumulates.
+                pixels.data.set(base.data);
+                this._paintSegment(pixels, this._strokeStart[0], this._strokeStart[1], x, y);
+            } else {
+                this._paintSegment(pixels, this._strokeLast[0], this._strokeLast[1], x, y);
+            }
+            this._push(frameName, pixels);
         }
         this._strokeLast = [x, y];
-        this._push();
     }
 
     /**
      * @returns {void}
      */
     endStroke() {
-        if (this._strokeBase === null) {
+        if (this._strokeBases.size === 0) {
             return;
         }
-        this._commit(this._strokeBase);
-        this._strokeBase = null;
+        for (const [frameName, before] of this._strokeBases) {
+            this._pushUndo(frameName, before);
+            this._redo.set(frameName, []);
+            this._dirtyFrames.add(frameName);
+        }
+        this._strokeBases.clear();
+        this._commit();
     }
 
     /**
@@ -249,8 +308,9 @@ export class SpriteEditorSession {
         context.drawImage(original, frame.rect.x, frame.rect.y, frame.rect.w, frame.rect.h, 0, 0, frame.rect.w, frame.rect.h);
         const before = clone(this.pixels);
         this.pixels = context.getImageData(0, 0, frame.rect.w, frame.rect.h);
-        this._push();
-        this._pushUndo(before);
+        this._push(frame.name, this.pixels);
+        this._pushUndo(frame.name, before);
+        this._dirtyFrames.add(frame.name);
         this._applyStacks();
         this._rebuildPalette();
         this.state.commitVersion++;
@@ -264,6 +324,7 @@ export class SpriteEditorSession {
      */
     async resetAll() {
         this.flushPersist();
+        this._dirtyFrames.clear();
         await this.store.clear();
         for (const atlas of this.textureCache.atlases.values()) {
             this.textureCache.replaceAtlas(atlas.name, await loadImage(atlas.imageUrl));
@@ -341,7 +402,7 @@ export class SpriteEditorSession {
         if (this._persistTimer !== null) {
             window.clearTimeout(this._persistTimer);
             this._persistTimer = null;
-            this._persistFrame(this.frame);
+            this._persistDirty();
         }
     }
 
@@ -369,7 +430,7 @@ export class SpriteEditorSession {
      * @param {number} y1
      * @private
      */
-    _paintSegment(x0, y0, x1, y1) {
+    _paintSegment(pixels, x0, y0, x1, y1) {
         let rgba;
         if (this.state.tool === TOOL_ERASER) {
             rgba = TRANSPARENT;
@@ -378,31 +439,46 @@ export class SpriteEditorSession {
         }
         const block = SOURCE_BLOCK;
         if (this.state.tool === TOOL_RECT) {
-            drawRect(this.pixels, x0, y0, x1, y1, rgba, block);
+            drawRect(pixels, x0, y0, x1, y1, rgba, block);
         } else if (x0 === x1 && y0 === y1 && this._isPixelInside(x0, y0)) {
-            setBlock(this.pixels, x0, y0, rgba, block);
+            setBlock(pixels, x0, y0, rgba, block);
         } else {
-            drawLine(this.pixels, x0, y0, x1, y1, rgba, block);
+            drawLine(pixels, x0, y0, x1, y1, rgba, block);
         }
     }
 
     /**
-     * Pushes the working pixels into the live atlas.
+     * A target's working pixels, read off the atlas the first time it is painted.
+     * @param {FrameEntry} frame
+     * @returns {ImageData}
      * @private
      */
-    _push() {
-        this.textureCache.patchFrame(this.state.frameName, this.pixels);
+    _getPixelsByFrame(frame) {
+        const pixels = this._pixelsByFrame.get(frame.name);
+        if (pixels !== undefined) {
+            return pixels;
+        }
+        const loaded = this.textureCache.frameImageData(frame.name);
+        this._pixelsByFrame.set(frame.name, loaded);
+        return loaded;
+    }
+
+    /**
+     * Pushes a frame's working pixels into the live atlas.
+     * @param {string} frameName
+     * @param {ImageData} pixels
+     * @private
+     */
+    _push(frameName, pixels) {
+        this.textureCache.patchFrame(frameName, pixels);
         this.state.paintVersion++;
     }
 
     /**
-     * Records `before` for undo and schedules persistence.
-     * @param {ImageData} before
+     * Refreshes what an edit changed and schedules the dirty frames' persistence.
      * @private
      */
-    _commit(before) {
-        this._pushUndo(before);
-        this._redo.set(this.state.frameName, []);
+    _commit() {
         this._applyStacks();
         this._rebuildPalette();
         this.state.commitVersion++;
@@ -411,16 +487,17 @@ export class SpriteEditorSession {
         }
         this._persistTimer = window.setTimeout(() => {
             this._persistTimer = null;
-            this._persistFrame(this.frame);
+            this._persistDirty();
         }, 300);
     }
 
     /**
+     * @param {string} frameName
      * @param {ImageData} before
      * @private
      */
-    _pushUndo(before) {
-        const stack = this._stack(this._undo);
+    _pushUndo(frameName, before) {
+        const stack = this._stack(this._undo, frameName);
         stack.push(before);
         if (stack.length > UNDO_LIMIT) {
             stack.shift();
@@ -429,36 +506,55 @@ export class SpriteEditorSession {
 
     /**
      * @param {Map<string, ImageData[]>} stacks
+     * @param {string} frameName
      * @returns {ImageData[]}
      * @private
      */
-    _stack(stacks) {
-        let stack = stacks.get(this.state.frameName);
+    _stack(stacks, frameName) {
+        let stack = stacks.get(frameName);
         if (stack === undefined) {
             stack = [];
-            stacks.set(this.state.frameName, stack);
+            stacks.set(frameName, stack);
         }
         return stack;
     }
 
     /**
-     * Pops `from` onto the working pixels, pushing the current ones onto `to`.
+     * Pops `from` onto the working pixels of every frame the stroke painted, pushing the current
+     * ones onto `to`, so one undo takes back one all-frames stroke.
      * @param {Map<string, ImageData[]>} from
      * @param {Map<string, ImageData[]>} to
      * @private
      */
     _swap(from, to) {
-        const stack = this._stack(from);
-        if (stack.length === 0) {
-            return;
+        for (const target of this.paintTargets) {
+            const stack = this._stack(from, target.name);
+            if (stack.length === 0) {
+                continue;
+            }
+            this._stack(to, target.name).push(clone(this._getPixelsByFrame(target)));
+            const pixels = stack.pop();
+            this._pixelsByFrame.set(target.name, pixels);
+            this._push(target.name, pixels);
+            this._dirtyFrames.add(target.name);
         }
-        this._stack(to).push(clone(this.pixels));
-        this.pixels = stack.pop();
-        this._push();
         this._applyStacks();
         this._rebuildPalette();
         this.state.commitVersion++;
-        this._persistFrame(this.frame);
+        this._persistDirty();
+    }
+
+    /**
+     * Writes every frame edited since the last write.
+     * @returns {Promise<void>}
+     * @private
+     */
+    async _persistDirty() {
+        const names = Array.from(this._dirtyFrames);
+        this._dirtyFrames.clear();
+        for (const name of names) {
+            await this._persistFrame(this.frameByName.get(name));
+        }
     }
 
     /**
@@ -479,8 +575,8 @@ export class SpriteEditorSession {
      * @private
      */
     _applyStacks() {
-        this.state.canUndo = this._stack(this._undo).length > 0;
-        this.state.canRedo = this._stack(this._redo).length > 0;
+        this.state.canUndo = this.paintTargets.some(target => this._stack(this._undo, target.name).length > 0);
+        this.state.canRedo = this.paintTargets.some(target => this._stack(this._redo, target.name).length > 0);
     }
 
     /**

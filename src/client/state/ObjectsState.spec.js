@@ -133,9 +133,9 @@ test("getByPort resolves a rendered output port to its entry and port name", () 
     assert.strictEqual(cache.getByPort(42), null);
 });
 
-test("getInputPortAtOrNull / getOutputPortAtOrNull resolve a feeder-consumer pair facing each other", () => {
+test("getInputPortAtOrNull / getOutputPortAtOrNull resolve a parent-child pair facing each other", () => {
     const cache = new ObjectsView(null);
-    // Feeder at (5,6) outputs up into (5,5); consumer at (5,5) takes input there.
+    // Parent at (5,6) outputs up into (5,5); child at (5,5) takes input there.
     machine(cache, 1, 5, 6, Direction.UP);
     machine(cache, 2, 5, 5, Direction.UP);
 
@@ -143,9 +143,9 @@ test("getInputPortAtOrNull / getOutputPortAtOrNull resolve a feeder-consumer pai
     assert.strictEqual(consumer.entry.id, 2);
     assert.strictEqual(consumer.portName, "inputPort");
 
-    const feeder = cache.getOutputPortAtOrNull(5, 5, Direction.UP);
-    assert.strictEqual(feeder.entry.id, 1);
-    assert.strictEqual(feeder.portName, "outputPort");
+    const parent = cache.getOutputPortAtOrNull(5, 5, Direction.UP);
+    assert.strictEqual(parent.entry.id, 1);
+    assert.strictEqual(parent.portName, "outputPort");
 
     // Wrong facing and an empty tile resolve to nothing.
     assert.strictEqual(cache.getInputPortAtOrNull(5, 5, Direction.DOWN), null);

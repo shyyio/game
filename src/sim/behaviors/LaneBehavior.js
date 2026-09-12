@@ -26,8 +26,8 @@ export class LaneBehavior extends AbstractBehavior {
     }
 
     /**
-     * Which of several cells feeding this one continues its lane; the newest wins. Called on a
-     * rebuild, never per tick.
+     * Which of several candidate parents continues its lane into this cell; the newest wins. Called
+     * on a rebuild, never per tick.
      * @param {GameEngine} engine
      * @param {number[]} candidates
      * @returns {number} eid

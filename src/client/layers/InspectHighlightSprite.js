@@ -4,17 +4,28 @@
 export class InspectHighlightSprite {
 
     /**
-     * @param {number} tileX
-     * @param {number} tileY
-     * @param {Direction} direction - object facing
-     * @param {ObjectType} type - picks the texture and footprint
-     * @param {boolean} [alt] - use the alternate texture
+     * @param {object} config
+     * @param {number} config.tileX
+     * @param {number} config.tileY
+     * @param {Direction} config.direction - object facing
+     * @param {ObjectType} config.type - picks the texture and footprint
+     * @param {boolean} [config.alt] - use the alternate texture
+     * @param {number} [config.drawHeight] - pixels the highlight sits above its tile, matching an
+     *     object drawn off the ground
      */
-    constructor(tileX, tileY, direction, type, alt=false) {
+    constructor({
+        tileX,
+        tileY,
+        direction,
+        type,
+        alt = false,
+        drawHeight = 0,
+    }) {
         this.tileX = tileX;
         this.tileY = tileY;
         this.direction = direction;
         this.type = type;
         this.alt = alt;
+        this.drawHeight = drawHeight;
     }
 }

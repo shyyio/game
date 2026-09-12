@@ -221,8 +221,8 @@ export class TradingTerminalBehavior extends AbstractBehavior {
             return;
         }
         // Submitted even on an occupied output port (destEmpty is computed, as ExtractorBehavior does):
-        // the resolver lands the create when that port drains this same tick, so a terminal feeding a
-        // belt buys every tick instead of every other one. The spend is reserved here either way — a
+        // the resolver lands the create when that port drains this same tick, so a terminal parenting
+        // a belt buys every tick instead of every other one. The spend is reserved here either way — a
         // create that loses its port for the tick only over-reserves this pass, never overspends.
         engine.transfers.submitCreate(outputPort, itemTypeId, item[outputPort] === EMPTY);
         terminal.pendingPrice[row] = fixedPrice;

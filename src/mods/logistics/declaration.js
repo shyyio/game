@@ -5,6 +5,9 @@ import {
     BeltTunnelDownType,
     BeltTunnelUpType,
     BeltUndergroundType,
+    BeltRampUp1Type,
+    BeltElevated1Type,
+    BeltRampDown1Type,
     SplitterType,
     RoadType,
     HousingType,
@@ -47,6 +50,9 @@ export class LogisticsDeclaration extends AbstractModDeclaration {
             GateType,
             PoleType,
             LogicTerminalType,
+            BeltRampUp1Type,
+            BeltElevated1Type,
+            BeltRampDown1Type,
         ];
     }
 

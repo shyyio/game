@@ -229,7 +229,7 @@ test("a junction steal leaves the boundary item on the orphan's output port, not
     }
     assert.equal(engine.lanes.getItemCountByLaneRef(run), 3, "the run is saturated");
 
-    // A cell feeding (6,5) from below wins its junction, orphaning (5,5).
+    // A cell parenting (6,5) from below wins its junction, orphaning (5,5).
     placeLane(engine, 6, 6, Direction.UP);
 
     const orphan = getLaneRefAt(engine, 5, 5);
