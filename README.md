@@ -1,3 +1,3 @@
 # Shy's Power-Up Factory
 
-![bundle size](https://img.shields.io/badge/client%20+%20base%20mods-671%20KB%20gzip-blue)
+![bundle size](https://img.shields.io/badge/client%20+%20base%20mods-672%20KB%20gzip-blue)

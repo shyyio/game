@@ -31,6 +31,9 @@ export {ObjectSprite} from "@/client/layers/ObjectSprite.js";
 // The single shared item layer; mods that compute item positions (belts) drive it via
 // `client.itemLayer`. PORT_SPRITE_KEY namespaces resting output port item sprites.
 export {ItemDrawLayer, PORT_SPRITE_KEY} from "@/client/layers/ItemDrawLayer.js";
+// The single shared floating-text layer; mods float combat-style text off a tile via
+// `client.hitsplatLayer.drawHitsplat(...)`.
+export {HitsplatLayer} from "@/client/layers/HitsplatLayer.js";
 // The single shared connection-stub layer; a mod opts in via ObjectType.renderConnections.
 export {ConnectionDrawLayer} from "@/client/layers/ConnectionDrawLayer.js";
 // The derived-default placement-preview ghost (single sprite + center-lock); paired with ObjectTool.
