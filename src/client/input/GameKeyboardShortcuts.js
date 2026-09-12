@@ -49,7 +49,7 @@ export function bindGameKeyboardShortcuts(client, game, toolbar) {
     }
 
     // Toggle debug mode
-    on("d", () => {
+    on("F3", () => {
         client.settingsMenu.toggleDebugMode();
     });
 

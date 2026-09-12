@@ -45,6 +45,22 @@ export class Camera {
     }
 
     /**
+     * Offsets the viewport center by a world-pixel delta; a zero delta is a no-op.
+     * @param {number} x
+     * @param {number} y
+     * @returns {void}
+     */
+    moveBy(x, y) {
+        if (x === 0 && y === 0) {
+            return;
+        }
+        const viewport = this._client.viewport;
+        viewport.moveCenter(viewport.center.x + x, viewport.center.y + y);
+        // moveCenter emits no "moved"; refresh the data feed directly.
+        this._client.viewportMoved();
+    }
+
+    /**
      * Snaps the viewport to the claims centroid with no glide; a no-op with no claims.
      * @returns {void}
      */

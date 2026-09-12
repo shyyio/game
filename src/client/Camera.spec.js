@@ -14,6 +14,7 @@ class FakeViewport {
     constructor() {
         this.glides = [];
         this.snaps = [];
+        this.center = {x: 0, y: 0};
     }
 
     glideTo(target) {
@@ -21,6 +22,7 @@ class FakeViewport {
     }
 
     moveCenter(x, y) {
+        this.center = {x, y};
         this.snaps.push({x, y});
     }
 }
@@ -101,6 +103,21 @@ test("both home moves are no-ops with nothing claimed", () => {
     camera.glideHome();
     camera.startAtHome();
     assert.deepEqual(client.viewport.glides, []);
+    assert.deepEqual(client.viewport.snaps, []);
+    assert.equal(client.moves, 0);
+});
+
+test("moving by an offset shifts the center and refreshes the data feed", () => {
+    const {camera, client} = build([]);
+    camera.moveBy(30, -10);
+    camera.moveBy(5, 5);
+    assert.deepEqual(client.viewport.snaps, [{x: 30, y: -10}, {x: 35, y: -5}]);
+    assert.equal(client.moves, 2);
+});
+
+test("moving by nothing leaves the viewport alone", () => {
+    const {camera, client} = build([]);
+    camera.moveBy(0, 0);
     assert.deepEqual(client.viewport.snaps, []);
     assert.equal(client.moves, 0);
 });

@@ -8,6 +8,8 @@ class Keyboard {
     constructor() {
         window.addEventListener("keydown", event => this._keyDown(event));
         window.addEventListener("keyup", event => this._keyUp(event));
+        // A key held while the window loses focus never sends its keyup.
+        window.addEventListener("blur", () => this._keys = {});
 
         this._keys = {};
         this._listeners = {};
@@ -38,6 +40,14 @@ class Keyboard {
         if (index !== -1) {
             listeners.splice(index, 1);
         }
+    }
+
+    /**
+     * @param {string} key
+     * @returns {boolean}
+     */
+    isKeyDown(key) {
+        return this._keys[key] === true;
     }
 
     /**

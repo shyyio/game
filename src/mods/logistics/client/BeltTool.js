@@ -46,8 +46,8 @@ function shouldBeltConnectToParent(kind, beltDirection, parentDirection, level) 
     return beltDirection !== Direction.invert(parentDirection);
 }
 
-const RAISE_HOTKEY = "k";
-const LOWER_HOTKEY = "j";
+const RAISE_HOTKEY = "w";
+const LOWER_HOTKEY = "s";
 
 /**
  * What a tap lays at a tile: the belt kind the tool's level calls for, and the tile it bends from.

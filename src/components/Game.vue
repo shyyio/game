@@ -4,6 +4,7 @@ import {useTheme} from "vuetify";
 import {createPixiApp} from "@/client/PixiApp.js";
 import {createClient} from "@/client/GameBootstrap.js";
 import {EffectiveToolController} from "@/client/input/EffectiveToolController.js";
+import {KeyboardPanInput} from "@/client/input/KeyboardPanInput.js";
 import {bindGameKeyboardShortcuts} from "@/client/input/GameKeyboardShortcuts.js";
 import {useSettingsMenu} from "@/composables/useSettingsMenu.js";
 import Mobile from "@/client/Mobile.js";
@@ -158,6 +159,9 @@ onMounted(async () => {
   const toolController = new EffectiveToolController(client, viewport, client.hud.toolbarLayer, inputHandler);
   toolController.init();
 
+  const keyboardPan = new KeyboardPanInput(client, inputHandler);
+  keyboardPan.install();
+
   // Installs/tears down touch input and recomputes center-lock/pan-freeze when the
   // "Touchscreen input" toggle flips mid-session.
   const unsubMobile = Mobile.onChange(() => {
@@ -185,6 +189,7 @@ onMounted(async () => {
     }
     editorClient = null;
     unbindKeyboard();
+    keyboardPan.uninstall();
     inputHandler.destroy();
     unsubMobile();
     destroyClient();
