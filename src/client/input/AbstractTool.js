@@ -2,18 +2,19 @@ import {Direction} from "@/common/constants.js";
 import {NotImplementedError} from "@/common/error.js";
 
 /**
- * One action a tool offers while it is active: a top status bar button and the key that fires it.
+ * One action a tool offers while it is active: a top status bar button and the rebindable key
+ * that fires it.
  */
 export class ToolActionEntry {
 
     /**
      * @param {string} label
-     * @param {string} key
+     * @param {KeybindingEntry} keybinding
      * @param {function(): void} onPress
      */
-    constructor(label, key, onPress) {
+    constructor(label, keybinding, onPress) {
         this.label = label;
-        this.key = key;
+        this.keybinding = keybinding;
         this.onPress = onPress;
     }
 }
@@ -122,10 +123,11 @@ export class AbstractTool {
     }
 
     /**
-     * Letter hotkey for core tools; mod tools return null and get a number-key slot instead.
-     * @returns {string|null}
+     * The rebindable key that selects this core tool; mod tools return null and get a toolbar
+     * slot binding instead.
+     * @returns {KeybindingEntry|null}
      */
-    get hotkey() {
+    get keybinding() {
         return null;
     }
 

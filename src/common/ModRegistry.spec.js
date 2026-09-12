@@ -4,6 +4,8 @@ import {ModRegistry} from "@/common/ModRegistry.js";
 import {ModPackage} from "@/common/ModPackage.js";
 import {AbstractModDeclaration} from "@/common/AbstractModDeclaration.js";
 import {PlayerSettingEntry} from "@/common/PlayerSettingEntry.js";
+import {KeybindingEntry, CORE_KEYBINDING_ENTRIES} from "@/common/KeybindingEntry.js";
+import {BINDABLE_KEYS} from "@/common/bindableKeys.js";
 import {ItemType} from "@/common/ItemType.js";
 import {ItemCategory} from "@/common/ItemCategory.js";
 import {ObjectType, PlacementRule} from "@/common/ObjectType.js";
@@ -184,4 +186,64 @@ test("a registry takes its own objectTypeIds back after another loadout froze ov
 
     registry.claimTypeIds();
     assert.deepEqual([first.objectTypeId, second.objectTypeId], [0, 1]);
+});
+
+class KeybindingDeclaration extends AbstractModDeclaration {
+
+    /**
+     * @param {string} name
+     * @param {KeybindingEntry[]} entries
+     */
+    constructor(name, entries) {
+        super();
+        this._name = name;
+        this._entries = entries;
+    }
+
+    get name() {
+        return this._name;
+    }
+
+    get keybindingEntries() {
+        return this._entries;
+    }
+}
+
+test("a keybinding registers a client-writable player setting over the bindable keys", () => {
+    const registry = new ModRegistry();
+    registry.register(new ModPackage(new KeybindingDeclaration("A", [new KeybindingEntry(MOD_KEY, "Raise", "w")])));
+    registry.freeze();
+    const entry = registry.getPlayerSettingEntryByKeyOrNull(MOD_KEY);
+    assert.equal(entry.isClientWritable, true);
+    assert.equal(entry.optionCount, BINDABLE_KEYS.length);
+});
+
+test("core keybindings are collected at freeze", () => {
+    const registry = new ModRegistry();
+    registry.freeze();
+    assert.deepEqual(registry.keybindingEntries.slice(0, CORE_KEYBINDING_ENTRIES.length), CORE_KEYBINDING_ENTRIES);
+});
+
+test("a mod's keybindings follow the core ones", () => {
+    const registry = new ModRegistry();
+    const entry = new KeybindingEntry(MOD_KEY, "Raise", "w");
+    registry.register(new ModPackage(new KeybindingDeclaration("A", [entry])));
+    registry.freeze();
+    assert.equal(registry.keybindingEntries.at(-1), entry);
+});
+
+test("a keybinding colliding with a player setting key throws at freeze", () => {
+    const registry = new ModRegistry();
+    registry.register(new ModPackage(new EntriesDeclaration("A", [new PlayerSettingEntry(MOD_KEY, true, 2)])));
+    registry.register(new ModPackage(new KeybindingDeclaration("B", [new KeybindingEntry(MOD_KEY, "Raise", "w")])));
+    assert.throws(() => registry.freeze(), /Duplicate player setting key/);
+});
+
+test("a keybinding is found by the player setting key it stores", () => {
+    const registry = new ModRegistry();
+    const entry = new KeybindingEntry(MOD_KEY, "Raise", "w");
+    registry.register(new ModPackage(new KeybindingDeclaration("A", [entry])));
+    registry.freeze();
+    assert.equal(registry.getKeybindingEntryByPlayerSettingKeyOrNull(MOD_KEY), entry);
+    assert.equal(registry.getKeybindingEntryByPlayerSettingKeyOrNull(MOD_KEY + 1), null);
 });

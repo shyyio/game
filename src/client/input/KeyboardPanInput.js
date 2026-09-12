@@ -1,9 +1,8 @@
-import Keyboard from "@/client/input/Keyboard.js";
-import {PAN_KEYS, keyboardPanOffset} from "@/client/input/viewportPan.js";
+import {PAN_DIRECTIONS, keyboardPanOffset} from "@/client/input/viewportPan.js";
 
 /**
- * Pans the viewport from the held W/A/S/D keys, one step per rendered frame. A key the active
- * tool binds as one of its actions belongs to the tool, so it never pans while that tool is up.
+ * Pans the viewport from the held pan keys, one step per rendered frame. A key the active tool
+ * binds as one of its actions belongs to the tool, so it never pans while that tool is up.
  */
 export class KeyboardPanInput {
 
@@ -15,6 +14,9 @@ export class KeyboardPanInput {
         this._client = client;
         this._inputHandler = inputHandler;
         this._tick = () => this._pan();
+        this._claimedTool = null;
+        /** @type {Set<KeybindingEntry>} */
+        this._claimedKeybindings = new Set();
     }
 
     /**
@@ -37,7 +39,7 @@ export class KeyboardPanInput {
      */
     _pan() {
         const offset = keyboardPanOffset(
-            this._heldKeys(),
+            this._heldDirections(),
             this._client.app.ticker.deltaMS,
             this._client.viewport.scale.x,
         );
@@ -45,30 +47,38 @@ export class KeyboardPanInput {
     }
 
     /**
-     * The pan keys held right now, minus the ones the active tool claims.
+     * The pan directions held right now, minus the ones the active tool claims.
      * @private
-     * @returns {Set<string>}
+     * @returns {Set<PanDirectionEntry>}
      */
-    _heldKeys() {
-        const toolKeys = this._toolActionKeys();
+    _heldDirections() {
+        const toolKeybindings = this._toolActionKeybindings();
         const held = new Set();
-        for (const entry of PAN_KEYS) {
-            if (Keyboard.isKeyDown(entry.key) && !toolKeys.has(entry.key)) {
-                held.add(entry.key);
+        for (const entry of PAN_DIRECTIONS) {
+            if (this._client.keybindings.isKeyDownByEntry(entry.keybinding) && !toolKeybindings.has(entry.keybinding)) {
+                held.add(entry);
             }
         }
         return held;
     }
 
     /**
+     * The bindings the active tool claims, rebuilt only when the tool changes: `actions`
+     * allocates, and this runs every frame.
      * @private
-     * @returns {Set<string>}
+     * @returns {Set<KeybindingEntry>}
      */
-    _toolActionKeys() {
+    _toolActionKeybindings() {
         const tool = this._inputHandler.activeTool;
-        if (tool == null) {
-            return new Set();
+        if (tool !== this._claimedTool) {
+            this._claimedTool = tool;
+            this._claimedKeybindings = new Set();
+            if (tool != null) {
+                for (const action of tool.actions) {
+                    this._claimedKeybindings.add(action.keybinding);
+                }
+            }
         }
-        return new Set(tool.actions.map(action => action.key));
+        return this._claimedKeybindings;
     }
 }

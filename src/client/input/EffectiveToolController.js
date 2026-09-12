@@ -1,7 +1,7 @@
 import Mobile from "@/client/Mobile.js";
 import Mouse from "@/client/input/Mouse.js";
-import Keyboard from "@/client/input/Keyboard.js";
-import {EXIT_HOTKEY, ViewMode} from "@/client/constants.js";
+import {ViewMode} from "@/client/constants.js";
+import {KEYBINDING_EXIT} from "@/common/KeybindingEntry.js";
 import {StatusBarSection, hotkeyButton} from "@/client/hud/TopStatusBarLayer.js";
 
 const SECTION_ID = "tool";
@@ -34,7 +34,7 @@ export class EffectiveToolController {
         // toolbar selection, so the cursor acts as if nothing were selected and the tool resumes on
         // zoom-in. The effective tool (null when zoomed out) drives the side effects below.
         this.isMapMode = false;
-        // The active tool's action keys, bound while it is active, and the tool they belong to.
+        // The active tool's action bindings, held while it is active, and the tool they belong to.
         this._actionBindings = [];
         this._boundTool = null;
     }
@@ -45,6 +45,7 @@ export class EffectiveToolController {
      */
     init() {
         this.toolbar.onChange(() => this._onToolbarChange());
+        this.client.keybindings.notifyChange(() => this._resyncStatusBar());
         this.client.viewMode.onChange((mode) => this._onViewMode(mode));
         // The connect-time zoom (map mode with no claims, home with them) can settle the view mode
         // before this controller exists, so its change never reaches here; adopt the current one.
@@ -102,9 +103,10 @@ export class EffectiveToolController {
         if (tool == null) {
             return null;
         }
-        const buttons = [hotkeyButton("Back", EXIT_HOTKEY, () => this.toolbar.setActiveTool(null))];
+        const keybindings = this.client.keybindings;
+        const buttons = [hotkeyButton("Back", keybindings.getKeyByEntry(KEYBINDING_EXIT), () => this.toolbar.setActiveTool(null))];
         for (const action of tool.actions) {
-            buttons.push(hotkeyButton(action.label, action.key, () => this._pressToolAction(action)));
+            buttons.push(hotkeyButton(action.label, keybindings.getKeyByEntry(action.keybinding), () => this._pressToolAction(action)));
         }
         return new StatusBarSection(tool.statusText, buttons);
     }
@@ -116,8 +118,8 @@ export class EffectiveToolController {
      * @returns {void}
      */
     _bindToolActions(tool) {
-        for (const [key, callback] of this._actionBindings) {
-            Keyboard.off(key, callback);
+        for (const [keybinding, callback] of this._actionBindings) {
+            this.client.keybindings.off(keybinding, callback);
         }
         this._actionBindings = [];
         if (this._boundTool !== null) {
@@ -130,8 +132,8 @@ export class EffectiveToolController {
         tool.onStatusChange(() => this._resyncStatusBar());
         for (const action of tool.actions) {
             const callback = () => this._pressToolAction(action);
-            Keyboard.on(action.key, callback);
-            this._actionBindings.push([action.key, callback]);
+            this.client.keybindings.on(action.keybinding, callback);
+            this._actionBindings.push([action.keybinding, callback]);
         }
     }
 

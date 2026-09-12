@@ -42,7 +42,7 @@ export class AbstractEdgeBarLayer extends Container {
         /** @type {Container[]} */
         this._contentNodes = [];
         this.addChild(this._panel);
-        app.renderer.on("resize", () => this._rebuild());
+        app.renderer.on("resize", () => this.rebuild());
     }
 
     /**
@@ -50,7 +50,7 @@ export class AbstractEdgeBarLayer extends Container {
      * @returns {void}
      */
     restyle() {
-        this._rebuild();
+        this.rebuild();
     }
 
     /**
@@ -59,7 +59,7 @@ export class AbstractEdgeBarLayer extends Container {
      * @returns {void}
      */
     rebuildBackground() {
-        this._rebuild();
+        this.rebuild();
     }
 
     /**
@@ -91,10 +91,9 @@ export class AbstractEdgeBarLayer extends Container {
 
     /**
      * Drops the previous content and rebuilds it for the current state.
-     * @protected
      * @returns {void}
      */
-    _rebuild() {
+    rebuild() {
         this.visible = this._hasBarContent();
         for (const node of this._contentNodes) {
             node.destroy({children: true});

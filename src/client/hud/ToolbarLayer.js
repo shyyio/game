@@ -13,13 +13,15 @@ import {TOOLBAR_SLOT_SIZE as SLOT_SIZE} from "@/client/hud/UiScale.js";
 import {ToolGrid} from "@/client/hud/ToolGrid.js";
 import {ToolReorderMode} from "@/client/hud/ToolReorderMode.js";
 import {TapRecognizer} from "@/client/input/TapRecognizer.js";
+import {KEYBINDING_TOOL_SLOTS} from "@/common/KeybindingEntry.js";
+import {keyLabel} from "@/client/hud/panelButton.js";
 
 // Inset of the icon sprite from the slot's edges.
 const ICON_PADDING = 7;
 const LABEL_GAP = 0;
 const LABEL_SIZE = 15;
-// Number-key hotkeys cover the first this-many mod tools (keys 1-9).
-export const TOOL_SHORTCUT_COUNT = 9;
+// Toolbar slot bindings cover the first this-many mod tools.
+export const TOOL_SHORTCUT_COUNT = KEYBINDING_TOOL_SLOTS.length;
 // Reserved height for the label under each slot (up to 2 wrapped lines), so cells align regardless of text.
 const LABEL_HEIGHT = 34;
 const CELL_GAP = 12;
@@ -81,16 +83,16 @@ export function barToolCapacity(screenWidth, isMobile) {
 }
 
 /**
- * The number-key badge for the mod tool at `index` among mod tools, or null past the
+ * The slot binding for the mod tool at `index` among mod tools, or null past the
  * shortcut-eligible range (also null for a negative/not-found index).
  * @param {number} index
- * @returns {string|null}
+ * @returns {KeybindingEntry|null}
  */
-export function toolShortcut(index) {
+export function getToolSlotKeybindingOrNull(index) {
     if (index < 0 || index >= TOOL_SHORTCUT_COUNT) {
         return null;
     }
-    return String(index + 1);
+    return KEYBINDING_TOOL_SLOTS[index];
 }
 
 /**
@@ -101,11 +103,13 @@ export class ToolbarLayer extends Container {
     /**
      * @param {Application} app - the canvas/stage this toolbar lives in (screen space)
      * @param {ClientViewport} viewport - the game area, whose screen width centers the toolbar
+     * @param {KeybindingCache} keybindings
      */
-    constructor(app, viewport) {
+    constructor(app, viewport, keybindings) {
         super();
         this._app = app;
         this._viewport = viewport;
+        this._keybindings = keybindings;
         this.textureCache = null;
         this._tools = Object.freeze([]);
         this._coreTools = Object.freeze([]);
@@ -210,7 +214,7 @@ export class ToolbarLayer extends Container {
         this._tools = Object.freeze([...coreTools, ...modTools]);
         // Not closed here: a reorder commits by calling this same method, and should leave the
         // drawer exactly as the user left it mid-drag.
-        this._rebuild();
+        this.rebuild();
         if (!this._tools.includes(this._activeTool)) {
             this.setActiveTool(null);
         }
@@ -255,14 +259,14 @@ export class ToolbarLayer extends Container {
      * @returns {void}
      */
     restyle() {
-        this._rebuild();
+        this.rebuild();
     }
 
     /**
      * Tears down the old slots and lays the grid out row-major; leaves `_drawerOpen` as-is so a resize doesn't close it.
-     * @private
+     * @returns {void}
      */
-    _rebuild() {
+    rebuild() {
         // An in-progress reorder drag's slot is about to be destroyed below; abort it first.
         this._cancelDrag();
 
@@ -420,16 +424,33 @@ export class ToolbarLayer extends Container {
     }
 
     /**
-     * Shortcut badge for a tool: its core letter hotkey, or its number-key slot among mod tools.
+     * Shortcut badge for a tool: the key its own binding holds for a core tool, or the key of its
+     * slot binding among mod tools. Null when unbound or past the slot range.
      * @private
      * @param {AbstractTool} tool
      * @returns {string|null}
      */
     _getShortcutByTool(tool) {
-        if (tool.hotkey !== null) {
-            return tool.hotkey.toUpperCase();
+        if (tool.keybinding !== null) {
+            return this._getBadgeByKeybinding(tool.keybinding);
         }
-        return toolShortcut(this._modTools.indexOf(tool));
+        return this._getBadgeByKeybinding(getToolSlotKeybindingOrNull(this._modTools.indexOf(tool)));
+    }
+
+    /**
+     * @private
+     * @param {KeybindingEntry|null} keybinding
+     * @returns {string|null} null while unbound or past the slot range
+     */
+    _getBadgeByKeybinding(keybinding) {
+        if (keybinding === null) {
+            return null;
+        }
+        const key = this._keybindings.getKeyByEntry(keybinding);
+        if (key === "") {
+            return null;
+        }
+        return keyLabel(key);
     }
 
     /**
@@ -587,7 +608,7 @@ export class ToolbarLayer extends Container {
 
     /**
      * Live-updates every mod-tool cell's number badge (including the dragged one) to match the
-     * working order's current hotkey slots, so the badges track the drag in real time.
+     * working order's current slot bindings, so the badges track the drag in real time.
      * @private
      * @param {ToolReorderMode} drag
      */
@@ -597,7 +618,7 @@ export class ToolbarLayer extends Container {
             if (badge == null) {
                 continue;
             }
-            const shortcut = toolShortcut(i);
+            const shortcut = this._getBadgeByKeybinding(getToolSlotKeybindingOrNull(i));
             badge.text = shortcut === null ? "" : shortcut;
         }
     }
@@ -766,7 +787,7 @@ export class ToolbarLayer extends Container {
         const barTools = this._computeBarTools();
         if (barTools !== this._barTools) {
             this._barTools = barTools;
-            this._rebuild();
+            this.rebuild();
             this._resyncHighlights();
         }
         // Grows the picked-up icon into its lifted scale while a reorder drag is in progress.

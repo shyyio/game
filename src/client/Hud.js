@@ -194,6 +194,7 @@ export class Hud {
         this._collectThemedLayers();
         onThemeChange(() => this._restyle());
         onUiScaleChange(() => this._rescale());
+        this._client.keybindings.notifyChange(() => this._rebuildKeyHints());
     }
 
     /**
@@ -208,7 +209,7 @@ export class Hud {
         // Rotate controls, toggled with the active tool by the host.
         this.rotateButtonsLayer = new RotateButtonsLayer(app, viewport);
         // Bottom-center tool bar; the host feeds it the tool list and reacts to selection.
-        this.toolbarLayer = new ToolbarLayer(app, viewport);
+        this.toolbarLayer = new ToolbarLayer(app, viewport, this._client.keybindings);
         this.toolbarLayer.onReorder(tools => this._client.setModToolOrder(tools));
     }
 
@@ -249,7 +250,7 @@ export class Hud {
         // buttons), e.g. claim mode's claim count and exit button.
         this.topStatusBar = new TopStatusBarLayer(app);
         // Full-width bottom bar holding the active mode's forward action (its text + Confirm).
-        this.bottomActionBar = new BottomActionBarLayer(app);
+        this.bottomActionBar = new BottomActionBarLayer(app, this._client.keybindings);
         // Always-visible top-right settings button; stays clear of the bar above via its height.
         this.settingsButtonLayer = new SettingsButtonLayer(app);
         // Friend management (account-wide, not gated behind claim mode); sits left of settings.
@@ -512,6 +513,16 @@ export class Hud {
         for (const layer of this._themedLayers) {
             layer.restyle();
         }
+    }
+
+    /**
+     * Redraws the layers whose labels carry a keyboard hint.
+     * @private
+     * @returns {void}
+     */
+    _rebuildKeyHints() {
+        this.toolbarLayer.rebuild();
+        this.bottomActionBar.rebuild();
     }
 
     /**

@@ -7,7 +7,7 @@ import {InputDispatcher} from "@/client/input/InputDispatcher.js";
  * @returns {InputDispatcher}
  */
 export function createInputHandler(client) {
-    const inputHandler = new InputDispatcher(client.hud.toolbarLayer);
+    const inputHandler = new InputDispatcher(client.hud.toolbarLayer, client.keybindings);
     inputHandler.onObjectTap((tileX, tileY) => {
         client.onObjectTap(tileX, tileY);
     });

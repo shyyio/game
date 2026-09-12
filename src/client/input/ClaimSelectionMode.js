@@ -1,4 +1,5 @@
-import {CHUNK_PICK_ZOOM_SCALE, EXIT_HOTKEY, TILE_SIZE, ViewMode} from "@/client/constants.js";
+import {CHUNK_PICK_ZOOM_SCALE, TILE_SIZE, ViewMode} from "@/client/constants.js";
+import {KEYBINDING_EXIT} from "@/common/KeybindingEntry.js";
 import {CHUNK_SIZE} from "@/common/constants.js";
 import {OwnClaimsSyncEvent, ChunkClaimUpdateEvent} from "@/common/ClaimEvents.js";
 import {FriendListEvent} from "@/common/PlayerEvents.js";
@@ -28,6 +29,7 @@ export class ClaimSelectionMode {
         this._on = false;
         // Entry glide in flight: the mode activates only once the viewport arrives.
         this._entering = false;
+        client.keybindings.notifyChange(() => this.resyncIndicators());
     }
 
     /**
@@ -133,7 +135,7 @@ export class ClaimSelectionMode {
             return null;
         }
         const text = `${this._claims.ownCount()}/${this._claims.maxChunks} chunks claimed`;
-        return new StatusBarSection(text, [hotkeyButton("Back", EXIT_HOTKEY, () => this.set(false))]);
+        return new StatusBarSection(text, [hotkeyButton("Back", this._client.keybindings.getKeyByEntry(KEYBINDING_EXIT), () => this.set(false))]);
     }
 
     /**

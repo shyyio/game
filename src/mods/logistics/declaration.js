@@ -1,5 +1,5 @@
 import {AbstractModDeclaration, LogicKeyEntry, LogicKeyStateEntry} from "@spup/sdk";
-import {LOGIC_KEY_OPEN} from "./common/constants.js";
+import {KEYBINDING_BELT_LOWER, KEYBINDING_BELT_RAISE, LOGIC_KEY_OPEN} from "./common/constants.js";
 import {
     BeltType,
     BeltTunnelDownType,
@@ -35,6 +35,10 @@ export class LogisticsDeclaration extends AbstractModDeclaration {
      */
     get name() {
         return "Logistics";
+    }
+
+    get keybindingEntries() {
+        return [KEYBINDING_BELT_RAISE, KEYBINDING_BELT_LOWER];
     }
 
     get objectTypes() {

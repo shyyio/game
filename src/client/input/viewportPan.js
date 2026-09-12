@@ -1,15 +1,22 @@
+import {
+    KEYBINDING_PAN_UP,
+    KEYBINDING_PAN_LEFT,
+    KEYBINDING_PAN_DOWN,
+    KEYBINDING_PAN_RIGHT,
+} from "@/common/KeybindingEntry.js";
+
 /**
- * A key that pans the viewport, and the screen direction it moves the view.
+ * A rebindable pan action, and the screen direction it moves the view.
  */
-class PanKeyEntry {
+export class PanDirectionEntry {
 
     /**
-     * @param {string} key
+     * @param {KeybindingEntry} keybinding
      * @param {number} x
      * @param {number} y
      */
-    constructor(key, x, y) {
-        this.key = key;
+    constructor(keybinding, x, y) {
+        this.keybinding = keybinding;
         this.x = x;
         this.y = y;
     }
@@ -18,29 +25,27 @@ class PanKeyEntry {
 // Screen pixels a held key pans per second.
 export const PAN_SPEED = 1200;
 
-export const PAN_KEYS = [
-    new PanKeyEntry("w", 0, -1),
-    new PanKeyEntry("a", -1, 0),
-    new PanKeyEntry("s", 0, 1),
-    new PanKeyEntry("d", 1, 0),
+export const PAN_DIRECTIONS = [
+    new PanDirectionEntry(KEYBINDING_PAN_UP, 0, -1),
+    new PanDirectionEntry(KEYBINDING_PAN_LEFT, -1, 0),
+    new PanDirectionEntry(KEYBINDING_PAN_DOWN, 0, 1),
+    new PanDirectionEntry(KEYBINDING_PAN_RIGHT, 1, 0),
 ];
 
 /**
- * The world-pixel offset a frame's held keys pan the view by: screen distance divided by the
- * zoom, so a diagonal travels an axis's distance and opposed keys cancel.
- * @param {Set<string>} heldKeys
+ * The world-pixel offset a frame's held directions pan the view by: screen distance divided by
+ * the zoom, so a diagonal travels an axis's distance and opposed directions cancel.
+ * @param {Set<PanDirectionEntry>} heldDirections
  * @param {number} deltaMS
  * @param {number} scale - the viewport's zoom
  * @returns {Point}
  */
-export function keyboardPanOffset(heldKeys, deltaMS, scale) {
+export function keyboardPanOffset(heldDirections, deltaMS, scale) {
     let x = 0;
     let y = 0;
-    for (const entry of PAN_KEYS) {
-        if (heldKeys.has(entry.key)) {
-            x += entry.x;
-            y += entry.y;
-        }
+    for (const entry of heldDirections) {
+        x += entry.x;
+        y += entry.y;
     }
     if (x === 0 && y === 0) {
         return {x: 0, y: 0};

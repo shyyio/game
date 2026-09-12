@@ -33,12 +33,6 @@ export const FPS_CAP_DEFAULT = 0;
 // Screen-pixel gap between bottom-anchored HUD elements and the screen bottom, clearing the toolbar.
 export const HUD_BOTTOM_OFFSET = 160;
 
-// Key that leaves any input mode, shown as the hint on the status bar's exit buttons.
-export const EXIT_HOTKEY = "q";
-
-// Key that fires the bottom action bar's Confirm.
-export const CONFIRM_HOTKEY = "Enter";
-
 // Where the chunk-picking modes park the view: map mode's far edge, just shy of overworld.
 export const CHUNK_PICK_ZOOM_SCALE = OVERWORLD_SCALE_THRESHOLD * 1.1;
 

@@ -127,7 +127,7 @@ export class TopStatusBarLayer extends AbstractEdgeBarLayer {
         } else {
             this._sections.set(id, section);
         }
-        this._rebuild();
+        this.rebuild();
     }
 
     /**

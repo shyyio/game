@@ -1,5 +1,13 @@
-import Keyboard from "@/client/input/Keyboard.js";
-import {CONFIRM_HOTKEY, EXIT_HOTKEY} from "@/client/constants.js";
+import {
+    KEYBINDING_CLAIM,
+    KEYBINDING_CONFIRM,
+    KEYBINDING_DEBUG,
+    KEYBINDING_DISCONNECT,
+    KEYBINDING_EXIT,
+    KEYBINDING_HOME,
+    KEYBINDING_PRODUCTION,
+    KEYBINDING_TICK,
+} from "@/common/KeybindingEntry.js";
 import {DEV} from "@/common/env.js";
 
 /**
@@ -12,50 +20,48 @@ import {DEV} from "@/common/env.js";
 export function bindGameKeyboardShortcuts(client, game, toolbar) {
     const bindings = [];
 
-    function on(key, callback) {
-        Keyboard.on(key, callback);
-        bindings.push([key, callback]);
+    function on(keybinding, callback) {
+        client.keybindings.on(keybinding, callback);
+        bindings.push([keybinding, callback]);
     }
 
-    // "c" toggles claim selection; "q" exits any input mode; "h" glides home; "p" toggles production stats.
-    on("c", () => {
+    on(KEYBINDING_CLAIM, () => {
         client.claimSelection.toggle();
     });
-    on(EXIT_HOTKEY, () => {
+    on(KEYBINDING_EXIT, () => {
         toolbar.setActiveTool(null);
         client.claimSelection.set(false);
     });
     // Confirm fires the bottom action bar's forward action (a no-op while the bar is hidden).
-    on(CONFIRM_HOTKEY, () => {
+    on(KEYBINDING_CONFIRM, () => {
         client.hud.bottomActionBar.pressConfirm();
     });
-    on("h", () => {
+    on(KEYBINDING_HOME, () => {
         client.camera.glideHome();
     });
-    on("p", () => {
+    on(KEYBINDING_PRODUCTION, () => {
         client.hud.productionPanelLayer.toggle();
     });
 
-    // The local sim also auto-ticks (GameBootstrap.js); "t" forces an extra tick for debugging.
+    // The local sim also auto-ticks (GameBootstrap.js); this forces an extra tick for debugging.
     if (game !== null) {
-        on("t", () => {
+        on(KEYBINDING_TICK, () => {
             game.runTick();
         });
     } else if (DEV) {
         // Dev-only: force-closes the socket to test the reconnect flow without touching the server.
-        on("x", () => {
+        on(KEYBINDING_DISCONNECT, () => {
             client.session.debugDisconnect();
         });
     }
 
-    // Toggle debug mode
-    on("F3", () => {
+    on(KEYBINDING_DEBUG, () => {
         client.settingsMenu.toggleDebugMode();
     });
 
     return () => {
-        for (const [key, callback] of bindings) {
-            Keyboard.off(key, callback);
+        for (const [keybinding, callback] of bindings) {
+            client.keybindings.off(keybinding, callback);
         }
     };
 }

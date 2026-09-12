@@ -1,21 +1,20 @@
 import Mouse from "@/client/input/Mouse.js";
 import Keyboard from "@/client/input/Keyboard.js";
 import {AbstractTool} from "@/client/input/AbstractTool.js";
+import {KEYBINDING_ERASER, KEYBINDING_TOOL_SLOTS} from "@/common/KeybindingEntry.js";
 
-// Number keys 1-9 select the mod tool at that position (1 = first mod tool); core tools use
-// their own letter hotkeys instead.
-const TOOL_HOTKEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9"];
-
-// Letter keys bound for core tools; the pressed key is matched against each core tool's `hotkey`.
-const CORE_TOOL_HOTKEYS = ["e"];
+// Bindings the core tools select on, matched against each core tool's declared `keybinding`.
+const CORE_TOOL_KEYBINDINGS = [KEYBINDING_ERASER];
 
 export class InputDispatcher {
 
     /**
      * @param {ToolbarLayer} toolbar - the pixi tool bar, owning the tool list and active selection
+     * @param {KeybindingCache} keybindings
      */
-    constructor(toolbar) {
+    constructor(toolbar, keybindings) {
         this._toolbar = toolbar;
+        this._keybindings = keybindings;
 
         this._onObjectTap = null;
         this._onObjectHold = null;
@@ -33,6 +32,8 @@ export class InputDispatcher {
         // Keyboard bindings registered in init(), unbound in destroy() so a stale InputDispatcher from
         // a torn-down Game mount doesn't keep driving a destroyed toolbar/tool/draw layer.
         this._keyboardBindings = [];
+        // Rebindable actions registered in init(), released the same way.
+        this._keybindingBindings = [];
     }
 
     /**
@@ -126,16 +127,16 @@ export class InputDispatcher {
             this._toolbar.toggleDrawer();
         });
 
-        for (const [index, key] of TOOL_HOTKEYS.entries()) {
-            this._onKey(key, () => {
+        // A slot binding selects the mod tool at that position (slot 1 = first mod tool).
+        for (const [index, keybinding] of KEYBINDING_TOOL_SLOTS.entries()) {
+            this._onKeybinding(keybinding, () => {
                 this._selectTool(index);
             });
         }
 
-        // Core tools bind their declared letter hotkey (e.g. the eraser's "e").
-        for (const key of CORE_TOOL_HOTKEYS) {
-            this._onKey(key, () => {
-                this._selectCoreTool(key);
+        for (const keybinding of CORE_TOOL_KEYBINDINGS) {
+            this._onKeybinding(keybinding, () => {
+                this._selectCoreTool(keybinding);
             });
         }
     }
@@ -150,7 +151,16 @@ export class InputDispatcher {
     }
 
     /**
-     * Unbinds every Keyboard listener registered in {@link init}.
+     * Binds a rebindable action and records it so {@link destroy} can unbind it.
+     * @private
+     */
+    _onKeybinding(keybinding, callback) {
+        this._keybindings.on(keybinding, callback);
+        this._keybindingBindings.push([keybinding, callback]);
+    }
+
+    /**
+     * Unbinds every listener registered in {@link init}.
      * @returns {void}
      */
     destroy() {
@@ -158,6 +168,10 @@ export class InputDispatcher {
             Keyboard.off(key, callback);
         }
         this._keyboardBindings = [];
+        for (const [keybinding, callback] of this._keybindingBindings) {
+            this._keybindings.off(keybinding, callback);
+        }
+        this._keybindingBindings = [];
     }
 
     /**
@@ -380,11 +394,11 @@ export class InputDispatcher {
     }
 
     /**
-     * Selects the core tool whose declared `hotkey` matches `key`, if present.
+     * Selects the core tool declaring `keybinding`, if present.
      * @private
      */
-    _selectCoreTool(key) {
-        const tool = this._toolbar.coreTools.find(t => t.hotkey === key);
+    _selectCoreTool(keybinding) {
+        const tool = this._toolbar.coreTools.find(candidate => candidate.keybinding === keybinding);
         if (tool == null) {
             return;
         }

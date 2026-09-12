@@ -2,6 +2,7 @@ import {SettingCategory} from "@/client/hud/SettingCategory.js";
 import {AbstractPlayerSettingControl} from "@/client/hud/AbstractPlayerSettingControl.js";
 import {PlayerSettingChoice} from "@/client/hud/PlayerSettingChoice.js";
 import {PlayerSettingToggle} from "@/client/hud/PlayerSettingToggle.js";
+import {PlayerSettingKeybind} from "@/client/hud/PlayerSettingKeybind.js";
 import {DeviceSettingToggle} from "@/client/hud/DeviceSettingToggle.js";
 import {DeviceSettingChoice} from "@/client/hud/DeviceSettingChoice.js";
 import {DeviceSettingSlider} from "@/client/hud/DeviceSettingSlider.js";
@@ -64,7 +65,8 @@ export class SettingsMenu {
                 if (entry.optionCount !== 2) {
                     throw new Error(`Settings control "${control.label}" toggles player setting key ${control.key}, which allows ${entry.optionCount} values`);
                 }
-            } else {
+            } else if (!(control instanceof PlayerSettingKeybind)) {
+                // The registry synthesizes a keybind's entry, so its option count cannot disagree.
                 throw new Error(`Settings control "${control.label}" has an unknown control type`);
             }
         }
@@ -138,6 +140,8 @@ export class SettingsMenu {
                 new DeviceSettingChoice(DEVICE_SETTING_FPS_CAP, "Frame rate cap", FPS_CAP_NAMES, FPS_CAP_DEFAULT, index => this.setFpsCap(index)),
                 new DeviceSettingSlider(DEVICE_SETTING_UI_SCALE, "UI Scale", UI_SCALE_MIN, UI_SCALE_MAX, UI_SCALE_STEP, UI_SCALE_NORMAL, scale => applyUiScale(scale)),
             ]),
+            // Every registered action gets a row, the engine's own then the loadout's.
+            new SettingCategory("Keybindings", 1, this._client.modRegistry.keybindingEntries.map(entry => new PlayerSettingKeybind(entry))),
         ];
     }
 }

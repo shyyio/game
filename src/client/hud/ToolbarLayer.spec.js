@@ -1,6 +1,7 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
-import {barToolCapacity, toolShortcut, TOOL_SHORTCUT_COUNT} from "@/client/hud/ToolbarLayer.js";
+import {barToolCapacity, getToolSlotKeybindingOrNull, TOOL_SHORTCUT_COUNT} from "@/client/hud/ToolbarLayer.js";
+import {KEYBINDING_TOOL_SLOTS} from "@/common/KeybindingEntry.js";
 
 // The layer itself needs a renderer, but its layout math does not.
 const MIN_BAR_TOOLS = 4;
@@ -34,16 +35,16 @@ test("capacity grows with the screen, between the floor and the cap", () => {
     assert.equal(previous, MAX_BAR_TOOLS_DESKTOP);
 });
 
-test("the first mod tools carry number-key badges", () => {
-    assert.equal(toolShortcut(0), "1");
-    assert.equal(toolShortcut(TOOL_SHORTCUT_COUNT - 1), String(TOOL_SHORTCUT_COUNT));
+test("the first mod tools take a slot binding", () => {
+    assert.equal(getToolSlotKeybindingOrNull(0), KEYBINDING_TOOL_SLOTS[0]);
+    assert.equal(getToolSlotKeybindingOrNull(TOOL_SHORTCUT_COUNT - 1), KEYBINDING_TOOL_SLOTS.at(-1));
 });
 
-test("a tool past the shortcut range carries no badge", () => {
-    assert.equal(toolShortcut(TOOL_SHORTCUT_COUNT), null);
+test("a tool past the slot range takes no binding", () => {
+    assert.equal(getToolSlotKeybindingOrNull(TOOL_SHORTCUT_COUNT), null);
 });
 
-test("a tool missing from the order carries no badge", () => {
+test("a tool missing from the order takes no binding", () => {
     // indexOf returns -1 for a tool that is not a mod tool.
-    assert.equal(toolShortcut(-1), null);
+    assert.equal(getToolSlotKeybindingOrNull(-1), null);
 });

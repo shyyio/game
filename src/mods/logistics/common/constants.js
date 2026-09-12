@@ -1,11 +1,15 @@
 import {
     Direction,
+    KeybindingEntry,
     LANE_LEVEL_SURFACE,
     LANE_LEVEL_BURIED,
     LANE_LEVEL_ELEVATED_1,
 } from "@spup/sdk";
 
 // Shared numeric constants and enums for the Logistics mod.
+
+export const KEYBINDING_BELT_RAISE = new KeybindingEntry(11, "Raise belt", "w");
+export const KEYBINDING_BELT_LOWER = new KeybindingEntry(12, "Lower belt", "s");
 
 // Maximum tiles an underground belt may span.
 export const MAX_UNDERGROUND_LENGTH = 4;

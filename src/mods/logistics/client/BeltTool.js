@@ -13,6 +13,8 @@ import {
     BELT_TUNNEL_DOWN,
     BELT_TUNNEL_UP,
     BeltBend,
+    KEYBINDING_BELT_LOWER,
+    KEYBINDING_BELT_RAISE,
     MAX_UNDERGROUND_LENGTH,
     getBeltKindByLevelsOrNull,
     getBeltKindEntryByKind,
@@ -45,9 +47,6 @@ function shouldBeltConnectToParent(kind, beltDirection, parentDirection, level) 
     }
     return beltDirection !== Direction.invert(parentDirection);
 }
-
-const RAISE_HOTKEY = "w";
-const LOWER_HOTKEY = "s";
 
 /**
  * What a tap lays at a tile: the belt kind the tool's level calls for, and the tile it bends from.
@@ -105,8 +104,8 @@ export class BeltTool extends AbstractTool {
 
     get actions() {
         return [
-            new ToolActionEntry("Raise", RAISE_HOTKEY, () => this._stepLevel(1)),
-            new ToolActionEntry("Lower", LOWER_HOTKEY, () => this._stepLevel(-1)),
+            new ToolActionEntry("Raise", KEYBINDING_BELT_RAISE, () => this._stepLevel(1)),
+            new ToolActionEntry("Lower", KEYBINDING_BELT_LOWER, () => this._stepLevel(-1)),
         ];
     }
 

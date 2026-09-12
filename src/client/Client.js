@@ -52,6 +52,7 @@ import {ClaimFrontierDrawLayer} from "@/client/layers/ClaimFrontierDrawLayer.js"
 import {ClaimSelectionMode} from "@/client/input/ClaimSelectionMode.js";
 import {SettleMode} from "@/client/input/SettleMode.js";
 import {ChunkCursor} from "@/client/input/ChunkCursor.js";
+import {KeybindingCache} from "@/client/input/KeybindingCache.js";
 import {advanceAnimationFrame} from "@/client/layers/animation.js";
 import {
     SESSION_STATUS_CONNECTED, SESSION_STATUS_RECONNECTING, SESSION_STATUS_SERVER_SHUTDOWN, SESSION_STATUS_SUPERSEDED,
@@ -188,6 +189,7 @@ export class Client {
         this.spriteOverrideStore = new SpriteOverrideStore();
         this.drawLayerRegistry = new DrawLayerRegistry();
         this._buildStateCache();
+        this.keybindings = new KeybindingCache(this);
         this._buildTerrain();
         this._buildSharedWorldLayers();
         this._buildTools();
@@ -300,7 +302,7 @@ export class Client {
         this.workerDebugLayer = new WorkerDebugLayer(this.cache);
         // Staffing dots over manned machines (one per consumed worker).
         this.workerBadgeLayer = new WorkerBadgeLayer(this.cache);
-        // Floating text over the world, driven by whoever wants to say something on a tile.
+        // Floating text over the world
         this.hitsplatLayer = new HitsplatLayer();
     }
 

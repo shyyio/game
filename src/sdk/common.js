@@ -168,6 +168,8 @@ export {LogicKeyEntry, LogicKeyStateEntry} from "@/common/LogicKeys.js";
 // clientWritable keys accept a SetPlayerSettingMessage, holding an integer in
 // [0, optionCount). Toggle values: 0/absent = on.
 export {PlayerSettingEntry} from "@/common/PlayerSettingEntry.js";
+export {KeybindingEntry} from "@/common/KeybindingEntry.js";
+export {BINDABLE_KEYS, BINDABLE_KEY_UNBOUND, getBindableKeyByValue, getBindableKeyValueByKeyOrNull} from "@/common/bindableKeys.js";
 export {SETTING_ON, SETTING_OFF} from "@/common/constants.js";
 
 // Item type -> tradable-catalog listing a declaration contributes (marketListings); npcPrice null

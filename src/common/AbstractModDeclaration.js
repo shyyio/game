@@ -59,6 +59,15 @@ export class AbstractModDeclaration {
     }
 
     /**
+     * Rebindable keyboard actions this mod adds; each registers a client-writable player setting
+     * under its own key, unique across the loadout.
+     * @returns {KeybindingEntry[]}
+     */
+    get keybindingEntries() {
+        return [];
+    }
+
+    /**
      * Terrain noise channels this mod samples; registration order across the loadout assigns each
      * its channelId at ModRegistry.freeze(). Names must be unique across the loadout.
      * @returns {NoiseChannel[]}

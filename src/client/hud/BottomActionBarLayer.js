@@ -1,4 +1,4 @@
-import {CONFIRM_HOTKEY} from "@/client/constants.js";
+import {KEYBINDING_CONFIRM} from "@/common/KeybindingEntry.js";
 import {PANEL_TINT, ACTIVE_ACCENT} from "@/client/Theme.js";
 import {FRAME_MARGIN, UIPanel} from "@/client/hud/UIPanel.js";
 import {buildPanelButton, hotkeyLabel} from "@/client/hud/panelButton.js";
@@ -34,9 +34,11 @@ export class BottomActionBarLayer extends AbstractEdgeBarLayer {
 
     /**
      * @param {Application} app
+     * @param {KeybindingCache} keybindings
      */
-    constructor(app) {
+    constructor(app, keybindings) {
         super(app);
+        this._keybindings = keybindings;
         /** @type {BottomBarAction|null} */
         this._action = null;
     }
@@ -54,7 +56,7 @@ export class BottomActionBarLayer extends AbstractEdgeBarLayer {
         if (previousText === text) {
             return;
         }
-        this._rebuild();
+        this.rebuild();
     }
 
     /**
@@ -87,7 +89,8 @@ export class BottomActionBarLayer extends AbstractEdgeBarLayer {
         const contentTop = FRAME_MARGIN;
         const contentRight = width - insets.right - FRAME_MARGIN;
 
-        const button = buildPanelButton(this.textureCache, hotkeyLabel("Confirm", CONFIRM_HOTKEY),
+        const confirmLabel = hotkeyLabel("Confirm", this._keybindings.getKeyByEntry(KEYBINDING_CONFIRM));
+        const button = buildPanelButton(this.textureCache, confirmLabel,
             ACTIVE_ACCENT, () => this._action.onConfirm());
         button.x = contentRight - button.width;
 

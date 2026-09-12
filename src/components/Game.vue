@@ -17,6 +17,7 @@ import DeviceSettings, {
 } from "@/client/state/DeviceSettings.js";
 import {applyUiScale, UI_SCALE_NORMAL} from "@/client/hud/UiScale.js";
 import {PlayerSettingChoice} from "@/client/hud/PlayerSettingChoice.js";
+import {PlayerSettingKeybind} from "@/client/hud/PlayerSettingKeybind.js";
 import {DeviceSettingChoice} from "@/client/hud/DeviceSettingChoice.js";
 import {DeviceSettingSlider} from "@/client/hud/DeviceSettingSlider.js";
 import {applyTheme, onThemeChange, THEME_DEFAULT} from "@/client/Theme.js";
@@ -31,7 +32,15 @@ const settingsOpen = ref(false);
 const terrainOpen = ref(false);
 const terrainClient = shallowRef(null);
 
-const {settingsCategories, settingValues, bindSettingsMenu} = useSettingsMenu();
+const {
+  settingsCategories,
+  settingValues,
+  bindSettingsMenu,
+  capturingControl,
+  keybindText,
+  toggleCapture,
+  onCaptureKey,
+} = useSettingsMenu();
 
 Mobile.setEnabled(DeviceSettings.getBoolean(DEVICE_SETTING_MOBILE, Mobile.isDevicePreferred()));
 // Before the dialog can open, so its first open honors the preference.
@@ -228,8 +237,18 @@ export default defineComponent({
           <template v-for="category in settingsCategories" :key="category.name">
             <div class="settings-category-title">{{ category.name }}</div>
             <template v-for="control in category.controls" :key="control.key">
+              <div v-if="control instanceof PlayerSettingKeybind" class="settings-keybind">
+                <span class="settings-keybind-label">{{ control.label }}</span>
+                <v-btn
+                    variant="outlined"
+                    density="compact"
+                    :color="capturingControl === control ? 'primary' : undefined"
+                    @click="toggleCapture(control)"
+                    @keydown="onCaptureKey"
+                >{{ keybindText(control) }}</v-btn>
+              </div>
               <v-select
-                  v-if="control instanceof PlayerSettingChoice || control instanceof DeviceSettingChoice"
+                  v-else-if="control instanceof PlayerSettingChoice || control instanceof DeviceSettingChoice"
                   v-model="settingValues[control.key]"
                   :label="control.label"
                   :items="control.items"
@@ -285,12 +304,43 @@ export default defineComponent({
           max(env(safe-area-inset-right, 0px), 24px)
           max(env(safe-area-inset-bottom, 0px), 24px)
           max(env(safe-area-inset-left, 0px), 24px);
+  /* The card body takes the overflow, so the title bar stays put. */
+  overflow: hidden;
+}
+
+.settings-dialog > .v-card {
+  display: flex;
+  flex-direction: column;
+  max-height: 100%;
+  min-height: 0;
+}
+
+.settings-dialog > .v-card > .v-toolbar {
+  flex: none;
+}
+
+.settings-dialog > .v-card > .v-card-text {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .settings-dialog .settings-list {
   display: flex;
   flex-direction: column;
   gap: 12px;
+}
+
+.settings-dialog .settings-keybind {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 40px;
+}
+
+.settings-dialog .settings-keybind-label {
+  flex: 1;
 }
 
 .settings-dialog .settings-category-title {

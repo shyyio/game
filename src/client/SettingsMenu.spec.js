@@ -33,6 +33,7 @@ globalThis.localStorage = storage;
 globalThis.window = {matchMedia: () => ({matches: false})};
 
 const DISPLAY = "Display";
+const KEYBINDINGS = "Keybindings";
 const MOD_CATEGORY = "Belts";
 // Sorts after the engine's own section, which claims order 0.
 const MOD_CATEGORY_ORDER = 5;
@@ -73,6 +74,7 @@ class FakeClient {
         }};
         this.modRegistry = {
             clientMods: [],
+            keybindingEntries: [],
             settingEntries: new Map(),
             getPlayerSettingEntryByKeyOrNull(key) {
                 const found = this.settingEntries.get(key);
@@ -106,7 +108,7 @@ function build() {
 test("the engine contributes a Display section", () => {
     const {menu} = build();
     const categories = menu.categories();
-    assert.deepEqual(categories.map(category => category.name), [DISPLAY]);
+    assert.deepEqual(categories.map(category => category.name), [DISPLAY, KEYBINDINGS]);
     assert.ok(categories[0].controls.some(control => control.label === "Terrain"));
 });
 
@@ -114,7 +116,7 @@ test("a mod's section merges in behind the engine's", () => {
     const {menu, client} = build();
     client.modRegistry.settingEntries.set(SETTING_KEY, {isClientWritable: true, optionCount: BINARY});
     client.addSettingsMod([new PlayerSettingToggle(SETTING_KEY, "Ghost preview")]);
-    assert.deepEqual(menu.categories().map(category => category.name), [DISPLAY, MOD_CATEGORY]);
+    assert.deepEqual(menu.categories().map(category => category.name), [DISPLAY, KEYBINDINGS, MOD_CATEGORY]);
 });
 
 test("a control on an unregistered player setting is rejected", () => {

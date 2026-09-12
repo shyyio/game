@@ -1,4 +1,6 @@
-import {CORE_PLAYER_SETTING_ENTRIES} from "@/common/PlayerSettingEntry.js";
+import {CORE_PLAYER_SETTING_ENTRIES, PlayerSettingEntry} from "@/common/PlayerSettingEntry.js";
+import {CORE_KEYBINDING_ENTRIES} from "@/common/KeybindingEntry.js";
+import {BINDABLE_KEYS} from "@/common/bindableKeys.js";
 import {FrozenSet} from "@/common/FrozenSet.js";
 import {LOGIC_KEY_ENABLED, LOGIC_KEY_PROCESSING} from "@/common/constants.js";
 import {LogicKeyEntry, LogicKeyStateEntry} from "@/common/LogicKeys.js";
@@ -58,6 +60,15 @@ export class ModRegistry {
          * @type {Map<number, PlayerSettingEntry>}
          */
         this._playerSettingEntries = new Map();
+
+        /**
+         * @type {KeybindingEntry[]}
+         */
+        this._keybindingEntries = [];
+        /**
+         * @type {Map<number, KeybindingEntry>}
+         */
+        this._keybindingEntriesByPlayerSettingKey = new Map();
         /**
          * @type {NoiseChannel[]}
          */
@@ -216,7 +227,8 @@ export class ModRegistry {
     }
 
     /**
-     * Collects the core player setting entries, then each mod's.
+     * Collects the core player setting entries, then each mod's, then the setting every core and
+     * mod keybinding stores its key in.
      * @private
      * @returns {void}
      */
@@ -231,6 +243,14 @@ export class ModRegistry {
                 }
                 this._playerSettingEntries.set(entry.key, entry);
             }
+        }
+        this._keybindingEntries = CORE_KEYBINDING_ENTRIES.concat(this._packages.flatMap(pkg => pkg.declaration.keybindingEntries));
+        for (const entry of this._keybindingEntries) {
+            if (this._playerSettingEntries.has(entry.playerSettingKey)) {
+                throw new Error(`Duplicate player setting key ${entry.playerSettingKey}`);
+            }
+            this._playerSettingEntries.set(entry.playerSettingKey, new PlayerSettingEntry(entry.playerSettingKey, true, BINDABLE_KEYS.length));
+            this._keybindingEntriesByPlayerSettingKey.set(entry.playerSettingKey, entry);
         }
     }
 
@@ -460,6 +480,28 @@ export class ModRegistry {
     get fluidTypes() {
         this._assertFrozen();
         return this._fluidTypes;
+    }
+
+    /**
+     * Every rebindable keyboard action, the engine's first then the loadout's.
+     * @returns {KeybindingEntry[]}
+     */
+    get keybindingEntries() {
+        this._assertFrozen();
+        return this._keybindingEntries;
+    }
+
+    /**
+     * @param {number} playerSettingKey
+     * @returns {KeybindingEntry|null} null for a setting no keybinding stores its key in
+     */
+    getKeybindingEntryByPlayerSettingKeyOrNull(playerSettingKey) {
+        this._assertFrozen();
+        const found = this._keybindingEntriesByPlayerSettingKey.get(playerSettingKey);
+        if (found === undefined) {
+            return null;
+        }
+        return found;
     }
 
     /**

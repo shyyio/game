@@ -1,4 +1,5 @@
 import {AbstractTool} from "@/client/input/AbstractTool.js";
+import {KEYBINDING_ERASER} from "@/common/KeybindingEntry.js";
 import {Direction} from "@/common/constants.js";
 import {LANE_LAYERS_HIGHEST_FIRST} from "@/sim/LaneIndex.js";
 import {DeleteObjectMessage} from "@/common/CoreMessages.js";
@@ -29,8 +30,8 @@ export class EraserTool extends AbstractTool {
         return 1;
     }
 
-    get hotkey() {
-        return "e";
+    get keybinding() {
+        return KEYBINDING_ERASER;
     }
 
     get textureName() {

@@ -50,20 +50,29 @@ function wireButtonPress(button, hover, onClick) {
 }
 
 /**
- * A button label carrying its keyboard hint in brackets (docs/ux-conventions.md), dropped on
- * touch input; single-character keys display uppercase.
+ * A key as the player reads it; single-character keys display uppercase.
+ * @param {string} key
+ * @returns {string}
+ */
+export function keyLabel(key) {
+    if (key.length === 1) {
+        return key.toUpperCase();
+    }
+    return key;
+}
+
+/**
+ * A button label carrying its keyboard hint in brackets, dropped on touch input and on an
+ * unbound key.
  * @param {string} label
  * @param {string} key
  * @returns {string}
  */
 export function hotkeyLabel(label, key) {
-    if (Mobile.isEnabled) {
+    if (Mobile.isEnabled || key === "") {
         return label;
     }
-    if (key.length === 1) {
-        return `${label} [${key.toUpperCase()}]`;
-    }
-    return `${label} [${key}]`;
+    return `${label} [${keyLabel(key)}]`;
 }
 
 /**
