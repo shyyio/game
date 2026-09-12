@@ -2,7 +2,8 @@ import {test} from "node:test";
 import assert from "node:assert/strict";
 import {Game} from "@/sim/Game.js";
 import {GameEngine} from "@/sim/GameEngine.js";
-import {ecsModRegistry} from "@/test/ecsSim.js";
+import {ecsModRegistry, makeGame} from "@/test/ecsSim.js";
+import {StimpackScenario} from "@/test/scenarios/StimpackScenario.js";
 import {buildStimpackFactory} from "@/test/stimpackLine.js";
 import {
     ExtractorType,
@@ -25,6 +26,7 @@ import {
 } from "@/mods/base-game/common/objectTypes.js";
 import {ITEM_TYPE_STIMPACK} from "@/mods/base-game/common/constants.js";
 import {TradingTerminalType} from "@/mods/market/common/objectTypes.js";
+import {CHUNK_SIZE} from "@/common/constants.js";
 
 async function buildFactory() {
     const modRegistry = ecsModRegistry();
@@ -34,33 +36,43 @@ async function buildFactory() {
     return {game, root};
 }
 
-test("the Stimpack factory places every object with no tile collisions", async () => {
-    const {game} = await buildFactory();
-    const engine = game.simEngine;
-    const counts = {
-        [FillType.name]: [FillType, 1],
-        [DelicateAssemblyType.name]: [DelicateAssemblyType, 1],
-        [FormingMachineType.name]: [FormingMachineType, 1],
-        [BlastFurnaceType.name]: [BlastFurnaceType, 1],
-        [BakeType.name]: [BakeType, 2],
-        [AirFilterType.name]: [AirFilterType, 1],
-        [BrewType.name]: [BrewType, 2],
-        [TormentChamberType.name]: [TormentChamberType, 1],
-        [SpawningPoolType.name]: [SpawningPoolType, 1],
-        [BlenderType.name]: [BlenderType, 1],
-        [GreenhouseType.name]: [GreenhouseType, 2],
-        [ExtractorType.name]: [ExtractorType, 7],
-        [TradingTerminalType.name]: [TradingTerminalType, 2],
-        [WaterResourceType.name]: [WaterResourceType, 3],
-        [GraveyardResourceType.name]: [GraveyardResourceType, 1],
-        [OxideDepositResourceType.name]: [OxideDepositResourceType, 1],
-        [CoalDepositResourceType.name]: [CoalDepositResourceType, 1],
-        [QuartzDepositResourceType.name]: [QuartzDepositResourceType, 1],
-    };
-    for (const [type, expected] of Object.values(counts)) {
+const COUNT_PER_FACTORY = [
+    [FillType, 1],
+    [DelicateAssemblyType, 1],
+    [FormingMachineType, 1],
+    [BlastFurnaceType, 1],
+    [BakeType, 2],
+    [AirFilterType, 1],
+    [BrewType, 2],
+    [TormentChamberType, 1],
+    [SpawningPoolType, 1],
+    [BlenderType, 1],
+    [GreenhouseType, 2],
+    [ExtractorType, 7],
+    [TradingTerminalType, 2],
+    [WaterResourceType, 3],
+    [GraveyardResourceType, 1],
+    [OxideDepositResourceType, 1],
+    [CoalDepositResourceType, 1],
+    [QuartzDepositResourceType, 1],
+];
+
+/**
+ * @param {GameEngine} engine
+ * @param {number} factories
+ * @returns {void}
+ */
+function assertPlacedCounts(engine, factories) {
+    for (const [type, perFactory] of COUNT_PER_FACTORY) {
+        const expected = perFactory * factories;
         const actual = engine.placed.getEidsByTypeId(type.objectTypeId).length;
         assert.equal(actual, expected, `${type.name}: expected ${expected} placed, found ${actual} (a collision silently dropped a placement)`);
     }
+}
+
+test("the Stimpack factory places every object with no tile collisions", async () => {
+    const {game} = await buildFactory();
+    assertPlacedCounts(game.simEngine, 1);
 });
 
 test("the Stimpack factory actually produces a Stimpack when ticked", async () => {
@@ -76,4 +88,58 @@ test("the Stimpack factory actually produces a Stimpack when ticked", async () =
         produced = engine.ports.getItemByPortEid(outputPort) === ITEM_TYPE_STIMPACK;
     }
     assert.ok(produced, "a Stimpack came out of Fill within the tick budget");
+});
+
+test("every placed object stands inside the factory's own chunk", async () => {
+    const {game} = await buildFactory();
+    const engine = game.simEngine;
+    const placed = engine.placed.objects;
+    const position = engine.Position;
+    for (let row = 0; row < placed.count; row += 1) {
+        const eid = placed.eids[row];
+        const x = position.x[eid];
+        const y = position.y[eid];
+        assert.equal(Math.floor(x / CHUNK_SIZE), 0, `object at (${x},${y}) left the factory's chunk`);
+        assert.equal(Math.floor(y / CHUNK_SIZE), 0, `object at (${x},${y}) left the factory's chunk`);
+    }
+});
+
+test("the scenario tiles n factories, each producing a Stimpack", async () => {
+    const copies = 4;
+    const game = await makeGame();
+    await new StimpackScenario().apply(game, new URLSearchParams(`n=${copies}`));
+    const engine = game.simEngine;
+    const fillEids = engine.placed.getEidsByTypeId(FillType.objectTypeId);
+    assert.equal(fillEids.length, copies, "one Fill per copy");
+    assertPlacedCounts(engine, copies);
+
+    const def = engine.components.getComponentByName("Machine");
+    const outputPorts = fillEids.map(eid => def.store.outputPort[def.getRowByEid(eid)]);
+    const produced = new Set();
+    for (let i = 0; i < 2000 && produced.size < copies; i += 1) {
+        game.runTick();
+        for (const portEid of outputPorts) {
+            if (engine.ports.getItemByPortEid(portEid) === ITEM_TYPE_STIMPACK) {
+                produced.add(portEid);
+            }
+        }
+    }
+    assert.equal(produced.size, copies, "every copy produced a Stimpack within the tick budget");
+});
+
+test("four factories tile a single chunk", async () => {
+    const copies = 4;
+    const game = await makeGame();
+    await new StimpackScenario().apply(game, new URLSearchParams(`n=${copies}`));
+    const engine = game.simEngine;
+    assertPlacedCounts(engine, copies);
+    const placed = engine.placed.objects;
+    const position = engine.Position;
+    for (let row = 0; row < placed.count; row += 1) {
+        const eid = placed.eids[row];
+        const x = position.x[eid];
+        const y = position.y[eid];
+        assert.equal(Math.floor(x / CHUNK_SIZE), 0, `object at (${x},${y}) left the shared chunk`);
+        assert.equal(Math.floor(y / CHUNK_SIZE), 0, `object at (${x},${y}) left the shared chunk`);
+    }
 });

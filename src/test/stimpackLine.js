@@ -2,8 +2,9 @@
 // (extractors, machines, belts, pipes, Trading Terminals) — not scripted item-shuttling. Every
 // producer instance hands into exactly one consumer port (a tree, never a shared fan-out network), so
 // placement uses a simple tree layout: each leaf gets its own horizontal lane, each internal node
-// inherits its leftmost child's lane, and depth-from-root sets the row (root/Fill north, leaves
-// south, matching this game's north-flowing port convention — see project_pipe_port_geometry).
+// inherits its leftmost child's lane, and a node's children sit as far south as that node's own
+// body and connectors need (root/Fill north, leaves south, matching this game's north-flowing port
+// convention — see project_pipe_port_geometry).
 
 import {CreateObjectMessage} from "@/common/CoreMessages.js";
 import {Direction} from "@/common/constants.js";
@@ -41,10 +42,9 @@ import {ConfigureTradingTerminalMessage} from "@/mods/market/common/messages.js"
 import {MARKET_MODE_BUY, MARKET_SETTING_BALANCE} from "@/mods/market/common/constants.js";
 import {CHUNK_SIZE} from "@/common/constants.js";
 
-// Tile spacing between sibling leaf lanes / between depth tiers: generous relative to the largest
-// footprint (3x3) and the ports' own column spread (0-2), so unrelated branches never collide.
-const LANE_WIDTH = 11;
-const TIER_HEIGHT = 8;
+// Column spacing between sibling leaf lanes: the widest object is 3 tiles, and a connector climbs in
+// the column of the port it leaves or enters, never beside it.
+const LANE_WIDTH = 3;
 
 // The player this factory is built for: pre-funded and pre-claimed, so its two NPC-buy Trading
 // Terminals are live from tick one (no session needs to claim/configure anything by hand).
@@ -146,16 +146,90 @@ function assignLanes(node, counter) {
 }
 
 /**
+ * The lane-relative column a node's output climbs in.
  * @param {object} node
- * @param {number} depth root (Fill) is 0; leaves are deepest
+ * @returns {number}
+ */
+function outputColumn(node) {
+    return node.lane * LANE_WIDTH + placedType(node).outputPorts[0].x;
+}
+
+/**
+ * The lane-relative column one of a node's input ports takes from.
+ * @param {object} node
+ * @param {number} portIndex
+ * @returns {number}
+ */
+function inputColumn(node, portIndex) {
+    return node.lane * LANE_WIDTH + placedType(node).inputPorts[portIndex].x;
+}
+
+/**
+ * The rows between a node's own row and its children's: its body, the connector row beneath it, and
+ * one row per child whose path jogs sideways, since two jogs crossing each other need separate rows.
+ * @param {object} node
+ * @returns {number}
+ */
+function tierHeight(node) {
+    let jogs = 0;
+    for (const edge of node.children) {
+        if (outputColumn(edge.child) !== inputColumn(node, edge.portIndex)) {
+            jogs += 1;
+        }
+    }
+    if (jogs === 0) {
+        jogs = 1;
+    }
+    return placedType(node).geometry.extent.y + 2 + jogs;
+}
+
+/**
+ * @param {object} node
+ * @param {number} row rows south of the root (Fill), which sits at 0
  * @returns {void}
  */
-function assignDepth(node, depth) {
-    node.depth = depth;
+function assignRows(node, row) {
+    node.row = row;
+    const height = tierHeight(node);
     for (const edge of node.children) {
-        assignDepth(edge.child, depth + 1);
+        assignRows(edge.child, row + height);
     }
 }
+
+/**
+ * The ObjectType a node actually places: a resource carries an Extractor, a terminal a Trading
+ * Terminal, a machine its own type.
+ * @param {object} node
+ * @returns {ObjectType}
+ */
+function placedType(node) {
+    if (node.kind === "resource") {
+        return ExtractorType;
+    }
+    if (node.kind === "terminal") {
+        return TradingTerminalType;
+    }
+    return node.type;
+}
+
+/**
+ * The chain with every node's lane and row assigned, ready to place.
+ * @returns {object} the root (Fill) node
+ */
+function layoutTree() {
+    const tree = buildTree();
+    assignLanes(tree, {next: 0});
+    assignRows(tree, 0);
+    return tree;
+}
+
+const LAYOUT = layoutTree();
+
+// The tile box one factory occupies, anchored at the root (Fill) tile: lanes run east, children
+// south. Connector paths stay inside it, since every path runs between a node and its own child
+// within the lane span of their subtree.
+const FACTORY_WIDTH = maxOf(LAYOUT, node => node.lane * LANE_WIDTH + placedType(node).geometry.extent.x + 1);
+const FACTORY_HEIGHT = maxOf(LAYOUT, node => node.row + placedType(node).geometry.extent.y + 1);
 
 /**
  * @param {number} x
@@ -196,21 +270,18 @@ function markFootprint(occupied, type, x, y) {
  */
 function placeNode(engine, node, originX, originY, occupied) {
     node.x = originX + node.lane * LANE_WIDTH;
-    node.y = originY + node.depth * TIER_HEIGHT;
+    node.y = originY + node.row;
     if (node.kind === "resource") {
         engine.applyMessage(new CreateObjectMessage(node.resourceType.objectTypeId, node.x, node.y, Direction.UP));
         engine.applyMessage(new CreateObjectMessage(ExtractorType.objectTypeId, node.x, node.y, Direction.UP));
-        node.outputPort = ExtractorType.outputPorts[0];
         markFootprint(occupied, ExtractorType, node.x, node.y);
     } else if (node.kind === "terminal") {
         engine.applyMessage(new CreateObjectMessage(TradingTerminalType.objectTypeId, node.x, node.y, Direction.UP));
         const eid = engine.placed.getEidsByTypeId(TradingTerminalType.objectTypeId).at(-1);
         node.objectRef = engine.placed.getObjectRefByEid(eid);
-        node.outputPort = TradingTerminalType.outputPorts[0];
         markFootprint(occupied, TradingTerminalType, node.x, node.y);
     } else {
         engine.applyMessage(new CreateObjectMessage(node.type.objectTypeId, node.x, node.y, Direction.UP));
-        node.outputPort = node.type.outputPorts[0];
         markFootprint(occupied, node.type, node.x, node.y);
     }
     for (const edge of node.children) {
@@ -275,9 +346,6 @@ function pathWaypoints(from, to, climb) {
     return waypoints;
 }
 
-// How many distinct climb depths to try before giving up on a collision-free path for one edge.
-const MAX_CLIMB_ATTEMPTS = 40;
-
 /**
  * Lays a belt/pipe path from `from` to `to` (see pathWaypoints), picking the smallest climb depth
  * (1, 2, 3, ...) whose full waypoint list doesn't step on any tile `occupied` already claims.
@@ -290,8 +358,10 @@ const MAX_CLIMB_ATTEMPTS = 40;
  * @returns {void}
  */
 function layPath(engine, objectType, from, to, occupied) {
+    // A climb past the target row can never turn back south, so the gap itself bounds the search.
+    const maxClimb = from.y - to.y;
     let waypoints = null;
-    for (let climb = 1; climb <= MAX_CLIMB_ATTEMPTS; climb += 1) {
+    for (let climb = 1; climb <= maxClimb; climb += 1) {
         const candidate = pathWaypoints(from, to, climb);
         const free = candidate.every(tile => !occupied.has(tileKeyAt(tile.x, tile.y)));
         if (free) {
@@ -330,13 +400,14 @@ function layPath(engine, objectType, from, to, occupied) {
  * @returns {void}
  */
 function connectEdges(engine, node, occupied) {
-    const parentType = node.kind === "terminal" ? TradingTerminalType : node.type;
+    const parentType = placedType(node);
     for (const edge of node.children) {
         const child = edge.child;
         const inputPort = parentType.inputPorts[edge.portIndex];
         const inTile = {x: node.x + inputPort.x, y: node.y + inputPort.y};
         const connectorTile = {x: inTile.x, y: inTile.y + 1};
-        const outTile = {x: child.x + child.outputPort.x, y: child.y + child.outputPort.y};
+        const outputPort = placedType(child).outputPorts[0];
+        const outTile = {x: child.x + outputPort.x, y: child.y + outputPort.y};
         const objectType = inputPort.fluid ? PipeType : BeltType;
         layPath(engine, objectType, outTile, connectorTile, occupied);
         connectEdges(engine, child, occupied);
@@ -355,30 +426,27 @@ function connectEdges(engine, node, occupied) {
  * @returns {object} the root (Fill) node
  */
 export function buildStimpackFactory(engine, game, originX, originY) {
-    const tree = buildTree();
-    assignLanes(tree, {next: 0});
-    assignDepth(tree, 0);
+    const tree = layoutTree();
 
     // Claimed before anything is placed: production is attributed to the chunk's current owner, so
-    // objects standing on unclaimed ground count for nobody.
-    let leafCount = 0;
-    countLeaves(tree, {count: () => { leafCount += 1; }});
-    const maxDepth = maxOf(tree, node => node.depth);
-    const minX = originX - 5;
-    const maxX = originX + leafCount * LANE_WIDTH + 5;
-    const minY = originY - 5;
-    const maxY = originY + (maxDepth + 1) * TIER_HEIGHT + 5;
-    const minChunkX = Math.floor(minX / CHUNK_SIZE);
-    const maxChunkX = Math.floor(maxX / CHUNK_SIZE);
-    const minChunkY = Math.floor(minY / CHUNK_SIZE);
-    const maxChunkY = Math.floor(maxY / CHUNK_SIZE);
-    const maxChunks = (maxChunkX - minChunkX + 1) * (maxChunkY - minChunkY + 1);
+    // objects standing on unclaimed ground count for nobody. The row north of the origin carries
+    // Fill's own output.
+    const minChunkX = Math.floor(originX / CHUNK_SIZE);
+    const maxChunkX = Math.floor((originX + FACTORY_WIDTH - 1) / CHUNK_SIZE);
+    const minChunkY = Math.floor((originY - 1) / CHUNK_SIZE);
+    const maxChunkY = Math.floor((originY + FACTORY_HEIGHT - 1) / CHUNK_SIZE);
+    const owned = game.claims.getChunkKeysByPlayerRef(STIMPACK_FACTORY_PLAYER_REF).size;
+    const maxChunks = owned + (maxChunkX - minChunkX + 1) * (maxChunkY - minChunkY + 1);
     for (let cy = minChunkY; cy <= maxChunkY; cy += 1) {
         for (let cx = minChunkX; cx <= maxChunkX; cx += 1) {
             game.claims.claim(STIMPACK_FACTORY_PLAYER_REF, chunkOrdinal(cx, cy), maxChunks);
         }
     }
-    game.playerSettings.setPlayerValue(STIMPACK_FACTORY_PLAYER_REF, MARKET_SETTING_BALANCE, STARTING_BALANCE);
+    let balance = game.playerSettings.getPlayerValueByKey(STIMPACK_FACTORY_PLAYER_REF, MARKET_SETTING_BALANCE);
+    if (balance === undefined) {
+        balance = 0;
+    }
+    game.playerSettings.setPlayerValue(STIMPACK_FACTORY_PLAYER_REF, MARKET_SETTING_BALANCE, balance + STARTING_BALANCE);
 
     const occupied = new Set();
     placeNode(engine, tree, originX, originY, occupied);
@@ -386,21 +454,6 @@ export function buildStimpackFactory(engine, game, originX, originY) {
     configureTerminals(game, tree);
 
     return tree;
-}
-
-/**
- * @param {object} node
- * @param {{count: Function}} sink
- * @returns {void}
- */
-function countLeaves(node, sink) {
-    if (node.children.length === 0) {
-        sink.count();
-        return;
-    }
-    for (const edge of node.children) {
-        countLeaves(edge.child, sink);
-    }
 }
 
 /**

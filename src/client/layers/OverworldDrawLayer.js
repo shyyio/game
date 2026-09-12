@@ -120,7 +120,7 @@ export class OverworldDrawLayer extends AbstractDrawLayer {
         }
         const runsByColor = new Map();
         for (let run = 0; run < entry.runStarts.length; run += 1) {
-            const type = this.modRegistry.typeById(entry.runTypeIds[run]);
+            const type = this.modRegistry.getObjectTypeByTypeId(entry.runTypeIds[run]);
             let color;
             if (type.mapColor !== null) {
                 color = type.mapColor;
