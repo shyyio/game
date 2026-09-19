@@ -1,0 +1,28 @@
+Base textures for Shy's Power-Up Factory
+Copyright (C) 2025-2026 Shy
+
+The artwork in this directory (the sprite sources under sprites/ and the packed
+atlases main.png, terrain.png and animated.png built from them) is licensed under
+the Creative Commons Attribution-NonCommercial-NoDerivatives 4.0 International
+License, not under the GNU General Public License that covers the rest of this
+program.
+
+  https://creativecommons.org/licenses/by-nc-nd/4.0/
+  Full text: https://creativecommons.org/licenses/by-nc-nd/4.0/legalcode
+
+In short: you may copy and redistribute these textures, unmodified, for
+non-commercial purposes, with attribution to Shy. You may not sell them or
+anything containing them, and you may not distribute altered versions of them.
+
+Attribute as: "Base textures by Shy, CC BY-NC-ND 4.0".
+
+                        BUILD AND RUNTIME PERMISSION
+
+Packing, scaling, recompressing, slicing into frames, tinting at draw time, or
+inlining these files into a bundle, as this program's build and rendering do, is
+a technical format change and not an adaptation. Doing it to run or distribute
+this program is permitted.
+
+The code in this directory (declaration.js, client.js, assets.js) and the atlas
+metadata (main.json, terrain.json, animated.json) are part of the program and
+stay under the GNU General Public License; see ../../../LICENSE.

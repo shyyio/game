@@ -20,6 +20,12 @@ or otherwise incorporates code from this program, or that reaches into it other
 than through those interfaces, remains subject to the GNU General Public License
 in full.
 
+                        BASE TEXTURES ARE NOT UNDER THIS LICENSE
+
+The artwork in src/mods/base-textures/ is licensed separately under 
+Creative Commons Attribution-NonCommercial-NoDerivatives 4.0 International,
+and is distributed with this program as a separate work. See src/mods/base-textures/LICENSE.
+
 
                     GNU GENERAL PUBLIC LICENSE
                        Version 3, 29 June 2007
