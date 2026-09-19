@@ -1,6 +1,6 @@
 import {Container} from "pixi.js";
 import {AbstractDrawLayer} from "@/client/layers/AbstractDrawLayer.js";
-import {ObjectSprite} from "@/client/layers/ObjectSprite.js";
+import {getBodyTextureOrNull, ObjectSprite} from "@/client/layers/ObjectSprite.js";
 import Mouse from "@/client/input/Mouse.js";
 import {TILE_SIZE} from "@/client/constants.js";
 import {Direction} from "@/common/constants.js";
@@ -56,7 +56,15 @@ export class ObjectGhostLayer extends AbstractDrawLayer {
         this._anchorTileY = tileY;
         this._direction = direction;
         this._snapKey = null;
-        const sprite = new ObjectSprite(0, tileX, tileY, direction, this.textureCache.get(this._type.textureName), this._type);
+        const sprite = new ObjectSprite({
+            id: 0,
+            tileX,
+            tileY,
+            direction,
+            texture: this.textureCache.get(this._type.textureName),
+            type: this._type,
+            bodyTexture: getBodyTextureOrNull(this.textureCache, this._type),
+        });
         let ghostTint;
         let ghostAlpha;
         if (isBlocked) {
@@ -111,7 +119,7 @@ export class ObjectGhostLayer extends AbstractDrawLayer {
 
     clear() {
         if (this._sprite !== null) {
-            this._sprite.destroy();
+            this._sprite.destroy({children: true});
             this._spriteContainer.removeChild(this._sprite);
             this._sprite = null;
         }

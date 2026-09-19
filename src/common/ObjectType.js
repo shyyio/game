@@ -109,6 +109,7 @@ export class ObjectType {
      * @param [config.internalPorts] {PortDefinition[]}
      * @param config.geometry {string} a named geometry (key of ObjectGeometries, e.g. "1x1", "1x2")
      * @param [config.textureName] {string|null} the object sprite's texture, used by the derived layers
+     * @param [config.bodyTextureName] {string|null} art drawn over textureName, for a machine standing on the shared frame
      * @param [config.mapColor] {number|null} map-mode tile color; null uses the shared default
      * @param [config.overworldVisible] {boolean} whether the overworld bake includes this type's
      *     tiles; off for buried objects
@@ -144,6 +145,7 @@ export class ObjectType {
         internalPorts=[],
         geometry,
         textureName=null,
+        bodyTextureName=null,
         mapColor=null,
         overworldVisible=true,
         drawLayerIndex=20,
@@ -169,6 +171,7 @@ export class ObjectType {
         // The named geometry; the `geometry` getter resolves it to the ObjectGeometry.
         this.geometryName = geometry;
         this.textureName = textureName;
+        this.bodyTextureName = bodyTextureName;
         this.mapColor = mapColor;
         this.overworldVisible = overworldVisible;
         this.drawLayerIndex = drawLayerIndex;

@@ -3,7 +3,7 @@ import {TILE_SIZE} from "@/client/constants.js";
 import {chunkKeyAt} from "@/common/util.js";
 import {MAP_TILE_COLOR} from "@/client/Theme.js";
 import {ObjectClientEntry} from "@/client/state/ObjectsState.js";
-import {ObjectSprite} from "@/client/layers/ObjectSprite.js";
+import {getBodyTextureOrNull, ObjectSprite} from "@/client/layers/ObjectSprite.js";
 
 /**
  * Renders one object type's placed sprites off the shared cache: the objects state owns the
@@ -38,14 +38,15 @@ export class ObjectDrawLayer extends AbstractChunkedDrawLayer {
             return;
         }
         this.removeObject(entry.id);
-        this.addObject(entry.id, new ObjectSprite(
-            entry.id,
-            entry.tileX,
-            entry.tileY,
-            entry.data.direction,
-            this.textureCache.get(this._type.getTextureByData(entry.data)),
-            this._type,
-        ));
+        this.addObject(entry.id, new ObjectSprite({
+            id: entry.id,
+            tileX: entry.tileX,
+            tileY: entry.tileY,
+            direction: entry.data.direction,
+            texture: this.textureCache.get(this._type.getTextureByData(entry.data)),
+            type: this._type,
+            bodyTexture: getBodyTextureOrNull(this.textureCache, this._type),
+        }));
     }
 
     /**
@@ -94,7 +95,7 @@ export class ObjectDrawLayer extends AbstractChunkedDrawLayer {
 
         const chunkKey = chunkKeyAt(sprite.tileX, sprite.tileY);
         // Scans only its own chunk's children, and detaches from its parent.
-        sprite.destroy();
+        sprite.destroy({children: true});
         this._objects.delete(id);
 
         const node = this._chunks.get(chunkKey);

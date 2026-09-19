@@ -80,6 +80,7 @@ export const ExtractorType = new ObjectType({
     outputPorts: [new PortDefinition("outputPort", {x: 0, y: -1, direction: Direction.UP})],
     geometry: "1x1",
     textureName: "machine/1x1",
+    bodyTextureName: "machine/extractor/exctractor_still",
     label: "Extractor",
     inspectable: true,
     placement: new PlacementRule({shouldReplaceSameKind: true, placeOn: RESOURCE_TYPES}),

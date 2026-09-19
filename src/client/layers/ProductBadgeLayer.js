@@ -38,7 +38,7 @@ const BADGE_SCALES = [
 // Idle badges kept for reuse; overflow is destroyed instead of parked.
 const BADGE_POOL_LIMIT = 128;
 
-// World pixels the machine art stands above its footprint
+// World pixels the badge floats above the machine's footprint.
 const MACHINE_DRAW_HEIGHT = 8;
 
 /**

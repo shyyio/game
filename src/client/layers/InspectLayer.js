@@ -36,7 +36,14 @@ export class InspectLayer extends AbstractDrawLayer {
                 variantSuffix = "";
             }
             const texture = this.textureCache.get(`inspect/${highlight.type.geometryName}${variantSuffix}`);
-            const sprite = new ObjectSprite(0, highlight.tileX, highlight.tileY, highlight.direction, texture, highlight.type);
+            const sprite = new ObjectSprite({
+                id: 0,
+                tileX: highlight.tileX,
+                tileY: highlight.tileY,
+                direction: highlight.direction,
+                texture,
+                type: highlight.type,
+            });
             sprite.y -= highlight.drawHeight;
             this.addChild(sprite);
             this._sprites.push(sprite);
@@ -55,7 +62,7 @@ export class InspectLayer extends AbstractDrawLayer {
 
     clear() {
         for (const sprite of this._sprites) {
-            sprite.destroy();
+            sprite.destroy({children: true});
             this.removeChild(sprite);
         }
         this._sprites.splice(0);
