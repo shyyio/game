@@ -1,9 +1,11 @@
+import {EMPTY} from "@/sim/AbstractComponent.js";
 import {ChunkUnsubscribeEvent} from "@/common/CoreEvents.js";
 import {ObjectInsertEvent, ObjectSyncEvent, ObjectDeleteEvent, ObjectFieldsEvent} from "@/common/ObjectEvents.js";
 import {TILE_VARIANT_LIMIT, chunkKeyAt, tileKeyAt, tileVariantKey} from "@/common/util.js";
 import {portAt, edgeKey} from "@/common/portGeometry.js";
 import {Direction, LAYER_SURFACE} from "@/common/constants.js";
 import {DEV} from "@/common/env.js";
+import {TILE_SIZE} from "@/client/constants.js";
 import {AbstractCacheWriter, AbstractCacheView, schemaMap} from "@/client/state/ClientCache.js";
 import {ListenerList} from "@/common/ListenerList.js";
 
@@ -212,12 +214,49 @@ export class CacheEntry {
     }
 
     /**
+     * The world-px center of the footprint.
+     * @returns {Point}
+     */
+    get center() {
+        const centroid = this.tileCentroid;
+        return {
+            x: (centroid.tileX + 0.5) * TILE_SIZE,
+            y: (centroid.tileY + 0.5) * TILE_SIZE,
+        };
+    }
+
+    /**
      * The type's behavior, or null for a typeless (test-built) entry.
      * @returns {AbstractBehavior|null}
      */
     get behavior() {
         const type = this.data.type;
         return type === undefined ? null : type.behavior;
+    }
+
+    /**
+     * The synced field holding what this object offers as its product, or null for an object that
+     * produces nothing.
+     * @returns {ProductField|null}
+     */
+    getProductFieldOrNull() {
+        const synced = this.behavior.syncedFields;
+        if (synced === null) {
+            return null;
+        }
+        return synced.productField;
+    }
+
+    /**
+     * The item type this object offers as its product, or EMPTY while it offers none.
+     * @returns {number}
+     */
+    get productItemTypeId() {
+        const field = this.getProductFieldOrNull();
+        if (field === null) {
+            return EMPTY;
+        }
+        return this.data[field.name];
     }
 }
 

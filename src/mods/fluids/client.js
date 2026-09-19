@@ -1,7 +1,7 @@
 import {AbstractClientMod, EMPTY, Direction, chunkKeyAt} from "@spup/sdk/client";
 import {PipeFluidDrawLayer} from "./client/PipeFluidDrawLayer.js";
 import {NetworkDebugDrawLayer} from "./client/NetworkDebugDrawLayer.js";
-import {isPipeType, isTankType, PipeType} from "./common/objectTypes.js";
+import {isPipeType, PipeType} from "./common/objectTypes.js";
 import {PIPE_SEGMENT_CAPACITY, joinedFluidType} from "./common/constants.js";
 import {PipeNetworkRecalculateEvent, PipeFluidSetEvent} from "./common/events.js";
 
@@ -102,19 +102,16 @@ export class FluidsClientMod extends AbstractClientMod {
     }
 
     /**
-     * The fluid an object's output port produces, or EMPTY: a tank's held type, else the synced last
-     * output of any producer that has one.
+     * The fluid an object's output port produces, or EMPTY: the product it last made, when that is
+     * a fluid at all.
      * @private
      * @param {Client} client
      * @param {CacheEntry} entry
      * @returns {number}
      */
     _producedFluidType(client, entry) {
-        if (isTankType(entry.data.type)) {
-            return entry.data.fluidType;
-        }
-        const product = entry.data.lastOutput;
-        if (product === undefined || !client.modRegistry.fluidTypes.has(product)) {
+        const product = entry.productItemTypeId;
+        if (!client.modRegistry.fluidTypes.has(product)) {
             return EMPTY;
         }
         return product;

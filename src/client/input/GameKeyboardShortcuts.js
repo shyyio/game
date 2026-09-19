@@ -2,6 +2,7 @@ import {
     KEYBINDING_CLAIM,
     KEYBINDING_CONFIRM,
     KEYBINDING_DEBUG,
+    KEYBINDING_DETAIL_OVERLAY,
     KEYBINDING_DISCONNECT,
     KEYBINDING_EXIT,
     KEYBINDING_HOME,
@@ -57,6 +58,16 @@ export function bindGameKeyboardShortcuts(client, game, toolbar) {
 
     on(KEYBINDING_DEBUG, () => {
         client.settingsMenu.toggleDebugMode();
+    });
+
+    // Alt by default, which focuses the browser's menu bar unless the keydown is swallowed; a held
+    // key repeats, and the overlay flips once per press.
+    on(KEYBINDING_DETAIL_OVERLAY, event => {
+        event.preventDefault();
+        if (event.repeat) {
+            return;
+        }
+        client.settingsMenu.toggleDetailOverlay();
     });
 
     return () => {

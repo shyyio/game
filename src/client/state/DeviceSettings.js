@@ -12,6 +12,8 @@ export const DEVICE_SETTING_TERRAIN = "spup.terrain";
 export const DEVICE_SETTING_FPS_CAP = "spup.fps-cap";
 // localStorage key for the UI scale preference.
 export const DEVICE_SETTING_UI_SCALE = "spup.ui-scale";
+// localStorage key for the detailed-overlay preference.
+export const DEVICE_SETTING_DETAIL_OVERLAY = "spup.detail-overlay";
 // localStorage key for joining servers that pin mods no one has reviewed.
 export const DEVICE_SETTING_UNVERIFIED_MODS = "spup.unverified-mods";
 

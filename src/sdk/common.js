@@ -61,7 +61,7 @@ export {
 export {AbstractBehavior} from "@/common/behaviors/AbstractBehavior.js";
 export {StaticBehavior} from "@/common/behaviors/StaticBehavior.js";
 // A behavior's `syncedFields`: component fields the engine mirrors into the client's object data.
-export {SyncedFieldSet, SyncedField} from "@/common/SyncedFieldSet.js";
+export {SyncedFieldSet, SyncedField, ProductField} from "@/common/SyncedFieldSet.js";
 export {MachineBehavior} from "@/sim/behaviors/MachineBehavior.js";
 export {ExtractorBehavior} from "@/sim/behaviors/ExtractorBehavior.js";
 export {GeneratorBehavior} from "@/sim/behaviors/GeneratorBehavior.js";

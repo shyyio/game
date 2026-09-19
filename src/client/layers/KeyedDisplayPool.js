@@ -59,6 +59,17 @@ export class KeyedDisplayPool {
     }
 
     /**
+     * Releases every live object back to the pool.
+     * @returns {void}
+     */
+    releaseAll() {
+        for (const object of this._live.values()) {
+            this._pool.release(object);
+        }
+        this._live.clear();
+    }
+
+    /**
      * Rebinds a live object to a new key, releasing the key's previous occupant; a no-op for an
      * unknown source key.
      * @param {number|string} oldKey

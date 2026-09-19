@@ -35,6 +35,7 @@ export const KEYBINDING_DEBUG = new KeybindingEntry(109, "Debug mode", "F3");
 export const KEYBINDING_ERASER = new KeybindingEntry(110, "Eraser", "e");
 export const KEYBINDING_TICK = new KeybindingEntry(111, "Force a tick", "t");
 export const KEYBINDING_DISCONNECT = new KeybindingEntry(112, "Drop the connection", "x");
+export const KEYBINDING_DETAIL_OVERLAY = new KeybindingEntry(113, "Detailed overlay", "Alt");
 
 // Player setting key of the first toolbar slot; the rest follow it in order.
 const TOOL_SLOT_SETTING_KEY = 120;
@@ -65,4 +66,5 @@ export const CORE_KEYBINDING_ENTRIES = [
     KEYBINDING_ERASER,
     KEYBINDING_TICK,
     KEYBINDING_DISCONNECT,
+    KEYBINDING_DETAIL_OVERLAY,
 ].concat(KEYBINDING_TOOL_SLOTS);

@@ -1,10 +1,14 @@
 import {test} from "node:test";
 import assert from "node:assert";
 
-import {ObjectsView} from "@/client/state/ObjectsState.js";
+import {ObjectsView, ObjectClientEntry} from "@/client/state/ObjectsState.js";
+import {AbstractBehavior} from "@/common/behaviors/AbstractBehavior.js";
+import {SyncedFieldSet, ProductField} from "@/common/SyncedFieldSet.js";
+import {EMPTY} from "@/sim/AbstractComponent.js";
 import {ObjectType, PortDefinition} from "@/common/ObjectType.js";
 import {Direction, LAYER_SURFACE} from "@/common/constants.js";
 import {chunkKeyAt} from "@/common/util.js";
+import {TILE_SIZE} from "@/client/constants.js";
 
 // A single-cell object on layer 0 at its primary tile.
 function cell(x, y, layer=0) {
@@ -18,6 +22,23 @@ const machineType = new ObjectType({
     outputPorts: [new PortDefinition("outputPort", {x: 0, y: -1, direction: Direction.UP})],
     internalPorts: [],
     geometry: "1x1",
+});
+const ITEM_TYPE_ID = 7;
+
+const PRODUCER_SYNCED_FIELDS = new SyncedFieldSet("Producer", [new ProductField("lastOutput", EMPTY)]);
+
+class ProducerBehavior extends AbstractBehavior {
+
+    get syncedFields() {
+        return PRODUCER_SYNCED_FIELDS;
+    }
+}
+
+// A 1x1 object syncing the item it last produced.
+const producerType = new ObjectType({
+    name: "Producer",
+    geometry: "1x1",
+    behavior: new ProducerBehavior(),
 });
 // Registers a surface machine facing `direction`.
 function machine(cache, id, x, y, direction) {
@@ -168,4 +189,37 @@ test("connectedPorts reports a entry's live output connection", () => {
     assert.strictEqual(incoming.length, 1);
     assert.strictEqual(incoming[0].isOutput, false);
     assert.strictEqual(incoming[0].neighbor.id, 1);
+});
+
+test("an entry reports the product its behavior syncs, and EMPTY before the first one", () => {
+    const cache = new ObjectsView(null);
+    cache.set(1, 2, 2, cell(2, 2), {}, new ObjectClientEntry(producerType, Direction.UP));
+    assert.strictEqual(cache.get(1).productItemTypeId, EMPTY);
+
+    cache.apply(1, {lastOutput: ITEM_TYPE_ID});
+    assert.strictEqual(cache.get(1).productItemTypeId, ITEM_TYPE_ID);
+});
+
+test("an object whose behavior produces nothing reports no product", () => {
+    const cache = new ObjectsView(null);
+    cache.set(1, 2, 2, cell(2, 2), {}, new ObjectClientEntry(machineType, Direction.UP));
+    assert.strictEqual(cache.get(1).productItemTypeId, EMPTY);
+});
+
+test("a single-tile entry centers in the middle of its tile", () => {
+    const cache = new ObjectsView(null);
+    machine(cache, 1, 3, 4, Direction.UP);
+    assert.deepStrictEqual(cache.get(1).center, {x: 3.5 * TILE_SIZE, y: 4.5 * TILE_SIZE});
+});
+
+test("a multi-tile entry centers in the middle of its footprint", () => {
+    const cache = new ObjectsView(null);
+    const cells = [
+        {x: 2, y: 2, layer: LAYER_SURFACE},
+        {x: 3, y: 2, layer: LAYER_SURFACE},
+        {x: 2, y: 3, layer: LAYER_SURFACE},
+        {x: 3, y: 3, layer: LAYER_SURFACE},
+    ];
+    cache.set(1, 2, 2, cells, {}, {type: machineType, direction: Direction.UP});
+    assert.deepStrictEqual(cache.get(1).center, {x: 3 * TILE_SIZE, y: 3 * TILE_SIZE});
 });

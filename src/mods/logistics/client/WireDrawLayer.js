@@ -172,11 +172,7 @@ export class WireDrawLayer extends AbstractDrawLayer {
     static _anchor(entry) {
         const anchor = entry.data.type.wireAnchor;
         if (anchor === null) {
-            const centroid = entry.tileCentroid;
-            return {
-                x: (centroid.tileX + 0.5) * TILE_SIZE,
-                y: (centroid.tileY + 0.5) * TILE_SIZE,
-            };
+            return entry.center;
         }
         return {
             x: (entry.tileX + anchor.x) * TILE_SIZE,

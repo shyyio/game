@@ -6,7 +6,7 @@ import {SettingCategory} from "@/client/hud/SettingCategory.js";
 import {PlayerSettingChoice} from "@/client/hud/PlayerSettingChoice.js";
 import {PlayerSettingToggle} from "@/client/hud/PlayerSettingToggle.js";
 import {AbstractPlayerSettingControl} from "@/client/hud/AbstractPlayerSettingControl.js";
-import {DEVICE_SETTING_TERRAIN} from "@/client/state/DeviceSettings.js";
+import {DEVICE_SETTING_TERRAIN, DEVICE_SETTING_DETAIL_OVERLAY} from "@/client/state/DeviceSettings.js";
 import {FPS_CAP_VALUES} from "@/client/constants.js";
 
 // The menu reads device preferences and the reduced-motion media query, both browser-only.
@@ -41,7 +41,7 @@ const SETTING_KEY = 3;
 const UNREGISTERED_KEY = 99;
 const BINARY = 2;
 
-class FakeTerrainLayer {
+class FakeToggleableLayer {
 
     constructor() {
         this.rebuilds = 0;
@@ -60,8 +60,9 @@ class FakeTerrainLayer {
 class FakeClient {
 
     constructor() {
-        this.terrainLayer = new FakeTerrainLayer();
-        this.terrainDetailLayer = new FakeTerrainLayer();
+        this.terrainLayer = new FakeToggleableLayer();
+        this.terrainDetailLayer = new FakeToggleableLayer();
+        this.productBadgeLayer = new FakeToggleableLayer();
         this.terrain = null;
         this.debugLayers = null;
         this.eventLogging = null;
@@ -210,4 +211,26 @@ test("the stored terrain preference drives the ground from the start", () => {
     storage.setItem(DEVICE_SETTING_TERRAIN, "0");
     const off = build();
     assert.equal(off.client.terrainLayer.enabled, false);
+});
+
+test("the stored detailed-overlay preference drives the overlay from the start", () => {
+    storage.setItem(DEVICE_SETTING_DETAIL_OVERLAY, "1");
+    const on = build();
+    assert.equal(on.client.productBadgeLayer.enabled, true);
+
+    storage.setItem(DEVICE_SETTING_DETAIL_OVERLAY, "0");
+    const off = build();
+    assert.equal(off.client.productBadgeLayer.enabled, false);
+});
+
+test("toggling the detailed overlay flips both the overlay and the stored preference", () => {
+    storage.setItem(DEVICE_SETTING_DETAIL_OVERLAY, "0");
+    const {menu, client} = build();
+    menu.toggleDetailOverlay();
+    assert.equal(client.productBadgeLayer.enabled, true);
+    assert.equal(storage.getItem(DEVICE_SETTING_DETAIL_OVERLAY), "1");
+
+    menu.toggleDetailOverlay();
+    assert.equal(client.productBadgeLayer.enabled, false);
+    assert.equal(storage.getItem(DEVICE_SETTING_DETAIL_OVERLAY), "0");
 });

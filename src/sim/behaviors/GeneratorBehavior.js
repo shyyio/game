@@ -2,7 +2,7 @@ import {EMPTY, NO_EID, AbstractComponent, FieldDefinition} from "@/sim/AbstractC
 import {InspectHeartbeatEvent} from "@/common/InspectEvents.js";
 import {AbstractSystem} from "@/sim/AbstractSystem.js";
 import {AbstractBehavior} from "@/common/behaviors/AbstractBehavior.js";
-import {SyncedFieldSet, SyncedField} from "@/common/SyncedFieldSet.js";
+import {SyncedFieldSet, ProductField} from "@/common/SyncedFieldSet.js";
 import {syncFluidSource} from "@/sim/behaviors/util.js";
 
 /**
@@ -29,7 +29,7 @@ class GeneratorComponent extends AbstractComponent {
     }
 }
 
-const SYNCED_FIELDS = new SyncedFieldSet("Generator", [new SyncedField("lastOutput", EMPTY)]);
+const SYNCED_FIELDS = new SyncedFieldSet("Generator", [new ProductField("lastOutput", EMPTY)]);
 
 /**
  * Ticks every generator.

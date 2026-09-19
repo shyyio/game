@@ -15,6 +15,14 @@ export class SyncedField {
 }
 
 /**
+ * The synced field holding the item type an object offers as its product, which the client draws
+ * over it.
+ */
+export class ProductField extends SyncedField {
+
+}
+
+/**
  * A behavior's synced fields: which component holds them and, in wire order, which fields.
  */
 export class SyncedFieldSet {
@@ -26,5 +34,18 @@ export class SyncedFieldSet {
     constructor(component, fields) {
         this.component = component;
         this.fields = fields;
+        /**
+         * @type {ProductField|null}
+         */
+        this.productField = null;
+        for (const field of fields) {
+            if (!(field instanceof ProductField)) {
+                continue;
+            }
+            if (this.productField !== null) {
+                throw new Error(`Component "${component}" declares two product fields; a behavior has one product field`);
+            }
+            this.productField = field;
+        }
     }
 }

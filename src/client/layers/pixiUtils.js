@@ -36,8 +36,18 @@ export function nineSlice(textureCache, name, insetX, insetY, width, height) {
 export function fitIcon(icon, size, inset) {
     const box = size - inset * 2;
     icon.anchor = 0.5;
-    icon.scale = Math.min(box / icon.texture.width, box / icon.texture.height);
+    icon.scale = fitIconScale(icon.texture, box);
     icon.position.set(size / 2, size / 2);
+}
+
+/**
+ * The scale fitting a texture into a square box of `box` without distorting it.
+ * @param {Texture} texture
+ * @param {number} box
+ * @returns {number}
+ */
+export function fitIconScale(texture, box) {
+    return Math.min(box / texture.width, box / texture.height);
 }
 
 /**

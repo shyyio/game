@@ -34,9 +34,10 @@ export class InspectPanelLayer extends ConnectedPanelLayer {
                 if (entry !== null) {
                     machineTile = {x: entry.tileX, y: entry.tileY};
                     title = entry.data.type.label;
-                    // The synced last output of a producer; EMPTY before its first delivery.
-                    if (entry.data.lastOutput !== undefined && entry.data.lastOutput !== EMPTY) {
-                        lastProduced = entry.data.lastOutput;
+                    // EMPTY before a producer's first delivery, and for anything that produces nothing.
+                    const product = entry.productItemTypeId;
+                    if (product !== EMPTY) {
+                        lastProduced = product;
                     }
                 }
                 this.apply(heartbeat, lastProduced, machineTile, title);

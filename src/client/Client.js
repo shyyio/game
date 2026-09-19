@@ -43,6 +43,7 @@ import {InspectHighlightSprite} from "@/client/layers/InspectHighlightSprite.js"
 import {LaneItemDrawLayer} from "@/client/layers/LaneItemDrawLayer.js";
 import {ItemDrawLayer} from "@/client/layers/ItemDrawLayer.js";
 import {HitsplatLayer} from "@/client/layers/HitsplatLayer.js";
+import {ProductBadgeLayer} from "@/client/layers/ProductBadgeLayer.js";
 import {ConnectionDrawLayer} from "@/client/layers/ConnectionDrawLayer.js";
 import {WorkerDrawLayer} from "@/client/layers/WorkerDrawLayer.js";
 import {WorkerDebugLayer} from "@/client/layers/WorkerDebugLayer.js";
@@ -304,6 +305,8 @@ export class Client {
         this.workerBadgeLayer = new WorkerBadgeLayer(this.cache);
         // Floating text over the world
         this.hitsplatLayer = new HitsplatLayer();
+        // The detailed overlay: the item each producer made last, centered over it; off by default.
+        this.productBadgeLayer = new ProductBadgeLayer(this.modRegistry.items);
     }
 
     /**
@@ -371,6 +374,7 @@ export class Client {
         this.drawLayerRegistry.add(this.workerDebugLayer);
         this.drawLayerRegistry.add(this.workerBadgeLayer);
         this.drawLayerRegistry.add(this.hitsplatLayer);
+        this.drawLayerRegistry.add(this.productBadgeLayer);
 
         // One bind per layer: sets the shared cache and registers whichever cache hooks the layer
         // overrides — before init, since cache writes can arrive while textures load.

@@ -9,7 +9,7 @@ import {DeviceSettingSlider} from "@/client/hud/DeviceSettingSlider.js";
 import DeviceSettings, {
     DEVICE_SETTING_FULLSCREEN, DEVICE_SETTING_REDUCED_MOTION, DEVICE_SETTING_MOBILE,
     DEVICE_SETTING_THEME, DEVICE_SETTING_TERRAIN, DEVICE_SETTING_FPS_CAP,
-    DEVICE_SETTING_UI_SCALE,
+    DEVICE_SETTING_UI_SCALE, DEVICE_SETTING_DETAIL_OVERLAY,
 } from "@/client/state/DeviceSettings.js";
 import {applyUiScale, UI_SCALE_NORMAL, UI_SCALE_MIN, UI_SCALE_MAX, UI_SCALE_STEP} from "@/client/hud/UiScale.js";
 import {applyTheme, THEME_NAMES, THEME_DEFAULT} from "@/client/Theme.js";
@@ -20,6 +20,9 @@ import {FPS_CAP_NAMES, FPS_CAP_VALUES, FPS_CAP_DEFAULT} from "@/client/constants
 
 // Terrain rendering while the device setting is unset.
 const TERRAIN_ENABLED_DEFAULT = false;
+
+// The detailed overlay while its device setting is unset.
+const DETAIL_OVERLAY_ENABLED_DEFAULT = false;
 
 /**
  * The settings menu's catalog, merged from the engine's own section and every client mod's, and
@@ -33,8 +36,10 @@ export class SettingsMenu {
     constructor(client) {
         this._client = client;
         this._debugMode = false;
-        // The stored device setting drives the ground the same way the menu's toggle does.
+        // The stored device settings drive the ground and the overlay the same way the menu's
+        // toggles do.
         this.setTerrainEnabled(DeviceSettings.getBoolean(DEVICE_SETTING_TERRAIN, TERRAIN_ENABLED_DEFAULT));
+        this._client.productBadgeLayer.setEnabled(DeviceSettings.getBoolean(DEVICE_SETTING_DETAIL_OVERLAY, DETAIL_OVERLAY_ENABLED_DEFAULT));
     }
 
     /**
@@ -81,6 +86,16 @@ export class SettingsMenu {
         this._debugMode = !this._debugMode;
         this._client.drawLayerRegistry.setDebugMode(this._debugMode);
         this._client.events.setLogging(this._debugMode);
+    }
+
+    /**
+     * Flips the detailed overlay, storing the new state as this device's preference.
+     * @returns {void}
+     */
+    toggleDetailOverlay() {
+        const enabled = !DeviceSettings.getBoolean(DEVICE_SETTING_DETAIL_OVERLAY, DETAIL_OVERLAY_ENABLED_DEFAULT);
+        DeviceSettings.setBoolean(DEVICE_SETTING_DETAIL_OVERLAY, enabled);
+        this._client.productBadgeLayer.setEnabled(enabled);
     }
 
     /**
@@ -136,6 +151,7 @@ export class SettingsMenu {
                 new DeviceSettingToggle(DEVICE_SETTING_REDUCED_MOTION, "Reduced motion", ReducedMotion.isDevicePreferred(), on => ReducedMotion.setEnabled(on)),
                 new DeviceSettingToggle(DEVICE_SETTING_MOBILE, "Touchscreen input", Mobile.isDevicePreferred(), on => Mobile.setEnabled(on)),
                 new DeviceSettingToggle(DEVICE_SETTING_TERRAIN, "Terrain", TERRAIN_ENABLED_DEFAULT, on => this.setTerrainEnabled(on)),
+                new DeviceSettingToggle(DEVICE_SETTING_DETAIL_OVERLAY, "Detailed overlay", DETAIL_OVERLAY_ENABLED_DEFAULT, on => this._client.productBadgeLayer.setEnabled(on)),
                 new DeviceSettingChoice(DEVICE_SETTING_THEME, "Theme", THEME_NAMES, THEME_DEFAULT, index => applyTheme(index)),
                 new DeviceSettingChoice(DEVICE_SETTING_FPS_CAP, "Frame rate cap", FPS_CAP_NAMES, FPS_CAP_DEFAULT, index => this.setFpsCap(index)),
                 new DeviceSettingSlider(DEVICE_SETTING_UI_SCALE, "UI Scale", UI_SCALE_MIN, UI_SCALE_MAX, UI_SCALE_STEP, UI_SCALE_NORMAL, scale => applyUiScale(scale)),

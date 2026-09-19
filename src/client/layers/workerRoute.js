@@ -24,19 +24,6 @@ function walkableAt(cache, x, y) {
 }
 
 /**
- * The world-px center of an entry's footprint.
- * @param {CacheEntry} entry
- * @returns {{x: number, y: number}}
- */
-function entryCenter(entry) {
-    const centroid = entry.tileCentroid;
-    return {
-        x: centroid.tileX * TILE_SIZE + TILE_SIZE / 2,
-        y: centroid.tileY * TILE_SIZE + TILE_SIZE / 2,
-    };
-}
-
-/**
  * BFS outward from the machine's edge over the cached road and housing tiles; the first housing
  * reached is the nearest one in the machine's network, and the shortest route to it comes back as
  * world-px waypoints (housing center first, walked tile centers, machine center last), or null
@@ -89,13 +76,13 @@ export function getCommuteRouteOrNull(cache, machineEntry) {
     }
 
     // The goal tile is the housing's edge cell; its center follows, so the walk starts there.
-    const waypoints = [entryCenter(goal.entry)];
+    const waypoints = [goal.entry.center];
     for (let node = parents.get(goal.tile); node !== null; node = parents.get(node.tile)) {
         waypoints.push({
             x: node.x * TILE_SIZE + TILE_SIZE / 2,
             y: node.y * TILE_SIZE + TILE_SIZE / 2,
         });
     }
-    waypoints.push(entryCenter(machineEntry));
+    waypoints.push(machineEntry.center);
     return waypoints;
 }

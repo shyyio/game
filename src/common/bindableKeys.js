@@ -11,6 +11,7 @@ export const BINDABLE_KEYS = [
     "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight",
     "Enter", "Escape", " ", "Backspace", "Delete", "Insert", "Home", "End", "PageUp", "PageDown",
     "-", "=", "[", "]", "\\", ";", "'", ",", ".", "/", "`",
+    "Alt",
 ];
 
 // The stored value of a binding no key fires.
