@@ -36,7 +36,7 @@ const PORT_OUTPUT = new PortDefinition("outputPort", {x: 0, y: -1, direction: Di
 export const TestLaneType = new ObjectType({
     name: "TestLane",
     geometry: "1x1",
-    textureName: "demo-machine/0",
+    textureName: "machine/1x1",
     label: "Test Lane",
     conveys: CONVEYS_ITEM,
     placement: new PlacementRule({isConveyor: true}),
@@ -48,7 +48,7 @@ export const TestLaneType = new ObjectType({
 export const TestLaneDownType = new ObjectType({
     name: "TestLaneDown",
     geometry: "1x1",
-    textureName: "demo-machine/0",
+    textureName: "machine/1x1",
     label: "Test Lane Down",
     conveys: CONVEYS_ITEM,
     inputPorts: [PORT_INPUT_BACK],
@@ -59,7 +59,7 @@ export const TestLaneDownType = new ObjectType({
 export const TestLaneBuriedType = new ObjectType({
     name: "TestLaneBuried",
     geometry: "1x1",
-    textureName: "demo-machine/0",
+    textureName: "machine/1x1",
     label: "Test Lane Buried",
     conveys: CONVEYS_ITEM,
     inputPorts: [PORT_INPUT_BACK],
@@ -70,7 +70,7 @@ export const TestLaneBuriedType = new ObjectType({
 export const TestLaneUpType = new ObjectType({
     name: "TestLaneUp",
     geometry: "1x1",
-    textureName: "demo-machine/0",
+    textureName: "machine/1x1",
     label: "Test Lane Up",
     conveys: CONVEYS_ITEM,
     inputPorts: [PORT_INPUT_BACK],
@@ -81,7 +81,7 @@ export const TestLaneUpType = new ObjectType({
 export const TestLaneRampUpType = new ObjectType({
     name: "TestLaneRampUp",
     geometry: "1x1",
-    textureName: "demo-machine/0",
+    textureName: "machine/1x1",
     label: "Test Lane Ramp Up",
     conveys: CONVEYS_ITEM,
     inputPorts: [PORT_INPUT_BACK],
@@ -93,7 +93,7 @@ export const TestLaneRampUpType = new ObjectType({
 export const TestLaneElevatedType = new ObjectType({
     name: "TestLaneElevated",
     geometry: "1x1",
-    textureName: "demo-machine/0",
+    textureName: "machine/1x1",
     label: "Test Lane Elevated",
     conveys: CONVEYS_ITEM,
     inputPorts: [PORT_INPUT_LEFT, PORT_INPUT_BACK, PORT_INPUT_RIGHT],
@@ -104,7 +104,7 @@ export const TestLaneElevatedType = new ObjectType({
 export const TestLaneRampDownType = new ObjectType({
     name: "TestLaneRampDown",
     geometry: "1x1",
-    textureName: "demo-machine/0",
+    textureName: "machine/1x1",
     label: "Test Lane Ramp Down",
     conveys: CONVEYS_ITEM,
     inputPorts: [PORT_INPUT_BACK],

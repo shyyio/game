@@ -40,7 +40,7 @@ class RecordingBehavior extends AbstractBehavior {
 const RecordingType = new ObjectType({
     name: "RecordingHookObject",
     geometry: "1x1",
-    textureName: "demo-machine/0",
+    textureName: "machine/1x1",
     label: "RecordingHookObject",
     placement: new PlacementRule({shouldReplaceSameKind: true}),
     behavior: new RecordingBehavior(),

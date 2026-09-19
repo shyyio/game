@@ -70,26 +70,6 @@ export class KeyedDisplayPool {
     }
 
     /**
-     * Rebinds a live object to a new key, releasing the key's previous occupant; a no-op for an
-     * unknown source key.
-     * @param {number|string} oldKey
-     * @param {number|string} newKey
-     * @returns {void}
-     */
-    rename(oldKey, newKey) {
-        const object = this._live.get(oldKey);
-        if (object === undefined) {
-            return;
-        }
-        const existing = this._live.get(newKey);
-        if (existing !== undefined && existing !== object) {
-            this._pool.release(existing);
-        }
-        this._live.delete(oldKey);
-        this._live.set(newKey, object);
-    }
-
-    /**
      * Removes a live object from the key space without releasing it, so the caller can animate it
      * out and release it to the pool itself later; undefined for an unknown key.
      * @param {number|string} key

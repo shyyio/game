@@ -68,5 +68,7 @@ export function fluidColor(fluidType) {
     return color;
 }
 
-// The fluid overlay draws above the default object sprites (20).
-export const DRAW_LAYER_PIPE_FLUID = 21;
+// Pipes draw below the default object sprites (20), so a machine's art overhangs them; the fluid
+// overlay draws just above the pipes carrying it.
+export const DRAW_LAYER_PIPE = 11;
+export const DRAW_LAYER_PIPE_FLUID = 12;

@@ -1,5 +1,5 @@
 import {AbstractDrawLayer, currentAnimationFrame} from "@spup/sdk/client";
-import {BeltBend, BELT_UNDERGROUND} from "../common/constants.js";
+import {BELT_UNDERGROUND} from "../common/constants.js";
 import {BeltSprite, beltFrameBase} from "./BeltDrawLayer.js";
 
 /**
@@ -24,16 +24,8 @@ export class BeltOverlayDrawLayer extends AbstractDrawLayer {
     showUndergroundReveal(tiles, direction) {
         this.clearUndergroundReveal();
         for (const tile of tiles) {
-            const frames = this.textureCache.getAnimation(beltFrameBase(BeltBend.STRAIGHT, BELT_UNDERGROUND));
-            const sprite = new BeltSprite(
-                0,
-                tile.x,
-                tile.y,
-                direction,
-                BeltBend.STRAIGHT,
-                BELT_UNDERGROUND,
-                frames,
-            );
+            const frames = this.textureCache.getAnimation(beltFrameBase(direction, direction, BELT_UNDERGROUND));
+            const sprite = new BeltSprite(0, tile.x, tile.y, frames);
             sprite.setAnimationFrame(currentAnimationFrame());
             this.addChild(sprite);
             this._revealSprites.push(sprite);

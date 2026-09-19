@@ -1,6 +1,7 @@
 import {AbstractDrawLayer} from "@/client/layers/AbstractDrawLayer.js";
 import {Direction} from "@/common/constants.js";
 import {LANE_LEVEL_SURFACE} from "@/sim/LaneIndex.js";
+import {buildLanePath} from "@/client/layers/LanePath.js";
 import {PortItemSetEvent, PortItemClearEvent} from "@/common/PortItemEvents.js";
 import {
     LaneCreatedEvent,
@@ -36,16 +37,86 @@ class LaneEntry {
         this.items = new Map();
         // A lead was popped and its output port sprite has yet to appear, so that one glides in.
         this.popPending = false;
+        /**
+         * The lane's slots and the line they stand on, built once every cell is cached.
+         * @type {LaneSlots|null}
+         */
+        this.slots = null;
     }
 }
 
 /**
- * @typedef {Object} LaneSlots
- * @property {CacheEntry[]} cells
- * @property {number[]} slots per cell
- * @property {number[]} offsets each cell's first slot
- * @property {number} total
+ * A lane's slots: how many each cell holds, and where each one stands along the line the cells
+ * trace. Pure rebuild-time topology, so it is built once per lane geometry.
  */
+export class LaneSlots {
+
+    /**
+     * @param {Object} lane
+     * @param {CacheEntry[]} lane.cells - head first
+     * @param {number[]} lane.slots - slots per cell
+     * @param {number[]} lane.offsets - each cell's first slot
+     * @param {number} lane.total
+     * @param {LanePath} lane.path
+     */
+    constructor({cells, slots, offsets, total, path}) {
+        this.cells = cells;
+        this.slots = slots;
+        this.offsets = offsets;
+        this.total = total;
+        this.path = path;
+        /**
+         * Each slot's distance along the path: an edge slot where the next cell's stretch starts,
+         * a center slot halfway along its own, which in a cell items turn in is a point on the arc
+         * rather than the tile center.
+         * @type {number[]}
+         */
+        this.distances = [];
+        for (let index = 0; index < cells.length; index += 1) {
+            const center = path.getDistanceByCellIndex(index) + path.getLengthByCellIndex(index) / 2;
+            for (let slot = 0; slot < slots[index]; slot += 1) {
+                this.distances.push(center);
+            }
+            // A cell's last slot is the edge into the next cell.
+            this.distances[this.distances.length - 1] = path.getDistanceByCellIndex(index + 1);
+        }
+    }
+
+    /**
+     * The cell a slot stands in.
+     * @param {number} physical - the slot counted from the lane's input edge
+     * @returns {number}
+     */
+    getCellIndexBySlot(physical) {
+        let index = this.cells.length - 1;
+        while (index > 0 && this.offsets[index] > physical) {
+            index -= 1;
+        }
+        return index;
+    }
+
+    /**
+     * Whether a slot is its cell's last, the edge into the next cell.
+     * @param {number} index - the cell the slot stands in
+     * @param {number} physical
+     * @returns {boolean}
+     */
+    isEdgeSlot(index, physical) {
+        return physical === this.offsets[index] + this.slots[index] - 1;
+    }
+
+    /**
+     * Where a slot stands along the path; the slot before the lane's first is its input edge.
+     * @param {number} physical
+     * @returns {number}
+     */
+    getDistanceBySlot(physical) {
+        if (physical < 0) {
+            return 0;
+        }
+        return this.distances[physical];
+    }
+}
 
 /**
  * Draws the items riding transport lanes. The sim sends a lane's shape whenever it is rebuilt and
@@ -85,6 +156,8 @@ export class LaneItemDrawLayer extends AbstractDrawLayer {
             return;
         }
         const lane = this._lanes.get(laneRef);
+        // The replaced cell is one of the entries the slots were built over.
+        lane.slots = null;
         this._drawLane(laneRef, lane, true);
         this._drawPortItem(lane, true);
     }
@@ -201,8 +274,8 @@ export class LaneItemDrawLayer extends AbstractDrawLayer {
     }
 
     /**
-     * The item resting in a lane's output port: drawn one tile past the tail on the edge facing back
-     * at it, gliding in when a pop put it there, and a consumed one glides on into the consumer.
+     * The item resting in a lane's output port: drawn at the end of the lane's path, gliding in
+     * when a pop put it there, and a consumed one glides on into the consumer.
      * @private
      * @param {PortItemSetEvent|PortItemClearEvent} event
      * @returns {void}
@@ -233,8 +306,8 @@ export class LaneItemDrawLayer extends AbstractDrawLayer {
     }
 
     /**
-     * Places the sprite of the item resting in a lane's output port, if any; nothing while the tail
-     * cell is still missing from the object index.
+     * Places the sprite of the item resting in a lane's output port, if any; nothing while a cell
+     * is still missing from the object index.
      * @private
      * @param {LaneEntry} lane
      * @param {boolean} snap - the item did not move, so its sprite must not glide
@@ -245,17 +318,17 @@ export class LaneItemDrawLayer extends AbstractDrawLayer {
         if (itemTypeId === undefined) {
             return;
         }
-        const tail = this.cache.get(lane.cellObjectRefs[lane.cellObjectRefs.length - 1]);
-        if (tail === null) {
+        const slots = this._getSlotsByLane(lane);
+        if (slots === null) {
             return;
         }
-        const direction = tail.data.direction;
-        this._itemLayer.moveItem({
+        // The port's resting spot is the tail's output edge, which is where the path ends, so an
+        // item popping into it rides the tail's own curve on the way.
+        this._itemLayer.moveItemAlong({
             key: LANE_PORT_SPRITE_KEY(lane.outputPortRef),
-            tileX: tail.tileX + Direction.dx(direction),
-            tileY: tail.tileY + Direction.dy(direction),
-            halfTile: true,
-            sourceDirection: Direction.invert(direction),
+            path: slots.path,
+            distance: slots.path.length,
+            entryDistance: slots.getDistanceBySlot(slots.total - 2),
             type: itemTypeId,
             snap,
         });
@@ -269,6 +342,9 @@ export class LaneItemDrawLayer extends AbstractDrawLayer {
      * @returns {LaneSlots|null}
      */
     _getSlotsByLane(lane) {
+        if (lane.slots !== null) {
+            return lane.slots;
+        }
         const cells = [];
         const slots = [];
         const offsets = [];
@@ -283,7 +359,18 @@ export class LaneItemDrawLayer extends AbstractDrawLayer {
             slots.push(entry.data.type.behavior.slotsPerTile);
             total += entry.data.type.behavior.slotsPerTile;
         }
-        return {cells, slots, offsets, total};
+        const incomings = [];
+        for (let i = 0; i < cells.length; i += 1) {
+            incomings.push(Direction.toWorld(lane.cellParentEdges[i], cells[i].data.direction));
+        }
+        lane.slots = new LaneSlots({
+            cells,
+            slots,
+            offsets,
+            total,
+            path: buildLanePath(cells, incomings),
+        });
+        return lane.slots;
     }
 
     /**
@@ -302,7 +389,7 @@ export class LaneItemDrawLayer extends AbstractDrawLayer {
         let filePos = 0;
         for (const [itemRef, item] of lane.items) {
             filePos += item.gap;
-            this._drawAt(LANE_SPRITE_KEY(laneRef, itemRef), lane, slots, slots.total - 2 - filePos, item.type, snap);
+            this._drawAt(LANE_SPRITE_KEY(laneRef, itemRef), slots, slots.total - 2 - filePos, item.type, snap);
             filePos += 1;
         }
     }
@@ -312,37 +399,31 @@ export class LaneItemDrawLayer extends AbstractDrawLayer {
      * center, edge, center, edge... and its last slot is the output port past the tail.
      * @private
      * @param {string} key
-     * @param {LaneEntry} lane
-     * @param {{cells: CacheEntry[], slots: number[], offsets: number[], total: number}} slots
+     * @param {LaneSlots} slots
      * @param {number} physical - the slot counted from the lane's input edge
      * @param {number} itemTypeId
      * @param {boolean} snap
      * @returns {void}
      */
-    _drawAt(key, lane, slots, physical, itemTypeId, snap) {
-        let index = slots.cells.length - 1;
-        while (index > 0 && slots.offsets[index] > physical) {
-            index -= 1;
-        }
+    _drawAt(key, slots, physical, itemTypeId, snap) {
+        let index = slots.getCellIndexBySlot(physical);
         // A cell's last slot is the edge into the next cell: drawn there, on the edge it enters over.
-        const halfTile = physical === slots.offsets[index] + slots.slots[index] - 1;
+        const halfTile = slots.isEdgeSlot(index, physical);
         if (halfTile) {
             index += 1;
         }
         const cell = slots.cells[index];
         const behavior = cell.data.type.behavior;
-        const entering = Direction.rotate(lane.cellParentEdges[index], cell.data.direction);
         let isHidden = behavior.inLevel < LANE_LEVEL_SURFACE;
         if (!halfTile) {
             // A center is under cover only while the cell is buried at both ends.
             isHidden = isHidden && behavior.outLevel < LANE_LEVEL_SURFACE;
         }
-        this._itemLayer.moveItem({
+        this._itemLayer.moveItemAlong({
             key,
-            tileX: cell.tileX,
-            tileY: cell.tileY,
-            halfTile,
-            sourceDirection: Direction.invert(entering),
+            path: slots.path,
+            distance: slots.getDistanceBySlot(physical),
+            entryDistance: slots.getDistanceBySlot(physical - 1),
             type: itemTypeId,
             snap,
             isHidden,

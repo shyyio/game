@@ -12,7 +12,6 @@ import {
 import {
     BELT_TUNNEL_DOWN,
     BELT_TUNNEL_UP,
-    BeltBend,
     KEYBINDING_BELT_LOWER,
     KEYBINDING_BELT_RAISE,
     MAX_UNDERGROUND_LENGTH,
@@ -54,7 +53,7 @@ function shouldBeltConnectToParent(kind, beltDirection, parentDirection, level) 
  * @property {BeltType} kind
  * @property {ObjectType} type
  * @property {string} layer - the position layer the kind occupies
- * @property {BeltBend} bend
+ * @property {Direction} incoming - the way items travel as they enter the belt
  */
 
 /**
@@ -95,7 +94,7 @@ export class BeltTool extends AbstractTool {
     }
 
     get textureName() {
-        return "belt-straight/0";
+        return "belt-up/0";
     }
 
     get statusText() {
@@ -225,7 +224,7 @@ export class BeltTool extends AbstractTool {
             this._showTunnelPreview(tileX, tileY, direction);
             return;
         }
-        this._ghostLayer.showGhost(tileX, tileY, direction, placement.kind, placement.bend, isBlocked);
+        this._ghostLayer.showGhost(tileX, tileY, direction, placement.kind, placement.incoming, isBlocked);
     }
 
     /**
@@ -237,7 +236,7 @@ export class BeltTool extends AbstractTool {
     _showTunnelPreview(tileX, tileY, direction) {
         const entrance = this._getTunnelEntranceOrNull(tileX, tileY, direction);
         if (entrance === null) {
-            this._ghostLayer.showGhost(tileX, tileY, direction, BELT_TUNNEL_UP, BeltBend.STRAIGHT, true);
+            this._ghostLayer.showGhost(tileX, tileY, direction, BELT_TUNNEL_UP, direction, true);
             return;
         }
         const span = getUndergroundBeltsToCreate(
@@ -256,7 +255,7 @@ export class BeltTool extends AbstractTool {
     _resolvePlacement(tileX, tileY, direction) {
         const kind = this._getNextKind();
         if (this._armedKinds.length > 0) {
-            return this._buildPlacement(kind, direction, BeltBend.STRAIGHT);
+            return this._buildPlacement(kind, direction, direction);
         }
         let parent;
         if (this._level === LANE_LEVEL_SURFACE) {
@@ -264,7 +263,7 @@ export class BeltTool extends AbstractTool {
         } else {
             parent = inferElevatedBeltParent(this._cache, tileX, tileY, direction);
         }
-        return this._buildPlacement(kind, direction, BeltEntry.getBend(direction, tileX, tileY, parent.parentX, parent.parentY));
+        return this._buildPlacement(kind, direction, BeltEntry.getIncomingDirection(direction, tileX, tileY, parent.parentX, parent.parentY));
     }
 
     /**
@@ -284,9 +283,9 @@ export class BeltTool extends AbstractTool {
      * @private
      * @returns {BeltPlacement}
      */
-    _buildPlacement(kind, direction, bend) {
+    _buildPlacement(kind, direction, incoming) {
         const type = getBeltTypeByKind(kind);
-        return {kind, type, layer: getLayerByBeltType(type, direction), bend};
+        return {kind, type, layer: getLayerByBeltType(type, direction), incoming};
     }
 
     /**

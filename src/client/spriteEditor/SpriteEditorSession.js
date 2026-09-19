@@ -30,7 +30,7 @@ export class FrameEntry {
         this.atlas = atlas;
         this.name = name;
         this.rect = rect;
-        // "housing/0-3x3" groups under "housing".
+        // "machine/extractor/exctractor_still" groups under "machine".
         const slash = name.lastIndexOf("/");
         this.group = slash === -1 ? "" : name.slice(0, slash);
     }

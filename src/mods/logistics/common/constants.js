@@ -142,17 +142,6 @@ export function tunnelStep(mouthType, direction) {
     return {dx: sign * Direction.dx(direction), dy: sign * Direction.dy(direction)};
 }
 
-/**
- * A belt bend ordinal.
- * @typedef {number} BeltBend
- */
-
-export const BeltBend = {
-    STRAIGHT: 0,
-    LEFT: 1,
-    RIGHT: 2,
-};
-
 // Workers one Housing contributes to its road network.
 export const HOUSING_WORKER_SUPPLY = 5;
 

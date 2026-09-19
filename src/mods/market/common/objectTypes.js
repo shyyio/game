@@ -8,7 +8,7 @@ export const TradingTerminalType = new ObjectType({
     outputPorts: [new PortDefinition("outputPort", {x: 0, y: -1, direction: Direction.UP})],
     geometry: "1x1",
     // Placeholder sprite; mod adds no new art.
-    textureName: "demo-machine/0",
+    textureName: "machine/1x1",
     label: "Trading Terminal",
     placement: new PlacementRule({shouldReplaceSameKind: true}),
     // Never sends a message itself; submitting the panel is what sends ConfigureTradingTerminalMessage.

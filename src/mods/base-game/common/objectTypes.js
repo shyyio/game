@@ -79,7 +79,7 @@ export const ExtractorType = new ObjectType({
     toolId: 15,
     outputPorts: [new PortDefinition("outputPort", {x: 0, y: -1, direction: Direction.UP})],
     geometry: "1x1",
-    textureName: "demo-machine/0",
+    textureName: "machine/1x1",
     label: "Extractor",
     inspectable: true,
     placement: new PlacementRule({shouldReplaceSameKind: true, placeOn: RESOURCE_TYPES}),
@@ -121,15 +121,6 @@ const IN3_B = new PortDefinition("inputPortB", {x: 2, y: 2, direction: Direction
 const IN3_B_FLUID = new PortDefinition("inputPortB", {x: 2, y: 2, direction: Direction.UP}, true, true);
 const OUT3_A = new PortDefinition("outputPortA", {x: 1, y: -1, direction: Direction.UP});
 
-// Placeholder texture per footprint size. 1x2/3x3 frames are Housing's 2x2 art 9-sliced to size —
-// see src/mods/BaseTextures/sprites/main/housing/.
-const TEXTURE_BY_GEOMETRY = {
-    "1x1": "demo-machine/0",
-    "1x2": "housing/0-1x2",
-    "2x2": "housing/0",
-    "3x3": "housing/0-3x3",
-};
-
 function machine(name, label, {toolId, inputPorts, outputPorts, recipes, processingTicks, workerCost=0, geometry="1x1"}) {
     return new ObjectType({
         name,
@@ -137,7 +128,7 @@ function machine(name, label, {toolId, inputPorts, outputPorts, recipes, process
         inputPorts,
         outputPorts,
         geometry,
-        textureName: TEXTURE_BY_GEOMETRY[geometry],
+        textureName: `machine/${geometry}`,
         label,
         inspectable: true,
         placement: new PlacementRule({shouldReplaceSameKind: true}),
@@ -261,7 +252,7 @@ export const AirFilterType = new ObjectType({
     toolId: 26,
     outputPorts: [OUT2_A, OUT2_B],
     geometry: "2x2",
-    textureName: TEXTURE_BY_GEOMETRY["2x2"],
+    textureName: "machine/2x2",
     label: "Air Filter",
     inspectable: true,
     placement: new PlacementRule({shouldReplaceSameKind: true}),

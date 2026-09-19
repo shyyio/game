@@ -127,7 +127,7 @@ function objectType(name) {
     return new ObjectType({
         name,
         geometry: "1x1",
-        textureName: "demo-machine/0",
+        textureName: "machine/1x1",
         label: name,
         placement: new PlacementRule({}),
         behavior: new StaticBehavior(),

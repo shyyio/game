@@ -19,7 +19,7 @@ const DualOutputGeneratorType = new ObjectType({
         new PortDefinition("secondary", {x: 0, y: 1, direction: Direction.DOWN}),
     ],
     geometry: "1x1",
-    textureName: "demo-machine/0",
+    textureName: "machine/1x1",
     label: "DualOutputGenerator",
     placement: new PlacementRule({shouldReplaceSameKind: true}),
     behavior: new GeneratorBehavior({
@@ -33,7 +33,7 @@ const SingleOutputGeneratorType = new ObjectType({
     name: "SingleOutputGenerator",
     outputPorts: [new PortDefinition("outputPort", {x: 0, y: -1, direction: Direction.UP})],
     geometry: "1x1",
-    textureName: "demo-machine/0",
+    textureName: "machine/1x1",
     label: "SingleOutputGenerator",
     placement: new PlacementRule({shouldReplaceSameKind: true}),
     behavior: new GeneratorBehavior({processingTicks: 1, output: ITEM_MAIN}),

@@ -52,34 +52,34 @@ export class BaseGameDeclaration extends AbstractModDeclaration {
     get items() {
         return [
             new ItemCategory("Agriculture", {
-                [ITEM_TYPE_CABBAGE_SEED]: new ItemType("Cabbage Seed", "items/3-gray", 0xD8C878),
-                [ITEM_TYPE_CABBAGE]: new ItemType("Cabbage", "items/4-gray", 0x8FBF5A),
-                [ITEM_TYPE_MUSHROOM_SPORE]: new ItemType("Mushroom Spore", "items/3-gray", 0x9B7FBF),
-                [ITEM_TYPE_MUSHROOM]: new ItemType("Mushroom", "items/4-gray", 0xC98A4B),
-                // Fluids never render as a port item sprite; texture unused, tint irrelevant.
-                [ITEM_TYPE_NUTRIENT_SLOP]: new ItemType("Nutrient Slop", "items/1-gray"),
+                [ITEM_TYPE_CABBAGE_SEED]: new ItemType("Cabbage Seed", "items/cabbageseeds"),
+                [ITEM_TYPE_CABBAGE]: new ItemType("Cabbage", "items/cabbage"),
+                [ITEM_TYPE_MUSHROOM_SPORE]: new ItemType("Mushroom Spore", "items/mushspores"),
+                [ITEM_TYPE_MUSHROOM]: new ItemType("Mushroom", "items/mushroom"),
+                // Fluids never render as a port item sprite, so the texture is unused.
+                [ITEM_TYPE_NUTRIENT_SLOP]: new ItemType("Nutrient Slop", "items/nutrientslop"),
             }),
             new ItemCategory("Alchemy", {
-                [ITEM_TYPE_SOUL]: new ItemType("Soul", "items/3-gray", 0xC8D8FF),
-                [ITEM_TYPE_CREATURE]: new ItemType("Creature", "items/4-gray", 0xE8A0A0),
-                [ITEM_TYPE_ADRENOCHROME]: new ItemType("Adrenochrome", "items/1-gray", 0xFF3EA5),
-                [ITEM_TYPE_BASIC_POTION_BASE]: new ItemType("Basic Potion Base", "items/2-gray"),
-                [ITEM_TYPE_OVERLOAD_MIX]: new ItemType("Overload Mix", "items/1-gray"),
+                [ITEM_TYPE_SOUL]: new ItemType("Soul", "items/soul1"),
+                [ITEM_TYPE_CREATURE]: new ItemType("Creature", "items/creature1"),
+                [ITEM_TYPE_ADRENOCHROME]: new ItemType("Adrenochrome", "items/adrenochrome"),
+                [ITEM_TYPE_BASIC_POTION_BASE]: new ItemType("Basic Potion Base", "items/basicpotionbase"),
+                [ITEM_TYPE_OVERLOAD_MIX]: new ItemType("Overload Mix", "items/overloadmix"),
             }),
             new ItemCategory("Metallurgy", {
-                [ITEM_TYPE_IRON_ORE]: new ItemType("Iron Ore", "items/2-gray", 0xA0522D),
-                [ITEM_TYPE_COAL]: new ItemType("Coal", "items/2-gray", 0x3A3A3A),
-                [ITEM_TYPE_COKE]: new ItemType("Coke", "items/2-gray", 0x708090),
-                [ITEM_TYPE_RAW_STEEL]: new ItemType("Raw Steel", "items/1-gray", 0xB0B8C0),
-                [ITEM_TYPE_STEEL_PARTS]: new ItemType("Steel Parts", "items/1-gray", 0x5B7FA6),
+                [ITEM_TYPE_IRON_ORE]: new ItemType("Iron Ore", "items/ironore"),
+                [ITEM_TYPE_COAL]: new ItemType("Coal", "items/coal"),
+                [ITEM_TYPE_COKE]: new ItemType("Coke", "items/coke"),
+                [ITEM_TYPE_RAW_STEEL]: new ItemType("Raw Steel", "items/steel1"),
+                [ITEM_TYPE_STEEL_PARTS]: new ItemType("Steel Parts", "items/steelparts"),
             }),
             new ItemCategory("Power Up", {
                 [ITEM_TYPE_STIMPACK]: new ItemType("Stimpack", "items/1-gray", 0xE63946),
             }),
             new ItemCategory("Miscellaneous", {
-                [ITEM_TYPE_WATER]: new ItemType("Water", "items/1-gray"),
+                [ITEM_TYPE_WATER]: new ItemType("Water", "items/water"),
                 [ITEM_TYPE_OXYGEN]: new ItemType("Oxygen", "items/2-gray"),
-                [ITEM_TYPE_SAND]: new ItemType("Sand", "items/2-gray", 0xE0C878),
+                [ITEM_TYPE_SAND]: new ItemType("Sand", "items/sand"),
                 [ITEM_TYPE_GLASS]: new ItemType("Glass", "items/1-gray", 0xBEEAF0),
                 [ITEM_TYPE_EMPTY_SYRINGE]: new ItemType("Empty Syringe", "items/1-gray", 0xD9D9D9),
                 [ITEM_TYPE_WASTE]: new ItemType("Waste", "items/4-gray", 0x6B6B47),

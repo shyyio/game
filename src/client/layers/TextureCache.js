@@ -163,7 +163,7 @@ export class TextureCache {
     /**
      * The ordered frame textures for an animation sequence, or undefined if no
      * frames are grouped under that base name.
-     * @param {string} name base sequence name (e.g. "belt-straight")
+     * @param {string} name base sequence name (e.g. "belt-up")
      * @returns {Texture[]|undefined}
      */
     getAnimation(name) {

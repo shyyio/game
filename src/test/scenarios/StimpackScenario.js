@@ -8,7 +8,7 @@ const ORIGIN_Y = 2;
 // chunk border, which no object may straddle.
 const COPY_PITCH = CHUNK_SIZE / 2;
 // Pre-run ticks: fills the belts and gives the production chart a full history window on open.
-const WARMUP_TICKS = 200;
+const WARMUP_TICKS = 0;
 const COPY_COUNT_PARAM = "n";
 const DEFAULT_COPY_COUNT = 1;
 

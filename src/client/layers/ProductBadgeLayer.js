@@ -38,6 +38,9 @@ const BADGE_SCALES = [
 // Idle badges kept for reuse; overflow is destroyed instead of parked.
 const BADGE_POOL_LIMIT = 128;
 
+// World pixels the machine art stands above its footprint
+const MACHINE_DRAW_HEIGHT = 8;
+
 /**
  * The footprint's longest side, in tiles.
  * @param {TileBounds} bounds
@@ -232,7 +235,7 @@ export class ProductBadgeLayer extends AbstractDrawLayer {
         badge.footprintTiles = productBadgeFootprintTiles(entry.tileBounds);
         this._applyBadgeScale(badge);
         const center = entry.center;
-        badge.position.set(center.x, center.y);
+        badge.position.set(center.x, center.y - MACHINE_DRAW_HEIGHT);
     }
 
     /**

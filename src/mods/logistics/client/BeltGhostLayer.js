@@ -1,6 +1,5 @@
 import {AbstractDrawLayer, currentAnimationFrame, Container, Mouse, TILE_SIZE, LANE_LEVEL_SURFACE} from "@spup/sdk/client";
 import {
-    BeltBend,
     BELT_UNDERGROUND,
     getBuildLevelByBeltKind,
     getDrawLevelByBeltKind,
@@ -62,19 +61,19 @@ export class BeltGhostLayer extends AbstractDrawLayer {
      * @param {number} tileY
      * @param {Direction} direction
      * @param {BeltType} beltType
-     * @param {BeltBend} [bend]
+     * @param {Direction} [incoming] the way items travel as they enter the belt
      * @param {boolean} [isBlocked] tints the ghost red
      */
-    showGhost(tileX, tileY, direction, beltType, bend=BeltBend.STRAIGHT, isBlocked=false) {
+    showGhost(tileX, tileY, direction, beltType, incoming=direction, isBlocked=false) {
         this.clear();
         const tint = isBlocked ? GHOST_BLOCKED_TINT : GHOST_TINT;
         const alpha = isBlocked ? GHOST_BLOCKED_ALPHA : GHOST_ALPHA;
         if (shouldSnapGhost(beltType)) {
-            this._addSprite(this._gridContainer, tileX, tileY, direction, beltType, tint, bend, alpha);
+            this._addSprite(this._gridContainer, tileX, tileY, direction, beltType, tint, incoming, alpha);
         } else {
             this._anchorTileX = tileX;
             this._anchorTileY = tileY;
-            this._addSprite(this._floatingContainer, tileX, tileY, direction, beltType, tint, bend, alpha);
+            this._addSprite(this._floatingContainer, tileX, tileY, direction, beltType, tint, incoming, alpha);
         }
         this._layoutPin();
     }
@@ -92,10 +91,10 @@ export class BeltGhostLayer extends AbstractDrawLayer {
         this.clear();
         this._anchorTileX = mouthTileX;
         this._anchorTileY = mouthTileY;
-        this._addSprite(this._floatingContainer, mouthTileX, mouthTileY, direction, mouthType, GHOST_TINT, BeltBend.STRAIGHT);
+        this._addSprite(this._floatingContainer, mouthTileX, mouthTileY, direction, mouthType, GHOST_TINT, direction);
         const undergroundTint = isAtMax ? GHOST_AT_MAX_TINT : GHOST_TINT;
         for (const tile of undergroundTiles) {
-            this._addSprite(this._gridContainer, tile.x, tile.y, direction, BELT_UNDERGROUND, undergroundTint, BeltBend.STRAIGHT);
+            this._addSprite(this._gridContainer, tile.x, tile.y, direction, BELT_UNDERGROUND, undergroundTint, direction);
         }
         this._layoutPin();
     }
@@ -108,21 +107,13 @@ export class BeltGhostLayer extends AbstractDrawLayer {
      * @param {Direction} direction
      * @param {BeltType} beltType
      * @param {number} tint
-     * @param {BeltBend} bend
+     * @param {Direction} incoming the way items travel as they enter the belt
      * @param {number} [alpha]
      * @private
      */
-    _addSprite(container, tileX, tileY, direction, beltType, tint, bend, alpha=GHOST_ALPHA) {
-        const frames = this.textureCache.getAnimation(beltFrameBase(bend, beltType));
-        const sprite = new BeltSprite(
-            0,
-            tileX,
-            tileY,
-            direction,
-            bend,
-            beltType,
-            frames,
-        );
+    _addSprite(container, tileX, tileY, direction, beltType, tint, incoming, alpha=GHOST_ALPHA) {
+        const frames = this.textureCache.getAnimation(beltFrameBase(incoming, direction, beltType));
+        const sprite = new BeltSprite(0, tileX, tileY, frames);
         sprite.setAnimationFrame(currentAnimationFrame());
         sprite.setGhost(tint, alpha);
         sprite.y -= getDrawLevelByBeltKind(beltType) * ELEVATED_DRAW_HEIGHT;

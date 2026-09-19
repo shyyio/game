@@ -104,6 +104,30 @@ class ReplayItemLayer {
         this.sprites.set(key, {tileX, tileY, halfTile, type});
     }
 
+    /**
+     * Lane items arrive as a distance along the lane's path; the slot they stand on is the cell
+     * that distance falls in, on its input edge when the distance is where that cell starts.
+     */
+    moveItemAlong({key, path, distance, type, snap}) {
+        if (!this.sprites.has(key) && snap !== true) {
+            this.glidedIn.add(key);
+        }
+        const index = path.getCellIndexByDistance(distance);
+        const entry = path.getEntryByCellIndex(index);
+        if (distance >= path.length) {
+            // The path's end is the output port's resting spot, one tile past the tail.
+            this.sprites.set(key, {
+                tileX: entry.tileX + Direction.dx(entry.direction),
+                tileY: entry.tileY + Direction.dy(entry.direction),
+                halfTile: true,
+                type,
+            });
+            return;
+        }
+        const halfTile = distance === path.getDistanceByCellIndex(index);
+        this.sprites.set(key, {tileX: entry.tileX, tileY: entry.tileY, halfTile, type});
+    }
+
     removeItem(key) {
         this.sprites.delete(key);
     }

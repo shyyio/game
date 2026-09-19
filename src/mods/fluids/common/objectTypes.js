@@ -5,7 +5,7 @@ import {
     Direction,
     CONVEYS_FLUID,
 } from "@spup/sdk";
-import {TANK_CAPACITY} from "./constants.js";
+import {DRAW_LAYER_PIPE, TANK_CAPACITY} from "./constants.js";
 import {PipeBehavior} from "../sim/PipeBehavior.js";
 import {TankBehavior} from "../sim/TankBehavior.js";
 
@@ -15,6 +15,7 @@ export const PipeType = new ObjectType({
     toolId: 7,
     geometry: "1x1",
     textureName: "pipe/0",
+    drawLayerIndex: DRAW_LAYER_PIPE,
     directional: false,
     label: "Pipe",
     behavior: new PipeBehavior(),

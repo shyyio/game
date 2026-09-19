@@ -16,6 +16,10 @@ export const PORT_SPRITE_KEY = portRef => `port:${portRef}`;
 // arrive and briefly rest before the next move).
 const MOVE_DURATION_MS = 190;
 
+// World pixels an item rides above its tile: the belt carrying it stands 1 art pixel tall, drawn
+// at 2x.
+const ITEM_RIDE_HEIGHT = 2;
+
 /**
  * The single shared item layer. Renders item particles keyed by id, with glide. Mods that
  * compute item positions (belts) drive it imperatively; resting items in render-flagged
@@ -115,6 +119,12 @@ export class ItemDrawLayer extends AbstractDrawLayer {
          * @private
          */
         this._debugMasks = false;
+        /**
+         * Set when a move may have changed which items overlap which; the next tick re-sorts.
+         * @type {boolean}
+         * @private
+         */
+        this._isOrderStale = false;
     }
 
     get layerIndex() {
@@ -195,6 +205,7 @@ export class ItemDrawLayer extends AbstractDrawLayer {
      * @param {Set<number>} visibleChunks unused — particles cull by chunk mount
      */
     tick(frame, deltaMS, visibleChunks) {
+        this._applyOrder();
         for (const particle of this._gliding) {
             particle.advance(deltaMS);
             if (!particle.gliding) {
@@ -220,8 +231,27 @@ export class ItemDrawLayer extends AbstractDrawLayer {
      * @param {boolean} [move.isHidden] - the item is under cover (in a tunnel)
      */
     moveItem({key, tileX, tileY, halfTile, sourceDirection, type, snap=false, isHidden=false}) {
+        const particle = this._acquireItem(key, type, isHidden);
+        // Reduced motion puts the item on its new tile outright, no glide.
+        particle.moveTo(tileX, tileY, halfTile, sourceDirection, snap || ReducedMotion.isEnabled);
+        if (particle.gliding) {
+            this._gliding.add(particle);
+        }
+    }
+
+    /**
+     * The live particle under a key, lit with an item type's texture and tint and ready to be
+     * aimed; a move sets it stale so the next tick re-sorts.
+     * @private
+     * @param {number|string} key
+     * @param {number} type - item type, selecting the texture
+     * @param {boolean} isHidden - the item is under cover (in a tunnel)
+     * @returns {ItemParticle}
+     */
+    _acquireItem(key, type, isHidden) {
         const definition = this._itemRegistry.getItemTypeOrDefaultByTypeId(type);
         const texture = this.textureCache.get(definition.texture);
+        this._isOrderStale = true;
         const particle = this._items.acquire(key, texture);
         particle.live = true;
         particle.itemTypeId = type;
@@ -229,11 +259,7 @@ export class ItemDrawLayer extends AbstractDrawLayer {
         particle.setTint(definition.tint);
         particle.isHidden = isHidden;
         this._applyItemVisibility(particle);
-        // Reduced motion puts the item on its new tile outright, no glide.
-        particle.moveTo(tileX, tileY, halfTile, sourceDirection, snap || ReducedMotion.isEnabled);
-        if (particle.gliding) {
-            this._gliding.add(particle);
-        }
+        return particle;
     }
 
     /**
@@ -279,6 +305,41 @@ export class ItemDrawLayer extends AbstractDrawLayer {
     }
 
     /**
+     * Places or repositions an item along a lane's path.
+     * @param {Object} move
+     * @param {number|string} move.key - particle key
+     * @param {LanePath} move.path - the lane's path
+     * @param {number} move.distance - world pixels from the lane's input edge
+     * @param {number} move.entryDistance - the slot behind it, where a fresh sprite glides in from
+     * @param {number} move.type - item type, selecting the texture
+     * @param {boolean} [move.snap] - place at the target without animating (a re-sync)
+     * @param {boolean} [move.isHidden] - the item is under cover (in a tunnel)
+     */
+    moveItemAlong({key, path, distance, entryDistance, type, snap=false, isHidden=false}) {
+        const particle = this._acquireItem(key, type, isHidden);
+        particle.moveAlong(path, distance, entryDistance, snap || ReducedMotion.isEnabled);
+        if (particle.gliding) {
+            this._gliding.add(particle);
+        }
+    }
+
+    /**
+     * Sorts the particles top to bottom, so a lower item draws over a higher one and overlaps
+     * read as depth. Ranked on where a move aimed each item, not where its glide currently has
+     * it, so the order settles once a tick rather than every frame.
+     * @private
+     * @returns {void}
+     */
+    _applyOrder() {
+        if (!this._isOrderStale) {
+            return;
+        }
+        this._isOrderStale = false;
+        this._particles.particleChildren.sort((a, b) => a.sortOrder - b.sortOrder);
+        this._particles.update();
+    }
+
+    /**
      * Whether a live item holds the key.
      * @param {number|string} key
      * @returns {boolean}
@@ -310,22 +371,11 @@ export class ItemDrawLayer extends AbstractDrawLayer {
     }
 
     /**
-     * Re-keys a live particle, preserving it (and its in-flight glide) so a moved item can
-     * keep gliding under a new identity — e.g. a belt item popping into an output port.
-     * Drops whatever particle already held the new key (the previous occupant). No-op for an
-     * unknown source key.
-     * @param {number|string} oldKey
-     * @param {number|string} newKey
-     */
-    renameItem(oldKey, newKey) {
-        this._items.rename(oldKey, newKey);
-    }
-
-    /**
      * Drops an item; a no-op for an unknown key.
      * @param {number|string} key
      */
     removeItem(key) {
+        // A released particle is parked in place at alpha 0, so the order of what remains holds.
         this._items.release(key);
     }
 
@@ -427,6 +477,15 @@ class ItemParticle extends Particle {
         this._targetX = null;
         this._targetY = null;
         this._elapsed = 0;
+        // The lane ridden, when riding one: the glide then runs along its path instead of in a
+        // straight line, so a bend curves.
+        /** @type {LanePath|null} */
+        this._path = null;
+        this._startDistance = null;
+        this._targetDistance = null;
+        this._distance = 0;
+        // Draw depth: the world y this item's current move aims at.
+        this.sortOrder = 0;
     }
 
     /**
@@ -441,7 +500,7 @@ class ItemParticle extends Particle {
      * @returns {boolean}
      */
     get gliding() {
-        return this._startX !== null;
+        return this._startX !== null || this._startDistance !== null;
     }
 
     /**
@@ -490,6 +549,9 @@ class ItemParticle extends Particle {
     reset() {
         this.itemTypeId = null;
         this.isHidden = false;
+        this._clearPath();
+        this._distance = 0;
+        this.sortOrder = 0;
         this._startX = null;
         this._startY = null;
         this._targetX = null;
@@ -510,6 +572,7 @@ class ItemParticle extends Particle {
      *     item was re-keyed in place, not moved, so animating it would look like motion)
      */
     moveTo(tileX, tileY, halfTile, sourceDirection, snap=false) {
+        this._clearPath();
         const half = TILE_SIZE / 2;
         const sdx = Direction.dx(sourceDirection);
         const sdy = Direction.dy(sourceDirection);
@@ -520,7 +583,8 @@ class ItemParticle extends Particle {
             offsetY = sdy * half;
         }
         const targetX = tileX * TILE_SIZE + half + offsetX;
-        const targetY = tileY * TILE_SIZE + half + offsetY;
+        const targetY = tileY * TILE_SIZE + half + offsetY - ITEM_RIDE_HEIGHT;
+        this.sortOrder = targetY;
         if (snap) {
             this.x = targetX;
             this.y = targetY;
@@ -549,12 +613,78 @@ class ItemParticle extends Particle {
     }
 
     /**
+     * Aims the item at a distance along a lane's path. A new item glides in from the slot behind
+     * its target, so it picks up where the sprite it replaces left off; later moves glide from
+     * where it currently stands.
+     * @param {LanePath} path
+     * @param {number} distance - world pixels from the lane's input edge
+     * @param {number} entryDistance - the slot behind the target
+     * @param {boolean} [snap] - jump straight to the target without gliding (a re-sync)
+     * @returns {void}
+     */
+    moveAlong(path, distance, entryDistance, snap=false) {
+        const isSamePath = this._path === path;
+        this._path = path;
+        this._startX = null;
+        this._targetX = null;
+        const target = path.getPointByDistance(distance);
+        this.sortOrder = target.y - ITEM_RIDE_HEIGHT;
+        if (snap) {
+            this._startDistance = null;
+            this._targetDistance = distance;
+            this._distance = distance;
+            this.x = target.x;
+            this.y = target.y - ITEM_RIDE_HEIGHT;
+            return;
+        }
+        if (!isSamePath || this._targetDistance === null) {
+            // First placement on this lane: start on the slot behind so it slides in along the
+            // flow. A bend's stretch is shorter than a tile, so a fixed step would start behind it.
+            this._startDistance = entryDistance;
+            this._targetDistance = distance;
+            this._elapsed = 0;
+            this._applyDistance(this._startDistance);
+            return;
+        }
+        if (distance !== this._targetDistance) {
+            this._startDistance = this._distance;
+            this._targetDistance = distance;
+            this._elapsed = 0;
+        }
+    }
+
+    /**
+     * Leaves path mode, so the next advance lerps in a straight line.
+     * @private
+     * @returns {void}
+     */
+    _clearPath() {
+        this._path = null;
+        this._startDistance = null;
+        this._targetDistance = null;
+    }
+
+    /**
+     * Puts the sprite on the point a distance along its path.
+     * @private
+     * @param {number} distance
+     * @returns {void}
+     */
+    _applyDistance(distance) {
+        this._distance = distance;
+        const point = this._path.getPointByDistance(distance);
+        this.x = point.x;
+        this.y = point.y - ITEM_RIDE_HEIGHT;
+    }
+
+    /**
      * Starts the consumed glide: from the current position a half-tile along `direction`.
      * @param {Direction} direction - the travel direction into the consumer
      * @returns {void}
      */
     consumeAlong(direction) {
         const half = TILE_SIZE / 2;
+        this._clearPath();
         this._startX = this.x;
         this._startY = this.y;
         this._targetX = this.x + Direction.dx(direction) * half;
@@ -567,6 +697,10 @@ class ItemParticle extends Particle {
      * @param {number} deltaMS elapsed time since the previous tick, in ms
      */
     advance(deltaMS) {
+        if (this._startDistance !== null) {
+            this._advanceAlongPath(deltaMS);
+            return;
+        }
         if (this._startX === null) {
             return;
         }
@@ -580,5 +714,23 @@ class ItemParticle extends Particle {
         const t = this._elapsed / MOVE_DURATION_MS;
         this.x = this._startX + t * (this._targetX - this._startX);
         this.y = this._startY + t * (this._targetY - this._startY);
+    }
+
+    /**
+     * Advances a glide that rides a lane's path: the distance lerps, the point comes off the
+     * path, so a bend carries the item round its arc.
+     * @private
+     * @param {number} deltaMS
+     * @returns {void}
+     */
+    _advanceAlongPath(deltaMS) {
+        this._elapsed += deltaMS;
+        if (this._elapsed >= MOVE_DURATION_MS) {
+            this._applyDistance(this._targetDistance);
+            this._startDistance = null;
+            return;
+        }
+        const t = this._elapsed / MOVE_DURATION_MS;
+        this._applyDistance(this._startDistance + t * (this._targetDistance - this._startDistance));
     }
 }

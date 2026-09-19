@@ -12,7 +12,7 @@ import {conversionLosses, convertSnapshot} from "@/sim/snapshotConversion.js";
 const GadgetType = new ObjectType({
     name: "ConversionGadget",
     geometry: "1x1",
-    textureName: "demo-machine/0",
+    textureName: "machine/1x1",
     label: "Gadget",
     placement: new PlacementRule({shouldReplaceSameKind: true}),
     behavior: new StaticBehavior(),

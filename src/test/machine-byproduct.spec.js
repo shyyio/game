@@ -26,7 +26,7 @@ function fixtureMachineType(name, chance) {
             new PortDefinition("byproduct", {x: 0, y: 1, direction: Direction.DOWN}),
         ],
         geometry: "1x1",
-        textureName: "demo-machine/0",
+        textureName: "machine/1x1",
         label: name,
         placement: new PlacementRule({shouldReplaceSameKind: true}),
         behavior: new MachineBehavior({

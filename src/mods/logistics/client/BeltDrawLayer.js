@@ -13,7 +13,6 @@ import {
     removeFromGroup,
 } from "@spup/sdk";
 import {
-    BeltBend,
     BELT_TUNNEL_DOWN,
     BELT_TUNNEL_UP,
     BELT_UNDERGROUND,
@@ -26,11 +25,26 @@ import {
 } from "../common/constants.js";
 import {getBeltTypeByKind} from "../common/objectTypes.js";
 
+// Sprite sequence tokens, indexed by Direction; the atlas names a belt by the way items travel.
+const DIRECTION_TOKENS = ["up", "right", "down", "left"];
+
+// The shadows are drawn into each sequence, so a belt draws its own facing rather than a rotation.
+const NO_QUARTER_TURNS = 0;
+
 // Every beltFrameBase result except the never-drawn buried underground.
 const BELT_SEQUENCES = [
-    "belt-straight",
-    "belt-left",
+    "belt-up",
     "belt-right",
+    "belt-down",
+    "belt-left",
+    "belt-up-left",
+    "belt-up-right",
+    "belt-right-up",
+    "belt-right-down",
+    "belt-down-left",
+    "belt-down-right",
+    "belt-left-up",
+    "belt-left-down",
     "belt-tunnel-up",
     "belt-tunnel-down",
     "belt-ramp-up",
@@ -46,12 +60,13 @@ const BELT_MAP_COLORS = [
 ];
 
 /**
- * The spritesheet base sequence for a belt's bend and type (frames under "<base>/0..7").
- * @param {BeltBend} bend
+ * The spritesheet base sequence for a belt's travel and type (frames under "<base>/0..7").
+ * @param {Direction} incoming - the way items travel as they enter the belt
+ * @param {Direction} direction - the belt's facing, the way items leave it
  * @param {BeltType} type
  * @returns {string}
  */
-export function beltFrameBase(bend, type) {
+export function beltFrameBase(incoming, direction, type) {
     if (type === BELT_UNDERGROUND) {
         return "belt-underground";
     }
@@ -68,29 +83,10 @@ export function beltFrameBase(bend, type) {
         }
         return "belt-ramp-down";
     }
-    if (bend === BeltBend.LEFT) {
-        return "belt-left";
+    if (incoming === direction) {
+        return `belt-${DIRECTION_TOKENS[direction]}`;
     }
-    if (bend === BeltBend.RIGHT) {
-        return "belt-right";
-    }
-    return "belt-straight";
-}
-
-/**
- * The bend a belt draws for the edge its parent hands it over, in the belt's own frame: a parent
- * heading LEFT comes off the right flank.
- * @param {Direction} parentEdge
- * @returns {BeltBend}
- */
-export function beltBendOf(parentEdge) {
-    if (parentEdge === Direction.LEFT) {
-        return BeltBend.RIGHT;
-    }
-    if (parentEdge === Direction.RIGHT) {
-        return BeltBend.LEFT;
-    }
-    return BeltBend.STRAIGHT;
+    return `belt-${DIRECTION_TOKENS[incoming]}-${DIRECTION_TOKENS[direction]}`;
 }
 
 export class BeltEntry {
@@ -100,44 +96,35 @@ export class BeltEntry {
      * @param {number} x
      * @param {number} y
      * @param {Direction} direction
-     * @param {BeltBend} bend
+     * @param {Direction} incoming - the way items travel as they enter the belt
      * @param {BeltType} type
      * @param {number} mapColor
      */
-    constructor(id, x, y, direction, bend, type, mapColor) {
+    constructor(id, x, y, direction, incoming, type, mapColor) {
         this.mapColor = mapColor;
         this.id = id;
         this.x = x;
         this.y = y;
         this.direction = direction;
-        this.bend = bend;
+        this.incoming = incoming;
         this.type = type;
     }
 
-    static getBend(direction, x, y, parentX, parentY) {
+    /**
+     * The way items travel entering a belt at (x, y), from the tile its parent stands on; a belt
+     * with no parent takes items along its own facing.
+     * @param {Direction} direction - the belt's facing
+     * @param {number} x
+     * @param {number} y
+     * @param {number|null} parentX
+     * @param {number|null} parentY
+     * @returns {Direction}
+     */
+    static getIncomingDirection(direction, x, y, parentX, parentY) {
         if (parentX === null) {
-            return BeltBend.STRAIGHT;
+            return direction;
         }
-
-        if (direction === Direction.UP && parentX > x) {
-            return BeltBend.RIGHT;
-        } else if (direction === Direction.UP && parentX < x) {
-            return BeltBend.LEFT;
-        } else if (direction === Direction.DOWN && parentX > x) {
-            return BeltBend.LEFT;
-        } else if (direction === Direction.DOWN && parentX < x) {
-            return BeltBend.RIGHT;
-        } else if (direction === Direction.LEFT && parentY < y) {
-            return BeltBend.RIGHT;
-        } else if (direction === Direction.LEFT && parentY > y) {
-            return BeltBend.LEFT;
-        } else if (direction === Direction.RIGHT && parentY < y) {
-            return BeltBend.LEFT;
-        } else if (direction === Direction.RIGHT && parentY > y) {
-            return BeltBend.RIGHT;
-        }
-
-        return BeltBend.STRAIGHT;
+        return Direction.fromDelta(x - parentX, y - parentY);
     }
 }
 
@@ -145,8 +132,8 @@ export class BeltEntry {
 export const ELEVATED_DRAW_HEIGHT = 24;
 
 /**
- * Draws the belts of one level; a belt's bend is the edge its parent hands it over, taken from the
- * lane geometry feed.
+ * Draws the belts of one level; a belt's travel is the edge its parent hands it over, taken from
+ * the lane geometry feed.
  */
 export class BeltDrawLayer extends AbstractTileMeshDrawLayer {
 
@@ -193,7 +180,7 @@ export class BeltDrawLayer extends AbstractTileMeshDrawLayer {
     }
 
     /**
-     * Records each cell's parent edge and re-bends the belts already drawn.
+     * Records each cell's parent edge and marks the belts whose travel it changed.
      * @param {LaneCreatedEvent} event
      * @returns {void}
      */
@@ -203,10 +190,14 @@ export class BeltDrawLayer extends AbstractTileMeshDrawLayer {
             const edge = event.cellParentEdges[i];
             this._parentEdges.set(id, edge);
             const belt = this._belts.get(id);
-            if (belt === undefined || belt.bend === beltBendOf(edge)) {
+            if (belt === undefined) {
                 continue;
             }
-            belt.bend = beltBendOf(edge);
+            const incoming = Direction.toWorld(edge, belt.direction);
+            if (belt.incoming === incoming) {
+                continue;
+            }
+            belt.incoming = incoming;
             this._dirtyChunks.add(chunkKeyAt(belt.x, belt.y));
         }
     }
@@ -244,8 +235,8 @@ export class BeltDrawLayer extends AbstractTileMeshDrawLayer {
             tiles.push(new AnimatedTile(
                 belt.x,
                 belt.y,
-                belt.direction,
-                this._getSlotByName(beltFrameBase(belt.bend, belt.type)),
+                NO_QUARTER_TURNS,
+                this._getSlotByName(beltFrameBase(belt.incoming, belt.direction, belt.type)),
             ));
         }
         return tiles;
@@ -278,13 +269,13 @@ export class BeltDrawLayer extends AbstractTileMeshDrawLayer {
             return;
         }
         const edge = this._parentEdges.get(id);
-        let bend;
+        let incoming;
         if (edge === undefined) {
-            bend = BeltBend.STRAIGHT;
+            incoming = direction;
         } else {
-            bend = beltBendOf(edge);
+            incoming = Direction.toWorld(edge, direction);
         }
-        const belt = new BeltEntry(id, x, y, direction, bend, type, getBeltTypeByKind(type).mapColor);
+        const belt = new BeltEntry(id, x, y, direction, incoming, type, getBeltTypeByKind(type).mapColor);
         this._belts.set(id, belt);
 
         const chunkKey = chunkKeyAt(x, y);
@@ -316,22 +307,15 @@ export class BeltSprite extends Sprite {
      * @param {number} id
      * @param {number} x
      * @param {number} y
-     * @param {Direction} direction
-     * @param {BeltBend} bend
-     * @param {BeltType} type
      * @param {Texture[]|undefined} frames ordered animation frames
      */
-    constructor(id, x, y, direction, bend, type, frames) {
+    constructor(id, x, y, frames) {
         super(Texture.EMPTY);
 
         this.id = id;
         this.tileX = x;
         this.tileY = y;
         this.anchor = 0.5;
-        this.angle = Direction.angle(direction);
-        this.direction = direction;
-        this.bend = bend;
-        this.type = type;
         this.frames = frames;
 
         this.position.set(x * TILE_SIZE + 32, y * TILE_SIZE + 32);
@@ -357,15 +341,5 @@ export class BeltSprite extends Sprite {
             return;
         }
         this.texture = this.frames[frame % this.frames.length];
-    }
-
-    draw(x, y, direction, bend) {
-        this.direction = direction;
-        this.angle = Direction.angle(direction);
-        this.bend = bend;
-        this.tileX = x;
-        this.tileY = y;
-        this.x = x * TILE_SIZE + 32;
-        this.y = y * TILE_SIZE + 32;
     }
 }
