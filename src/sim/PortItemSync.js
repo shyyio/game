@@ -261,7 +261,7 @@ export class PortItemSync {
                 batch.addClear(eid, consumed);
             }
             if (displayed !== EMPTY) {
-                batch.addSet(eid, displayed);
+                batch.addSet(eid, displayed, this.engine.Port.birthTick[eid]);
             }
         }
         this._dirty.length = 0;
@@ -288,9 +288,9 @@ export class PortItemSync {
                 continue;
             }
             if (batch === null) {
-                batch = new PortItemBatchEvent(this._x[eid], this._y[eid]);
+                batch = new PortItemBatchEvent(this._x[eid], this._y[eid], this.engine.clock);
             }
-            batch.addSet(eid, item[eid]);
+            batch.addSet(eid, item[eid], this.engine.Port.birthTick[eid]);
         }
         return batch;
     }
@@ -361,7 +361,7 @@ export class PortItemSync {
         if (existing !== undefined) {
             return existing;
         }
-        const batch = new PortItemBatchEvent(x, y);
+        const batch = new PortItemBatchEvent(x, y, this.engine.clock);
         batches.set(chunkKey, batch);
         return batch;
     }

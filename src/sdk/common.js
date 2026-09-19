@@ -184,6 +184,9 @@ export {MetricsGlobalQueryEntry} from "@/common/MetricsGlobalQueryEntry.js";
 // plus a texture name and a pixi multiply tint, so shared shapes stay visually distinct per item
 // type. The frozen ModRegistry merges them into its ItemRegistry (modRegistry.items).
 export {ItemType} from "@/common/ItemType.js";
+// One frame of an item type's ageFrames: the texture it shows from that age in ticks on. The client
+// ages an item against the world clock the tick heartbeat carries.
+export {ItemAgeFrameEntry} from "@/common/ItemType.js";
 export {ItemRegistry} from "@/common/ItemRegistry.js";
 // A named section of item types a declaration contributes (items); same-name categories
 // merge across the loadout and sort by name (modRegistry.itemCategories).

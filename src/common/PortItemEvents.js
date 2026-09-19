@@ -13,6 +13,7 @@ export class PortItemSetEvent extends AbstractChunkRoutedEvent {
     static wireFields = {
         portRef: "int64",
         itemTypeId: "int32",
+        birthTick: "int32",
     };
 
     /**
@@ -20,11 +21,13 @@ export class PortItemSetEvent extends AbstractChunkRoutedEvent {
      * @param {number} y
      * @param {number} portRef
      * @param {number} itemTypeId
+     * @param {number} birthTick
      */
-    constructor(x, y, portRef, itemTypeId) {
+    constructor(x, y, portRef, itemTypeId, birthTick) {
         super(x, y);
         this.portRef = portRef;
         this.itemTypeId = itemTypeId;
+        this.birthTick = birthTick;
     }
 }
 
@@ -58,8 +61,10 @@ export class PortItemClearEvent extends AbstractChunkRoutedEvent {
 export class PortItemBatchEvent extends AbstractBatchEvent {
 
     static wireFields = {
+        clock: "int32",
         setPortRefs: "int64[]",
         setItemTypeIds: "int32[]",
+        setAges: "int32[]",
         clearPortRefs: "int64[]",
         clearConsumed: "int32[]",
     };
@@ -67,11 +72,14 @@ export class PortItemBatchEvent extends AbstractBatchEvent {
     /**
      * @param {number} x - a port position in the batched chunk, routing the batch to that topic
      * @param {number} y
+     * @param {number} clock - the tick the rows were read on, which their ages count back from
      */
-    constructor(x, y) {
+    constructor(x, y, clock) {
         super(x, y);
+        this.clock = clock;
         this.setPortRefs = [];
         this.setItemTypeIds = [];
+        this.setAges = [];
         this.clearPortRefs = [];
         this.clearConsumed = [];
     }
@@ -79,11 +87,13 @@ export class PortItemBatchEvent extends AbstractBatchEvent {
     /**
      * @param {number} portRef
      * @param {number} itemTypeId
+     * @param {number} birthTick
      * @returns {void}
      */
-    addSet(portRef, itemTypeId) {
+    addSet(portRef, itemTypeId, birthTick) {
         this.setPortRefs.push(portRef);
         this.setItemTypeIds.push(itemTypeId);
+        this.setAges.push(this.clock - birthTick);
     }
 
     /**
@@ -106,7 +116,9 @@ export class PortItemBatchEvent extends AbstractBatchEvent {
             events.push(new PortItemClearEvent(this.x, this.y, this.clearPortRefs[i], this.clearConsumed[i]));
         }
         for (let i = 0; i < this.setPortRefs.length; i += 1) {
-            events.push(new PortItemSetEvent(this.x, this.y, this.setPortRefs[i], this.setItemTypeIds[i]));
+            events.push(new PortItemSetEvent(
+                this.x, this.y, this.setPortRefs[i], this.setItemTypeIds[i], this.clock - this.setAges[i],
+            ));
         }
         return events;
     }

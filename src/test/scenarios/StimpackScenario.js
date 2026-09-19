@@ -1,4 +1,5 @@
 import {AbstractScenario} from "@/test/scenarios/AbstractScenario.js";
+import {positiveIntParam} from "@/test/scenarios/scenarioParam.js";
 import {buildStimpackFactory} from "@/test/stimpackLine.js";
 import {CHUNK_SIZE} from "@/common/constants.js";
 
@@ -11,20 +12,6 @@ const COPY_PITCH = CHUNK_SIZE / 2;
 const WARMUP_TICKS = 0;
 const COPY_COUNT_PARAM = "n";
 const DEFAULT_COPY_COUNT = 1;
-
-/**
- * Parses a positive integer query param, falling back when absent or unparsable.
- * @param {string|null} raw
- * @param {number} fallback
- * @returns {number}
- */
-function intParam(raw, fallback) {
-    const parsed = Number.parseInt(raw, 10);
-    if (Number.isFinite(parsed) && parsed > 0) {
-        return parsed;
-    }
-    return fallback;
-}
 
 /**
  * The full production chain, physically placed and wired end to end: raw extraction through
@@ -46,7 +33,7 @@ export class StimpackScenario extends AbstractScenario {
      * @returns {Promise<void>}
      */
     async apply(game, params) {
-        const copies = intParam(params.get(COPY_COUNT_PARAM), DEFAULT_COPY_COUNT);
+        const copies = positiveIntParam(params.get(COPY_COUNT_PARAM), DEFAULT_COPY_COUNT);
         const columns = Math.ceil(Math.sqrt(copies));
         for (let copy = 0; copy < copies; copy += 1) {
             const originX = ORIGIN_X + (copy % columns) * COPY_PITCH;

@@ -107,6 +107,7 @@ export class LaneItemUpsertEvent extends AbstractChunkRoutedEvent {
         itemRef: "int32",
         gap: "int32",
         itemTypeId: "int32",
+        birthTick: "int32",
     };
 
     /**
@@ -116,13 +117,15 @@ export class LaneItemUpsertEvent extends AbstractChunkRoutedEvent {
      * @param {number} itemRef
      * @param {number} gap
      * @param {number} itemTypeId
+     * @param {number} birthTick
      */
-    constructor(x, y, laneRef, itemRef, gap, itemTypeId) {
+    constructor(x, y, laneRef, itemRef, gap, itemTypeId, birthTick) {
         super(x, y);
         this.laneRef = laneRef;
         this.itemRef = itemRef;
         this.gap = gap;
         this.itemTypeId = itemTypeId;
+        this.birthTick = birthTick;
     }
 }
 
@@ -136,6 +139,7 @@ export class LaneItemSyncEvent extends AbstractChunkRoutedEvent {
         itemRef: "int32",
         gap: "int32",
         itemTypeId: "int32",
+        birthTick: "int32",
     };
 
     /**
@@ -145,13 +149,15 @@ export class LaneItemSyncEvent extends AbstractChunkRoutedEvent {
      * @param {number} itemRef
      * @param {number} gap
      * @param {number} itemTypeId
+     * @param {number} birthTick
      */
-    constructor(x, y, laneRef, itemRef, gap, itemTypeId) {
+    constructor(x, y, laneRef, itemRef, gap, itemTypeId, birthTick) {
         super(x, y);
         this.laneRef = laneRef;
         this.itemRef = itemRef;
         this.gap = gap;
         this.itemTypeId = itemTypeId;
+        this.birthTick = birthTick;
     }
 }
 
@@ -205,14 +211,17 @@ export class LaneDeletedEvent extends AbstractChunkRoutedEvent {
 export class LaneItemBatchEvent extends AbstractBatchEvent {
 
     static wireFields = {
+        clock: "int32",
         upsertLaneRefs: "int64[]",
         upsertItemRefs: "int32[]",
         upsertGaps: "int32[]",
         upsertItemTypeIds: "int32[]",
+        upsertAges: "int32[]",
         syncLaneRefs: "int64[]",
         syncItemRefs: "int32[]",
         syncGaps: "int32[]",
         syncItemTypeIds: "int32[]",
+        syncAges: "int32[]",
         deleteLaneRefs: "int64[]",
         deleteItemRefs: "int32[]",
         deletedLaneRefs: "int64[]",
@@ -221,17 +230,21 @@ export class LaneItemBatchEvent extends AbstractBatchEvent {
     /**
      * @param {number} x - a position in the batched chunk, routing the batch to that topic
      * @param {number} y
+     * @param {number} clock - the tick the rows were read on, which their ages count back from
      */
-    constructor(x, y) {
+    constructor(x, y, clock) {
         super(x, y);
+        this.clock = clock;
         this.upsertLaneRefs = [];
         this.upsertItemRefs = [];
         this.upsertGaps = [];
         this.upsertItemTypeIds = [];
+        this.upsertAges = [];
         this.syncLaneRefs = [];
         this.syncItemRefs = [];
         this.syncGaps = [];
         this.syncItemTypeIds = [];
+        this.syncAges = [];
         this.deleteLaneRefs = [];
         this.deleteItemRefs = [];
         this.deletedLaneRefs = [];
@@ -242,13 +255,15 @@ export class LaneItemBatchEvent extends AbstractBatchEvent {
      * @param {number} itemRef
      * @param {number} gap
      * @param {number} itemTypeId
+     * @param {number} birthTick
      * @returns {void}
      */
-    addUpsert(laneRef, itemRef, gap, itemTypeId) {
+    addUpsert(laneRef, itemRef, gap, itemTypeId, birthTick) {
         this.upsertLaneRefs.push(laneRef);
         this.upsertItemRefs.push(itemRef);
         this.upsertGaps.push(gap);
         this.upsertItemTypeIds.push(itemTypeId);
+        this.upsertAges.push(this.clock - birthTick);
     }
 
     /**
@@ -256,13 +271,15 @@ export class LaneItemBatchEvent extends AbstractBatchEvent {
      * @param {number} itemRef
      * @param {number} gap
      * @param {number} itemTypeId
+     * @param {number} birthTick
      * @returns {void}
      */
-    addSync(laneRef, itemRef, gap, itemTypeId) {
+    addSync(laneRef, itemRef, gap, itemTypeId, birthTick) {
         this.syncLaneRefs.push(laneRef);
         this.syncItemRefs.push(itemRef);
         this.syncGaps.push(gap);
         this.syncItemTypeIds.push(itemTypeId);
+        this.syncAges.push(this.clock - birthTick);
     }
 
     /**
@@ -306,11 +323,13 @@ export class LaneItemBatchEvent extends AbstractBatchEvent {
         for (let i = 0; i < this.syncLaneRefs.length; i += 1) {
             events.push(new LaneItemSyncEvent(
                 this.x, this.y, this.syncLaneRefs[i], this.syncItemRefs[i], this.syncGaps[i], this.syncItemTypeIds[i],
+                this.clock - this.syncAges[i],
             ));
         }
         for (let i = 0; i < this.upsertLaneRefs.length; i += 1) {
             events.push(new LaneItemUpsertEvent(
                 this.x, this.y, this.upsertLaneRefs[i], this.upsertItemRefs[i], this.upsertGaps[i], this.upsertItemTypeIds[i],
+                this.clock - this.upsertAges[i],
             ));
         }
         return events;

@@ -2,6 +2,7 @@ import {BlankScenario} from "@/test/scenarios/BlankScenario.js";
 import {LogicScenario} from "@/test/scenarios/LogicScenario.js";
 import {ProductionLineScenario} from "@/test/scenarios/ProductionLineScenario.js";
 import {ProductionLogScenario} from "@/test/scenarios/ProductionLogScenario.js";
+import {SteelCoolingScenario} from "@/test/scenarios/SteelCoolingScenario.js";
 import {StimpackScenario} from "@/test/scenarios/StimpackScenario.js";
 import {ThroughputScenario} from "@/test/scenarios/ThroughputScenario.js";
 import {SCENARIO_PARAM} from "@/test/scenarios/scenarioParam.js";
@@ -13,6 +14,7 @@ const SCENARIOS = [
     new LogicScenario(),
     new ProductionLineScenario(),
     new ProductionLogScenario(),
+    new SteelCoolingScenario(),
     new StimpackScenario(),
     new ThroughputScenario(),
 ];

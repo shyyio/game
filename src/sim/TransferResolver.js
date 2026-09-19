@@ -1,4 +1,5 @@
 import {EMPTY} from "@/sim/AbstractComponent.js";
+import {NO_TICK} from "@/common/constants.js";
 
 // Initial row count for the per-tick intent/resolved columns; grows by doubling.
 const INTENT_CAPACITY = 1024;
@@ -26,6 +27,7 @@ export class TransferResolver {
         this._intentSource = new Int32Array(INTENT_CAPACITY);
         this._intentDest = new Int32Array(INTENT_CAPACITY);
         this._intentOutput = new Int32Array(INTENT_CAPACITY);
+        this._intentBirthTick = new Int32Array(INTENT_CAPACITY);
         this._intentRank = new Int32Array(INTENT_CAPACITY);
         this._intentDestEmpty = new Uint8Array(INTENT_CAPACITY);
         this._intentResolved = new Uint8Array(INTENT_CAPACITY);
@@ -36,6 +38,7 @@ export class TransferResolver {
         this._resolvedSource = new Int32Array(INTENT_CAPACITY);
         this._resolvedDest = new Int32Array(INTENT_CAPACITY);
         this._resolvedItem = new Int32Array(INTENT_CAPACITY);
+        this._resolvedBirthTick = new Int32Array(INTENT_CAPACITY);
         this._resolvedCount = 0;
 
         // resolve()'s working lists, reused tick to tick. Each holds at most one entry per intent
@@ -150,10 +153,12 @@ export class TransferResolver {
      * @param {number} [rank] - preference among one source's several destinations; lowest wins
      * @param {number} [outputItem] - what lands in `dest`, when the move translates the item type;
      *     without it the source's own item moves across
+     * @param {number} [outputBirthTick] - the tick `outputItem` was made on; without it the
+     *     source's own birth tick moves across
      * @returns {number} the intent row, for {@link isIntentResolved}
      */
-    submitTransfer(source, dest, destEmpty, rank=EMPTY, outputItem=EMPTY) {
-        return this._pushIntent(source, dest, destEmpty, rank, outputItem);
+    submitTransfer(source, dest, destEmpty, rank=EMPTY, outputItem=EMPTY, outputBirthTick=NO_TICK) {
+        return this._pushIntent(source, dest, destEmpty, rank, outputItem, outputBirthTick);
     }
 
     /**
@@ -161,10 +166,12 @@ export class TransferResolver {
      * @param {number} dest
      * @param {number} item
      * @param {boolean} destEmpty
+     * @param {number} [birthTick] - the tick the item was made on, for a mover re-placing an item
+     *     that already existed; defaults to the item being born now
      * @returns {number} the intent row, for {@link isIntentResolved}
      */
-    submitCreate(dest, item, destEmpty) {
-        return this._pushIntent(EMPTY, dest, destEmpty, EMPTY, item);
+    submitCreate(dest, item, destEmpty, birthTick=this.engine.clock) {
+        return this._pushIntent(EMPTY, dest, destEmpty, EMPTY, item, birthTick);
     }
 
     /**
@@ -174,7 +181,7 @@ export class TransferResolver {
      * @returns {number} the intent row, for {@link isIntentResolved}
      */
     submitDrain(source) {
-        return this._pushIntent(source, EMPTY, false, EMPTY, EMPTY);
+        return this._pushIntent(source, EMPTY, false, EMPTY, EMPTY, NO_TICK);
     }
 
     /**
@@ -185,14 +192,16 @@ export class TransferResolver {
      * @param {boolean} destEmpty
      * @param {number} rank
      * @param {number} outputItem
+     * @param {number} outputBirthTick
      * @returns {number} the intent row
      */
-    _pushIntent(source, dest, destEmpty, rank, outputItem) {
+    _pushIntent(source, dest, destEmpty, rank, outputItem, outputBirthTick) {
         const row = this._intentCount;
         this._growIntents(row);
         this._intentSource[row] = source;
         this._intentDest[row] = dest;
         this._intentOutput[row] = outputItem;
+        this._intentBirthTick[row] = outputBirthTick;
         this._intentRank[row] = rank;
         this._intentDestEmpty[row] = destEmpty ? 1 : 0;
         this._intentCount = row + 1;
@@ -309,7 +318,7 @@ export class TransferResolver {
 
     /**
      * Records one resolved transfer, capturing the moved item now (before the sources empty): the
-     * destination receives output_item if set, else the source's item.
+     * destination receives output_item if set, else the source's item, each with its birth tick.
      * @private
      * @param {number} intentRow
      * @returns {void}
@@ -319,8 +328,12 @@ export class TransferResolver {
         const source = this._intentSource[intentRow];
         const dest = this._intentDest[intentRow];
         let item = this._intentOutput[intentRow];
+        let birthTick = this._intentBirthTick[intentRow];
         if (item === EMPTY && source !== EMPTY) {
             item = this.engine.Port.item[source];
+        }
+        if (birthTick === NO_TICK && source !== EMPTY) {
+            birthTick = this.engine.Port.birthTick[source];
         }
 
         const row = this._resolvedCount;
@@ -328,6 +341,7 @@ export class TransferResolver {
         this._resolvedSource[row] = source;
         this._resolvedDest[row] = dest;
         this._resolvedItem[row] = item;
+        this._resolvedBirthTick[row] = birthTick;
         this._resolvedCount = row + 1;
 
         // First transfer wins
@@ -365,6 +379,7 @@ export class TransferResolver {
             const dest = this._resolvedDest[row];
             if (dest !== EMPTY) {
                 engine.Port.item[dest] = this._resolvedItem[row];
+                engine.Port.birthTick[dest] = this._resolvedBirthTick[row];
                 engine.portItems.markDirty(dest);
             }
         }
@@ -422,7 +437,7 @@ export class TransferResolver {
         while (capacity <= count) {
             capacity *= 2;
         }
-        for (const name of ["_intentSource", "_intentDest", "_intentOutput", "_intentRank"]) {
+        for (const name of ["_intentSource", "_intentDest", "_intentOutput", "_intentBirthTick", "_intentRank"]) {
             const grown = new Int32Array(capacity);
             grown.set(this[name]);
             this[name] = grown;
@@ -449,7 +464,7 @@ export class TransferResolver {
         while (capacity <= count) {
             capacity *= 2;
         }
-        for (const name of ["_resolvedSource", "_resolvedDest", "_resolvedItem"]) {
+        for (const name of ["_resolvedSource", "_resolvedDest", "_resolvedItem", "_resolvedBirthTick"]) {
             const grown = new Int32Array(capacity);
             grown.set(this[name]);
             this[name] = grown;

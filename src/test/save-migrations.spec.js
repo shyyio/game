@@ -534,3 +534,29 @@ test("a format-14 save names its table fields in snake_case", async () => {
     assert.equal(restored.players.getPlayerByRef(alice.playerRef).friendCode, alice.friendCode);
     assert.equal(restored.claims.getOwnerByChunkKey(chunkKeyAt(0, 0)), alice.playerRef);
 });
+
+function dropFieldBack(snapshot, componentName, fieldName) {
+    const component = snapshot.components.find(entry => entry.name === componentName);
+    component.fields = component.fields.filter(field => field.name !== fieldName);
+    for (const row of component.rows) {
+        delete row[fieldName];
+    }
+}
+
+test("a format-15 save's items are born before the world it loads into", async () => {
+    const engine = await makeGameEngine();
+    engine.applyMessage(new CreateObjectMessage(BeltType.objectTypeId, 0, 0, Direction.UP));
+    const snapshot = engine.snapshots.serialize();
+    snapshot.saveFormat = 15;
+    dropFieldBack(snapshot, "Port", "birthTick");
+    dropFieldBack(snapshot, "LaneItem", "birthTick");
+
+    const migrated = migrateSnapshot(snapshot);
+
+    assert.equal(migrated.saveFormat, SAVE_FORMAT);
+    const port = migrated.components.find(component => component.name === "Port");
+    assert.ok(port.fields.some(field => field.name === "birthTick"));
+    assert.ok(port.rows.every(row => row.birthTick === 0));
+    const restored = await makeGameEngine();
+    assert.doesNotThrow(() => restored.snapshots.deserialize(migrated));
+});

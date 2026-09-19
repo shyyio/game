@@ -285,7 +285,7 @@ export class Client {
     _buildSharedWorldLayers() {
         // The single shared item layer: belts drive their computed-position items imperatively;
         // resting output port items render here automatically from the port-item events.
-        this.itemLayer = new ItemDrawLayer(this.modRegistry.items);
+        this.itemLayer = new ItemDrawLayer(this.modRegistry.items, this.cache.view("clock"));
         // Turns the core's lane feed into item sprites on the shared item layer.
         this.laneItemLayer = new LaneItemDrawLayer(this.itemLayer);
         // Shared hover-highlight layer, driven by mods' inspect hover.

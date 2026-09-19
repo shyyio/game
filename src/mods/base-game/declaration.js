@@ -1,4 +1,4 @@
-import {AbstractModDeclaration, MarketListingEntry, ItemType, ItemCategory} from "@spup/sdk";
+import {AbstractModDeclaration, MarketListingEntry, ItemType, ItemAgeFrameEntry, ItemCategory} from "@spup/sdk";
 import {
     RESOURCE_TYPES,
     ExtractorType,
@@ -31,6 +31,15 @@ import {
     NPC_PRICE_MUSHROOM_SPORE,
 } from "./common/constants.js";
 import {NOISE_CHANNELS, BIOMES} from "./common/terrain.js";
+
+// Raw steel leaves the furnace glowing and cools over five ticks; steel3 is cold, and the frame an
+// ageless one shows.
+const RAW_STEEL_COOLING = [
+    new ItemAgeFrameEntry("items/steel0", 0),
+    new ItemAgeFrameEntry("items/steel1", 3),
+    new ItemAgeFrameEntry("items/steel2", 5),
+    new ItemAgeFrameEntry("items/steel3", 7),
+];
 
 /**
  * The real game content: the whole production chain, from primary extraction through the
@@ -70,7 +79,7 @@ export class BaseGameDeclaration extends AbstractModDeclaration {
                 [ITEM_TYPE_IRON_ORE]: new ItemType("Iron Ore", "items/ironore"),
                 [ITEM_TYPE_COAL]: new ItemType("Coal", "items/coal"),
                 [ITEM_TYPE_COKE]: new ItemType("Coke", "items/coke"),
-                [ITEM_TYPE_RAW_STEEL]: new ItemType("Raw Steel", "items/steel1"),
+                [ITEM_TYPE_RAW_STEEL]: new ItemType("Raw Steel", "items/steel3", 0xFFFFFF, RAW_STEEL_COOLING),
                 [ITEM_TYPE_STEEL_PARTS]: new ItemType("Steel Parts", "items/steelparts"),
             }),
             new ItemCategory("Power Up", {

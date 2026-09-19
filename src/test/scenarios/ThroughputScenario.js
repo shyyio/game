@@ -13,7 +13,6 @@
 
 import {
     AbstractModDeclaration,
-    AbstractBehavior,
     ModPackage,
     ObjectType,
     PortDefinition,
@@ -24,34 +23,20 @@ import {
     ItemCategory,
     MarketListingEntry,
     Direction,
-    EMPTY,
-    NO_EID,
     CHUNK_SIZE,
 } from "@/sdk/common.js";
 import {CreateObjectMessage} from "@/common/CoreMessages.js";
 import {chunkOrdinal} from "@/common/util.js";
 import {AbstractScenario} from "@/test/scenarios/AbstractScenario.js";
+import {ScenarioSinkType, sinkConsumedTotal} from "@/test/scenarios/scenarioSink.js";
+import {nonNegativeIntParam} from "@/test/scenarios/scenarioParam.js";
 import {CapturingSession} from "@/test/CapturingSession.js";
 import {BeltType, SplitterType} from "@/mods/logistics/common/objectTypes.js";
 import {TradingTerminalType} from "@/mods/market/common/objectTypes.js";
 import {ConfigureTradingTerminalMessage} from "@/mods/market/common/messages.js";
 import {MARKET_MODE_BUY, MARKET_SETTING_BALANCE} from "@/mods/market/common/constants.js";
-import {AbstractSystem} from "@/sim/AbstractSystem.js";
-import {AbstractComponent, FieldDefinition} from "@/sim/AbstractComponent.js";
 
-/**
- * A benchmark sink: its input port and what it consumed.
- */
-class ThroughputSinkComponent extends AbstractComponent {
-
-    constructor() {
-        super("ThroughputSink", [
-            new FieldDefinition("inputPort", "eid", NO_EID),
-            new FieldDefinition("consumed"),
-            new FieldDefinition("lastConsumed", "i32", EMPTY),
-        ], {isSparse: true});
-    }
-}
+export {sinkConsumedTotal};
 
 // Own item range, clear of BaseGame's 3xx and the engine fixtures' 94x.
 export const ITEM_TYPE_THROUGHPUT_FEED = 950;
@@ -92,77 +77,6 @@ function press(name, label, toolId, input, output) {
     });
 }
 
-/**
- * Ticks every sink.
- */
-class SinkSystem extends AbstractSystem {
-
-    /**
-     * @param {GameEngine} engine
-     */
-    constructor(engine) {
-        super();
-        this.engine = engine;
-    }
-
-    submitIntents() {
-        SinkBehavior._submitIntents(this.engine);
-    }
-}
-
-/**
- * A bottomless consumer: drains its input port every tick and counts what it took, so a run's
- * delivered total is one component column read (see {@link sinkConsumedTotal}).
- */
-class SinkBehavior extends AbstractBehavior {
-
-    /**
-     * @param {GameEngine} engine
-     * @returns {void}
-     */
-    install(engine) {
-        engine.components.register(new ThroughputSinkComponent());
-        engine.registerSystem(new SinkSystem(engine));
-    }
-
-    /**
-     * @param {GameEngine} engine
-     * @param {number} eid
-     * @param {ObjectType} type
-     * @param {CreateObjectMessage} message
-     * @returns {void}
-     */
-    onSpawn(engine, eid, type, message) {
-        const sinks = engine.components.getComponentByName("ThroughputSink");
-        sinks.attach(eid);
-        const row = sinks.getRowByEid(eid);
-        sinks.store.inputPort[row] = engine.getPortAt(type.inputPorts[0], message.x, message.y, message.direction).port;
-    }
-
-    /**
-     * SUBMIT_INTENTS: drains whatever rests in the input port. A drain resolves outright, so the
-     * count is booked here.
-     * @private
-     * @param {GameEngine} engine
-     * @returns {void}
-     */
-    static _submitIntents(engine) {
-        const item = engine.Port.item;
-        const sinks = engine.components.getComponentByName("ThroughputSink");
-        const sink = sinks.store;
-        const count = sinks.count;
-        for (let row = 0; row < count; row += 1) {
-            const inputPort = sink.inputPort[row];
-            if (item[inputPort] === EMPTY) {
-                continue;
-            }
-            sink.lastConsumed[row] = item[inputPort];
-            sink.consumed[row] += 1;
-            engine.transfers.submitDrain(inputPort);
-        }
-    }
-}
-
 export const ThroughputPressType = press(
     "ThroughputPress", "Throughput Press", 90, ITEM_TYPE_THROUGHPUT_FEED, ITEM_TYPE_THROUGHPUT_PART,
 );
@@ -170,17 +84,6 @@ export const ThroughputPressType = press(
 export const ThroughputPackType = press(
     "ThroughputPack", "Throughput Pack", 91, ITEM_TYPE_THROUGHPUT_PART, ITEM_TYPE_THROUGHPUT_UNIT,
 );
-
-export const ThroughputSinkType = new ObjectType({
-    name: "ThroughputSink",
-    toolId: 92,
-    inputPorts: [IN],
-    geometry: "1x1",
-    textureName: "machine/1x1",
-    label: "Throughput Sink",
-    placement: new PlacementRule({shouldReplaceSameKind: true}),
-    behavior: new SinkBehavior(),
-});
 
 export class ThroughputDeclaration extends AbstractModDeclaration {
 
@@ -192,7 +95,7 @@ export class ThroughputDeclaration extends AbstractModDeclaration {
     }
 
     get objectTypes() {
-        return [ThroughputPressType, ThroughputPackType, ThroughputSinkType];
+        return [ThroughputPressType, ThroughputPackType, ScenarioSinkType];
     }
 
     get items() {
@@ -230,35 +133,6 @@ export const THROUGHPUT_PLAYER_REF = 1;
 
 // Runway per chain copy; the granted balance scales with `n`.
 const STARTING_BALANCE_PER_COPY = 1000000;
-
-/**
- * Parses a non-negative integer query param, falling back when absent or unparsable.
- * @param {string|null} raw
- * @param {number} fallback
- * @returns {number}
- */
-function intParam(raw, fallback) {
-    const parsed = Number.parseInt(raw, 10);
-    if (Number.isFinite(parsed) && parsed >= 0) {
-        return parsed;
-    }
-    return fallback;
-}
-
-/**
- * The total items every Sink in the world has drained.
- * @param {GameEngine} engine
- * @returns {number}
- */
-export function sinkConsumedTotal(engine) {
-    const sinks = engine.components.getComponentByName("ThroughputSink");
-    const consumed = sinks.store.consumed;
-    let total = 0;
-    for (let row = 0; row < sinks.count; row += 1) {
-        total += consumed[row];
-    }
-    return total;
-}
 
 /**
  * Claims every chunk the tiled grid touches, before anything is placed: production is attributed to
@@ -311,7 +185,7 @@ function buildChain(engine, originX, originY, beltLength) {
     }
     engine.applyMessage(new CreateObjectMessage(ThroughputPackType.objectTypeId, originX, packY, Direction.UP));
     layBelts(engine, originX, packY, beltLength);
-    engine.applyMessage(new CreateObjectMessage(ThroughputSinkType.objectTypeId, originX, sinkY, Direction.UP));
+    engine.applyMessage(new CreateObjectMessage(ScenarioSinkType.objectTypeId, originX, sinkY, Direction.UP));
 
     if (splitterFits) {
         // Splitter outputPortB lands here; a second Press fed parts crafts its fallback unit.
@@ -319,7 +193,7 @@ function buildChain(engine, originX, originY, beltLength) {
         layBelts(engine, branchX, pressY - 2, beltLength - 2);
         engine.applyMessage(new CreateObjectMessage(ThroughputPressType.objectTypeId, branchX, packY, Direction.UP));
         layBelts(engine, branchX, packY, beltLength);
-        engine.applyMessage(new CreateObjectMessage(ThroughputSinkType.objectTypeId, branchX, sinkY, Direction.UP));
+        engine.applyMessage(new CreateObjectMessage(ScenarioSinkType.objectTypeId, branchX, sinkY, Direction.UP));
     }
 }
 
@@ -366,8 +240,8 @@ export class ThroughputScenario extends AbstractScenario {
      * @returns {Promise<void>}
      */
     async apply(game, params) {
-        const beltLength = intParam(params.get(BELT_LENGTH_PARAM), DEFAULT_BELT_LENGTH);
-        const copies = Math.max(1, intParam(params.get(COPY_COUNT_PARAM), DEFAULT_COPY_COUNT));
+        const beltLength = nonNegativeIntParam(params.get(BELT_LENGTH_PARAM), DEFAULT_BELT_LENGTH);
+        const copies = Math.max(1, nonNegativeIntParam(params.get(COPY_COUNT_PARAM), DEFAULT_COPY_COUNT));
         const stride = beltLength + 1;
         const engine = game.simEngine;
 

@@ -7,6 +7,7 @@ import {WireRegistry} from "@/common/wire.js";
 import {SetViewportMessage, SetInspectedObjectsMessage, OverworldRequestMessage} from "@/common/CoreMessages.js";
 import {OverworldSnapshotEvent} from "@/common/OverworldEvents.js";
 import {PortItemSetEvent, PortItemBatchEvent} from "@/common/PortItemEvents.js";
+import {LaneItemBatchEvent} from "@/common/LaneEvents.js";
 import {PlayerSettingsSyncEvent, PlayerSettingsUpdateEvent} from "@/common/PlayerSettingsEvents.js";
 import {GameSettingsSyncEvent, GameSettingsUpdateEvent} from "@/common/GameSettingsEvents.js";
 import {ChunkSubscribeEvent, ChunkUnsubscribeEvent, ChunkSyncEvent} from "@/common/CoreEvents.js";
@@ -57,15 +58,15 @@ test("Round-trips a SetViewportMessage", () => {
 
 test("Round-trips a PortItemSetEvent with a port ref", () => {
     const reg = registry();
-    roundTrip(reg, new PortItemSetEvent(12, -5, 999999999999, 8), PortItemSetEvent);
+    roundTrip(reg, new PortItemSetEvent(12, -5, 999999999999, 8, 4210), PortItemSetEvent);
 });
 
 test("Round-trips a PortItemBatchEvent's packed columns", () => {
     const reg = registry();
-    const batch = new PortItemBatchEvent(12, -5);
+    const batch = new PortItemBatchEvent(12, -5, 4300);
     batch.addClear(999999999999);
-    batch.addSet(41, 8);
-    batch.addSet(42, 0);
+    batch.addSet(41, 8, 4210);
+    batch.addSet(42, 0, 0);
     roundTrip(reg, batch, PortItemBatchEvent);
 });
 
@@ -228,4 +229,58 @@ test("Round-trips a SetPlayerSettingsToolOrderMessage", () => {
 test("Round-trips a PlayerSettingsToolOrderSyncEvent", () => {
     const reg = registry();
     roundTrip(reg, new PlayerSettingsToolOrderSyncEvent([-100, 0, 100]), PlayerSettingsToolOrderSyncEvent);
+});
+
+// An item's age is what the client needs, and it stays small however long the world has run, so a
+// batch carries its own clock once and every row an age against it: a row costs the same whatever
+// the clock reads.
+function laneRowCost(reg, clock) {
+    const one = new LaneItemBatchEvent(12, -5, clock);
+    one.addUpsert(1, 2, 0, 8, clock - 2);
+    const two = new LaneItemBatchEvent(12, -5, clock);
+    two.addUpsert(1, 2, 0, 8, clock - 2);
+    two.addUpsert(1, 3, 0, 8, clock - 3);
+    return reg.encode(two).length - reg.encode(one).length;
+}
+
+function portRowCost(reg, clock) {
+    const one = new PortItemBatchEvent(12, -5, clock);
+    one.addSet(41, 8, clock - 2);
+    const two = new PortItemBatchEvent(12, -5, clock);
+    two.addSet(41, 8, clock - 2);
+    two.addSet(42, 8, clock - 3);
+    return reg.encode(two).length - reg.encode(one).length;
+}
+
+test("A lane item row costs the same whatever the world clock reads", () => {
+    const reg = registry();
+
+    assert.equal(laneRowCost(reg, 2000000), laneRowCost(reg, 20));
+});
+
+test("A port item row costs the same whatever the world clock reads", () => {
+    const reg = registry();
+
+    assert.equal(portRowCost(reg, 2000000), portRowCost(reg, 20));
+});
+
+test("A lane item batch explodes into rows carrying the item's birth tick", () => {
+    const reg = registry();
+    const batch = new LaneItemBatchEvent(12, -5, 2000000);
+    batch.addUpsert(1, 2, 0, 8, 1999998);
+    batch.addSync(1, 3, 1, 8, 1999997);
+
+    const rows = reg.decode(reg.encode(batch)).explode();
+
+    assert.deepStrictEqual(rows.map(row => row.birthTick), [1999997, 1999998]);
+});
+
+test("A port item batch explodes into rows carrying the item's birth tick", () => {
+    const reg = registry();
+    const batch = new PortItemBatchEvent(12, -5, 2000000);
+    batch.addSet(41, 8, 1999998);
+
+    const rows = reg.decode(reg.encode(batch)).explode();
+
+    assert.deepStrictEqual(rows.map(row => row.birthTick), [1999998]);
 });

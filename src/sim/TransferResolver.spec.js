@@ -191,3 +191,40 @@ test("a submitted intent reports whether it resolved", async () => {
     assert.equal(engine.transfers.isIntentResolved(first), true);
     assert.equal(engine.transfers.isIntentResolved(second), false);
 });
+
+test("a created item is born on the tick it was created", async () => {
+    const {engine, ports} = await setup(1, []);
+
+    tick(engine, () => {
+        engine.transfers.submitCreate(ports[0], ITEM, true);
+    });
+
+    assert.equal(engine.ports.getBirthTickByPortEid(ports[0]), engine.clock);
+});
+
+test("a transfer carries the item's birth tick across", async () => {
+    const {engine, ports} = await setup(2, []);
+    tick(engine, () => {
+        engine.transfers.submitCreate(ports[0], ITEM, true);
+    });
+    const birthTick = engine.clock;
+
+    tick(engine, () => {
+        engine.transfers.submitTransfer(ports[0], ports[1], true);
+    });
+
+    assert.equal(engine.ports.getBirthTickByPortEid(ports[1]), birthTick);
+    assert.equal(engine.clock - engine.ports.getBirthTickByPortEid(ports[1]), 1);
+});
+
+test("a translating transfer gives the landed item the birth tick it was submitted with", async () => {
+    const {engine, ports} = await setup(2, [1]);
+    const OTHER_ITEM = ITEM + 1;
+
+    tick(engine, () => {
+        engine.transfers.submitTransfer(ports[0], ports[1], true, EMPTY, OTHER_ITEM, engine.clock);
+    });
+
+    assert.equal(engine.ports.getItemByPortEid(ports[1]), OTHER_ITEM);
+    assert.equal(engine.ports.getBirthTickByPortEid(ports[1]), engine.clock);
+});

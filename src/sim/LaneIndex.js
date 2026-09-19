@@ -6,6 +6,7 @@ import {
     LAYER_LANE_BURIED_VERTICAL,
     LAYER_LANE_ELEVATED_1,
     LAYER_LANE_ELEVATED_2,
+    NO_TICK,
 } from "@/common/constants.js";
 import {chunkKeyAt} from "@/common/util.js";
 import {portAt} from "@/common/portGeometry.js";
@@ -78,6 +79,7 @@ class LaneItemComponent extends AbstractComponent {
             new FieldDefinition("lane", "eid", NO_EID),
             new FieldDefinition("nextItem", "eid", NO_EID),
             new FieldDefinition("itemTypeId", "item", EMPTY),
+            new FieldDefinition("birthTick", "i32", NO_TICK),
             new FieldDefinition("gap"),
             new FieldDefinition("itemRef"),
         ], {isSparse: true});
@@ -86,11 +88,14 @@ class LaneItemComponent extends AbstractComponent {
     /**
      * Creates a detached item.
      * @param {number} itemTypeId
+     * @param {number} birthTick - the tick the item was made on
      * @returns {number} the item eid
      */
-    create(itemTypeId) {
+    create(itemTypeId, birthTick) {
         const eid = super.create();
-        this.store.itemTypeId[this.getRowByEid(eid)] = itemTypeId;
+        const row = this.getRowByEid(eid);
+        this.store.itemTypeId[row] = itemTypeId;
+        this.store.birthTick[row] = birthTick;
         return eid;
     }
 
@@ -239,6 +244,7 @@ function shouldConnectLevels(outLevel, outDirection, inLevel, inDirection) {
  * @typedef {Object} LaneItemRow
  * @property {number} itemRef
  * @property {number} itemTypeId
+ * @property {number} birthTick
  * @property {number} gap
  */
 
@@ -344,11 +350,13 @@ export class LaneIndex extends AbstractSystem {
         // This pass's client rows, one batch per chunk.
         this._batches = new Map();
 
-        // Per-lane-row intents submitted this tick, and the item each would take onto the lane.
+        // Per-lane-row intents submitted this tick, and the item each would take onto the lane with
+        // the tick that item was made on.
         this._popIntent = new Int32Array(0);
         this._drainIntent = new Int32Array(0);
         this._popSourceItem = new Int32Array(0);
         this._drainItem = new Int32Array(0);
+        this._inputPortBirthTick = new Int32Array(0);
     }
 
     /**
@@ -422,7 +430,12 @@ export class LaneIndex extends AbstractSystem {
         const store = this.items.store;
         return this.items.getFileByFirstItemEid(this.lanes.store.firstItem[this.lanes.getRowByLaneRef(laneRef)]).map(itemEid => {
             const itemRow = this.items.getRowByEid(itemEid);
-            return {itemRef: store.itemRef[itemRow], itemTypeId: store.itemTypeId[itemRow], gap: store.gap[itemRow]};
+            return {
+                itemRef: store.itemRef[itemRow],
+                itemTypeId: store.itemTypeId[itemRow],
+                birthTick: store.birthTick[itemRow],
+                gap: store.gap[itemRow],
+            };
         });
     }
 
@@ -1060,7 +1073,12 @@ export class LaneIndex extends AbstractSystem {
                 items[slot] = NO_EID;
                 if (slotFromOutput < 0) {
                     // The tail cell's last slot is the output port itself.
-                    this.engine.ports.setItem(lanes.outputPort[laneRow], this.items.store.itemTypeId[this.items.getRowByEid(itemEid)]);
+                    const itemRow = this.items.getRowByEid(itemEid);
+                    this.engine.ports.setItem(
+                        lanes.outputPort[laneRow],
+                        this.items.store.itemTypeId[itemRow],
+                        this.items.store.birthTick[itemRow],
+                    );
                     this.items.destroy(itemEid);
                     continue;
                 }
@@ -1098,7 +1116,7 @@ export class LaneIndex extends AbstractSystem {
         if (cellSlots[slot] !== NO_EID) {
             return;
         }
-        cellSlots[slot] = this.items.create(portItem);
+        cellSlots[slot] = this.items.create(portItem, this.engine.ports.getBirthTickByPortEid(portEid));
         this.engine.ports.setItem(portEid, EMPTY);
     }
 
@@ -1158,11 +1176,16 @@ export class LaneIndex extends AbstractSystem {
             this._drainIntent[laneRow] = NO_INTENT;
             const inputPortEid = lanes.inputPort[laneRow];
             const inputPortItemTypeId = engine.ports.getItemByPortEid(inputPortEid);
+            // Whatever the input port hands the lane this tick rides in with this birth tick.
+            this._inputPortBirthTick[laneRow] = engine.ports.getBirthTickByPortEid(inputPortEid);
             // A lane has one input; a resting fluid is refused, so its producer backs up.
             const inputPortTakeable = inputPortItemTypeId !== EMPTY && !engine.isFluid(inputPortItemTypeId);
             const leadItemEid = lanes.firstItem[laneRow];
-            if (leadItemEid !== NO_EID && items.gap[this.items.getRowByEid(leadItemEid)] === 0 && this._canLanePop(laneRow)) {
-                this._submitPop(laneRow, inputPortItemTypeId, items.itemTypeId[this.items.getRowByEid(leadItemEid)]);
+            if (leadItemEid !== NO_EID) {
+                const leadItemRow = this.items.getRowByEid(leadItemEid);
+                if (items.gap[leadItemRow] === 0 && this._canLanePop(laneRow)) {
+                    this._submitPop(laneRow, inputPortItemTypeId, items.itemTypeId[leadItemRow], items.birthTick[leadItemRow]);
+                }
             }
             if (inputPortTakeable && lanes.itemCount[laneRow] < lanes.slotCount[laneRow]) {
                 this._drainItem[laneRow] = inputPortItemTypeId;
@@ -1177,20 +1200,28 @@ export class LaneIndex extends AbstractSystem {
      * @param {number} laneRow
      * @param {number} inputPortItemTypeId
      * @param {number} leadItemTypeId
+     * @param {number} leadBirthTick - the tick the lead item was made on, which rides with it
      * @returns {void}
      */
-    _submitPop(laneRow, inputPortItemTypeId, leadItemTypeId) {
+    _submitPop(laneRow, inputPortItemTypeId, leadItemTypeId, leadBirthTick) {
         const lanes = this.lanes.store;
         const transfers = this.engine.transfers;
         const outputPortEid = lanes.outputPort[laneRow];
         const isOutputPortEmpty = this.engine.ports.getItemByPortEid(outputPortEid) === EMPTY;
         if (this.engine.isFluid(inputPortItemTypeId)) {
             this._popSourceItem[laneRow] = EMPTY;
-            this._popIntent[laneRow] = transfers.submitCreate(outputPortEid, leadItemTypeId, isOutputPortEmpty);
+            this._popIntent[laneRow] = transfers.submitCreate(outputPortEid, leadItemTypeId, isOutputPortEmpty, leadBirthTick);
             return;
         }
         this._popSourceItem[laneRow] = inputPortItemTypeId;
-        this._popIntent[laneRow] = transfers.submitTransfer(lanes.inputPort[laneRow], outputPortEid, isOutputPortEmpty, EMPTY, leadItemTypeId);
+        this._popIntent[laneRow] = transfers.submitTransfer(
+            lanes.inputPort[laneRow],
+            outputPortEid,
+            isOutputPortEmpty,
+            EMPTY,
+            leadItemTypeId,
+            leadBirthTick,
+        );
     }
 
     /**
@@ -1225,7 +1256,7 @@ export class LaneIndex extends AbstractSystem {
                 takenItem = this._drainItem[laneRow];
             }
             if (takenItem !== EMPTY) {
-                this._pushItemFromInputPort(laneEid, laneRow, takenItem);
+                this._pushItemFromInputPort(laneEid, laneRow, takenItem, this._inputPortBirthTick[laneRow]);
             }
         }
         this._flushBatches();
@@ -1269,7 +1300,13 @@ export class LaneIndex extends AbstractSystem {
             if (items.gap[itemRow] > 0) {
                 items.gap[itemRow] -= 1;
                 this.lanes.store.headGap[laneRow] += 1;
-                this._getBatchByLaneRow(laneRow).addUpsert(laneEid, items.itemRef[itemRow], items.gap[itemRow], items.itemTypeId[itemRow]);
+                this._getBatchByLaneRow(laneRow).addUpsert(
+                    laneEid,
+                    items.itemRef[itemRow],
+                    items.gap[itemRow],
+                    items.itemTypeId[itemRow],
+                    items.birthTick[itemRow],
+                );
                 return;
             }
             itemEid = items.nextItem[itemRow];
@@ -1282,11 +1319,12 @@ export class LaneIndex extends AbstractSystem {
      * @param {number} laneEid
      * @param {number} laneRow
      * @param {number} itemTypeId
+     * @param {number} birthTick - the tick the item was made on
      * @returns {void}
      */
-    _pushItemFromInputPort(laneEid, laneRow, itemTypeId) {
+    _pushItemFromInputPort(laneEid, laneRow, itemTypeId, birthTick) {
         const lanes = this.lanes.store;
-        const itemEid = this.items.create(itemTypeId);
+        const itemEid = this.items.create(itemTypeId, birthTick);
         this._pushItem(laneEid, itemEid, lanes.headGap[laneRow] - 1);
         lanes.headGap[laneRow] = 0;
         const itemRow = this.items.getRowByEid(itemEid);
@@ -1295,6 +1333,7 @@ export class LaneIndex extends AbstractSystem {
             this.items.store.itemRef[itemRow],
             this.items.store.gap[itemRow],
             this.items.store.itemTypeId[itemRow],
+            this.items.store.birthTick[itemRow],
         );
     }
 
@@ -1315,6 +1354,7 @@ export class LaneIndex extends AbstractSystem {
         this._drainIntent = new Int32Array(capacity);
         this._popSourceItem = new Int32Array(capacity);
         this._drainItem = new Int32Array(capacity);
+        this._inputPortBirthTick = new Int32Array(capacity);
     }
 
     /**
@@ -1339,7 +1379,7 @@ export class LaneIndex extends AbstractSystem {
             return existing;
         }
         const position = this.engine.Position;
-        const batch = new LaneItemBatchEvent(position.x[eid], position.y[eid]);
+        const batch = new LaneItemBatchEvent(position.x[eid], position.y[eid], this.engine.clock);
         this._batches.set(chunkKey, batch);
         return batch;
     }
@@ -1388,7 +1428,7 @@ export class LaneIndex extends AbstractSystem {
         const laneRow = this.lanes.getRowByLaneRef(laneEid);
         const batch = this._getBatchByLaneRow(laneRow);
         for (const item of this.getItemsByLaneRef(laneEid)) {
-            batch.addSync(laneEid, item.itemRef, item.gap, item.itemTypeId);
+            batch.addSync(laneEid, item.itemRef, item.gap, item.itemTypeId, item.birthTick);
         }
     }
 
@@ -1410,7 +1450,7 @@ export class LaneIndex extends AbstractSystem {
             const headCellEid = this.lanes.store.headCell[laneRow];
             if (geometry === null) {
                 geometry = new LaneSyncBatchEvent(position.x[headCellEid], position.y[headCellEid]);
-                items = new LaneItemBatchEvent(position.x[headCellEid], position.y[headCellEid]);
+                items = new LaneItemBatchEvent(position.x[headCellEid], position.y[headCellEid], this.engine.clock);
             }
             geometry.add(
                 laneEid,
@@ -1419,7 +1459,7 @@ export class LaneIndex extends AbstractSystem {
                 this.lanes.store.outputPort[laneRow],
             );
             for (const item of this.getItemsByLaneRef(laneEid)) {
-                items.addSync(laneEid, item.itemRef, item.gap, item.itemTypeId);
+                items.addSync(laneEid, item.itemRef, item.gap, item.itemTypeId, item.birthTick);
             }
         }
         if (geometry === null) {

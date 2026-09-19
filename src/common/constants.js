@@ -184,6 +184,10 @@ export const DEFAULT_TICK_MS = 600;
 export const SETTING_ON = 0;
 export const SETTING_OFF = 1;
 
+// Birth tick of an item with no age: the clock starts at 0 and the first tick is 1, so no item is
+// ever born on it.
+export const NO_TICK = 0;
+
 // The null player: unclaimed chunks, engine-originated messages. Real player refs start at 1.
 export const PLAYER_REF_NONE = 0;
 

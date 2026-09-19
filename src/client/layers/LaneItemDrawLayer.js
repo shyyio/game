@@ -16,6 +16,39 @@ const LANE_SPRITE_KEY = (laneRef, itemRef) => `lane:${laneRef}:${itemRef}`;
 const LANE_PORT_SPRITE_KEY = portRef => `lanePort:${portRef}`;
 
 /**
+ * One item resting in a lane's output port: what it is and when it was made.
+ */
+class PortItemEntry {
+
+    /**
+     * @param {number} itemTypeId
+     * @param {number} birthTick
+     */
+    constructor(itemTypeId, birthTick) {
+        this.itemTypeId = itemTypeId;
+        this.birthTick = birthTick;
+    }
+}
+
+/**
+ * One item row as the client knows it: where it stands in the file, what it is, and when it was
+ * made.
+ */
+class LaneItemEntry {
+
+    /**
+     * @param {number} gap - empty slots ahead of it
+     * @param {number} itemTypeId
+     * @param {number} birthTick
+     */
+    constructor(gap, itemTypeId, birthTick) {
+        this.gap = gap;
+        this.itemTypeId = itemTypeId;
+        this.birthTick = birthTick;
+    }
+}
+
+/**
  * One lane as the client knows it: the cells the sim last told it about, and the item rows riding
  * them.
  */
@@ -31,8 +64,7 @@ class LaneEntry {
         this.cellParentEdges = cellParentEdges;
         this.outputPortRef = outputPortRef;
         /**
-         * Item id -> {gap, type}, in file order (output edge first).
-         * @type {Map<number, {gap: number, type: number}>}
+         * @type {Map<number, LaneItemEntry>}
          */
         this.items = new Map();
         // A lead was popped and its output port sprite has yet to appear, so that one glides in.
@@ -252,7 +284,7 @@ export class LaneItemDrawLayer extends AbstractDrawLayer {
         if (lane === undefined) {
             return;
         }
-        lane.items.set(event.itemRef, {gap: event.gap, type: event.itemTypeId});
+        lane.items.set(event.itemRef, new LaneItemEntry(event.gap, event.itemTypeId, event.birthTick));
         this._drawLane(event.laneRef, lane, snap);
     }
 
@@ -282,7 +314,7 @@ export class LaneItemDrawLayer extends AbstractDrawLayer {
      */
     _portItem(event) {
         if (event instanceof PortItemSetEvent) {
-            this._portItems.set(event.portRef, event.itemTypeId);
+            this._portItems.set(event.portRef, new PortItemEntry(event.itemTypeId, event.birthTick));
         } else {
             this._portItems.delete(event.portRef);
         }
@@ -314,8 +346,8 @@ export class LaneItemDrawLayer extends AbstractDrawLayer {
      * @returns {void}
      */
     _drawPortItem(lane, snap) {
-        const itemTypeId = this._portItems.get(lane.outputPortRef);
-        if (itemTypeId === undefined) {
+        const item = this._portItems.get(lane.outputPortRef);
+        if (item === undefined) {
             return;
         }
         const slots = this._getSlotsByLane(lane);
@@ -329,7 +361,8 @@ export class LaneItemDrawLayer extends AbstractDrawLayer {
             path: slots.path,
             distance: slots.path.length,
             entryDistance: slots.getDistanceBySlot(slots.total - 2),
-            type: itemTypeId,
+            type: item.itemTypeId,
+            birthTick: item.birthTick,
             snap,
         });
     }
@@ -389,7 +422,7 @@ export class LaneItemDrawLayer extends AbstractDrawLayer {
         let filePos = 0;
         for (const [itemRef, item] of lane.items) {
             filePos += item.gap;
-            this._drawAt(LANE_SPRITE_KEY(laneRef, itemRef), slots, slots.total - 2 - filePos, item.type, snap);
+            this._drawAt(LANE_SPRITE_KEY(laneRef, itemRef), slots, slots.total - 2 - filePos, item, snap);
             filePos += 1;
         }
     }
@@ -401,11 +434,11 @@ export class LaneItemDrawLayer extends AbstractDrawLayer {
      * @param {string} key
      * @param {LaneSlots} slots
      * @param {number} physical - the slot counted from the lane's input edge
-     * @param {number} itemTypeId
+     * @param {LaneItemEntry} item
      * @param {boolean} snap
      * @returns {void}
      */
-    _drawAt(key, slots, physical, itemTypeId, snap) {
+    _drawAt(key, slots, physical, item, snap) {
         let index = slots.getCellIndexBySlot(physical);
         // A cell's last slot is the edge into the next cell: drawn there, on the edge it enters over.
         const halfTile = slots.isEdgeSlot(index, physical);
@@ -424,7 +457,8 @@ export class LaneItemDrawLayer extends AbstractDrawLayer {
             path: slots.path,
             distance: slots.getDistanceBySlot(physical),
             entryDistance: slots.getDistanceBySlot(physical - 1),
-            type: itemTypeId,
+            type: item.itemTypeId,
+            birthTick: item.birthTick,
             snap,
             isHidden,
         });

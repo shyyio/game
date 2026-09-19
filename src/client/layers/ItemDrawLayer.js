@@ -3,7 +3,7 @@ import {AbstractDrawLayer} from "@/client/layers/AbstractDrawLayer.js";
 import {DisplayPool} from "@/client/layers/DisplayPool.js";
 import {KeyedDisplayPool} from "@/client/layers/KeyedDisplayPool.js";
 import {TILE_SIZE} from "@/client/constants.js";
-import {Direction} from "@/common/constants.js";
+import {Direction, NO_TICK} from "@/common/constants.js";
 import {rotate} from "@/common/util.js";
 import {PortItemSetEvent, PortItemClearEvent} from "@/common/PortItemEvents.js";
 import ReducedMotion from "@/client/ReducedMotion.js";
@@ -34,9 +34,15 @@ export class ItemDrawLayer extends AbstractDrawLayer {
 
     /**
      * @param {ItemRegistry} items item types merged across mods
+     * @param {ClockView} clock the sim clock an item's age is read against
      */
-    constructor(items) {
+    constructor(items, clock) {
         super();
+        /**
+         * @type {ClockView}
+         * @private
+         */
+        this._clock = clock;
         /**
          * The particle view holding every item; all item textures share the one atlas source.
          * @type {ParticleContainer}
@@ -75,6 +81,7 @@ export class ItemDrawLayer extends AbstractDrawLayer {
                 particle.setAlpha(0);
                 this._gliding.delete(particle);
                 this._dying.delete(particle);
+                this._aging.delete(particle);
             },
             (particle, texture) => {
                 // Parked particles are still attached; re-light in place.
@@ -125,6 +132,18 @@ export class ItemDrawLayer extends AbstractDrawLayer {
          * @private
          */
         this._isOrderStale = false;
+        /**
+         * Particles of an aging item type: the tick re-textures them as they age.
+         * @type {Set<ItemParticle>}
+         * @private
+         */
+        this._aging = new Set();
+        /**
+         * The clock the last age pass ran against; the pass is skipped until it moves.
+         * @type {number}
+         * @private
+         */
+        this._agedClock = NO_TICK;
     }
 
     get layerIndex() {
@@ -157,6 +176,7 @@ export class ItemDrawLayer extends AbstractDrawLayer {
                 halfTile: true,
                 sourceDirection: placement.sourceDirection,
                 type: event.itemTypeId,
+                birthTick: event.birthTick,
             });
         } else if (event.consumed === 1) {
             this.consumeItem(PORT_SPRITE_KEY(event.portRef), placement.sourceDirection);
@@ -205,6 +225,7 @@ export class ItemDrawLayer extends AbstractDrawLayer {
      * @param {Set<number>} visibleChunks unused — particles cull by chunk mount
      */
     tick(frame, deltaMS, visibleChunks) {
+        this._applyAge();
         this._applyOrder();
         for (const particle of this._gliding) {
             particle.advance(deltaMS);
@@ -230,8 +251,8 @@ export class ItemDrawLayer extends AbstractDrawLayer {
      * @param {boolean} [move.snap] - place at the target without animating (a re-sync)
      * @param {boolean} [move.isHidden] - the item is under cover (in a tunnel)
      */
-    moveItem({key, tileX, tileY, halfTile, sourceDirection, type, snap=false, isHidden=false}) {
-        const particle = this._acquireItem(key, type, isHidden);
+    moveItem({key, tileX, tileY, halfTile, sourceDirection, type, birthTick=NO_TICK, snap=false, isHidden=false}) {
+        const particle = this._acquireItem(key, type, birthTick, isHidden);
         // Reduced motion puts the item on its new tile outright, no glide.
         particle.moveTo(tileX, tileY, halfTile, sourceDirection, snap || ReducedMotion.isEnabled);
         if (particle.gliding) {
@@ -245,21 +266,64 @@ export class ItemDrawLayer extends AbstractDrawLayer {
      * @private
      * @param {number|string} key
      * @param {number} type - item type, selecting the texture
+     * @param {number} birthTick - the tick the item was made on
      * @param {boolean} isHidden - the item is under cover (in a tunnel)
      * @returns {ItemParticle}
      */
-    _acquireItem(key, type, isHidden) {
+    _acquireItem(key, type, birthTick, isHidden) {
         const definition = this._itemRegistry.getItemTypeOrDefaultByTypeId(type);
-        const texture = this.textureCache.get(definition.texture);
+        const texture = this.textureCache.get(this._getTextureName(definition, birthTick));
         this._isOrderStale = true;
         const particle = this._items.acquire(key, texture);
         particle.live = true;
         particle.itemTypeId = type;
+        particle.birthTick = birthTick;
         particle.setTexture(texture);
         particle.setTint(definition.tint);
         particle.isHidden = isHidden;
+        if (definition.isAging) {
+            this._aging.add(particle);
+        } else {
+            this._aging.delete(particle);
+        }
         this._applyItemVisibility(particle);
         return particle;
+    }
+
+    /**
+     * The texture an item type shows for an item born on `birthTick`.
+     * @private
+     * @param {ItemType} definition
+     * @param {number} birthTick
+     * @returns {string} texture name
+     */
+    _getTextureName(definition, birthTick) {
+        if (!definition.isAging) {
+            return definition.texture;
+        }
+        return definition.getTextureByAge(this._clock.tick() - birthTick);
+    }
+
+    /**
+     * Re-textures the aging items against the clock, and drops the ones that have reached their
+     * last frame. The clock moves once a sim tick, so a frame that shares one does no work.
+     * @private
+     * @returns {void}
+     */
+    _applyAge() {
+        const clock = this._clock.tick();
+        if (clock === this._agedClock) {
+            return;
+        }
+        this._agedClock = clock;
+        for (const particle of this._aging) {
+            const definition = this._itemRegistry.getItemTypeOrDefaultByTypeId(particle.itemTypeId);
+            const age = clock - particle.birthTick;
+            particle.setTexture(this.textureCache.get(definition.getTextureByAge(age)));
+            if (definition.isFullyAged(age)) {
+                this._aging.delete(particle);
+            }
+        }
     }
 
     /**
@@ -315,8 +379,8 @@ export class ItemDrawLayer extends AbstractDrawLayer {
      * @param {boolean} [move.snap] - place at the target without animating (a re-sync)
      * @param {boolean} [move.isHidden] - the item is under cover (in a tunnel)
      */
-    moveItemAlong({key, path, distance, entryDistance, type, snap=false, isHidden=false}) {
-        const particle = this._acquireItem(key, type, isHidden);
+    moveItemAlong({key, path, distance, entryDistance, type, birthTick=NO_TICK, snap=false, isHidden=false}) {
+        const particle = this._acquireItem(key, type, birthTick, isHidden);
         particle.moveAlong(path, distance, entryDistance, snap || ReducedMotion.isEnabled);
         if (particle.gliding) {
             this._gliding.add(particle);
@@ -365,6 +429,7 @@ export class ItemDrawLayer extends AbstractDrawLayer {
             return;
         }
         this._items.detach(key);
+        this._aging.delete(particle);
         particle.consumeAlong(Direction.invert(sourceDirection));
         this._gliding.add(particle);
         this._dying.add(particle);
@@ -466,6 +531,8 @@ class ItemParticle extends Particle {
         this._container = container;
         // The item type on show, so a picked particle can be named.
         this.itemTypeId = null;
+        // The tick the item was made on, which its age is read against.
+        this.birthTick = NO_TICK;
         // False once released to the pool.
         this.live = false;
         // Under cover (in a tunnel): positioned but rendered at alpha 0 outside debug mode.
@@ -548,6 +615,7 @@ class ItemParticle extends Particle {
      */
     reset() {
         this.itemTypeId = null;
+        this.birthTick = NO_TICK;
         this.isHidden = false;
         this._clearPath();
         this._distance = 0;

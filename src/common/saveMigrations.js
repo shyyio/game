@@ -1,7 +1,7 @@
-import {Direction} from "@/common/constants.js";
+import {Direction, NO_TICK} from "@/common/constants.js";
 
 // The snapshot shape a save carries. Bump on any shape change, with a SAVE_MIGRATIONS entry.
-export const SAVE_FORMAT = 15;
+export const SAVE_FORMAT = 16;
 
 /**
  * @typedef {Object} FieldSnapshot
@@ -143,6 +143,19 @@ export const SAVE_MIGRATIONS = new Map([
         tables: TABLE_COLUMN_RENAMES.reduce(
             (tables, [tableName, from, to]) => renameField(tables, tableName, from, to),
             snapshot.tables,
+        ),
+    })],
+    // Format 16 stamps every item with the tick it was made on; items saved before it read as born
+    // on tick 0, so they are drawn at their oldest.
+    [15, snapshot => ({
+        ...snapshot,
+        saveFormat: 16,
+        components: addField(
+            addField(snapshot.components, "Port", "birthTick", "i32", NO_TICK),
+            "LaneItem",
+            "birthTick",
+            "i32",
+            NO_TICK,
         ),
     })],
 ]);

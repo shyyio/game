@@ -1,15 +1,17 @@
 import {EMPTY, NO_EID, AbstractComponent, FieldDefinition} from "@/sim/AbstractComponent.js";
+import {NO_TICK} from "@/common/constants.js";
 import {edgeKey, portAt} from "@/common/portGeometry.js";
 
 /**
- * A port: the item it holds, EMPTY when unoccupied. An edge port also carries Position for the
- * edge it sits on; a port with no Position is not an edge port.
+ * A port: the item it holds and the tick that item was made on, EMPTY when unoccupied. An edge port
+ * also carries Position for the edge it sits on; a port with no Position is not an edge port.
  */
 class PortComponent extends AbstractComponent {
 
     constructor() {
         super("Port", [
             new FieldDefinition("item", "item", EMPTY),
+            new FieldDefinition("birthTick", "i32", NO_TICK),
         ]);
     }
 }
@@ -243,15 +245,26 @@ export class PortIndex {
     }
 
     /**
+     * The tick the port's item was made on, NO_TICK when it has no age.
+     * @param {number} eid
+     * @returns {number}
+     */
+    getBirthTickByPortEid(eid) {
+        return this.ports.store.birthTick[eid];
+    }
+
+    /**
      * @param {number} eid
      * @param {number} item
+     * @param {number} [birthTick] - the tick the item was made on
      * @returns {void}
      */
-    setItem(eid, item) {
+    setItem(eid, item, birthTick=NO_TICK) {
         if (item === EMPTY && this.ports.store.item[eid] !== EMPTY) {
             this.engine.portItems.noteCleared(eid);
         }
         this.ports.store.item[eid] = item;
+        this.ports.store.birthTick[eid] = birthTick;
         this.engine.portItems.markDirty(eid);
     }
 
@@ -262,6 +275,7 @@ export class PortIndex {
      */
     consumeItem(eid) {
         this.ports.store.item[eid] = EMPTY;
+        this.ports.store.birthTick[eid] = NO_TICK;
         this.engine.portItems.noteConsumed(eid);
         this.engine.portItems.markDirty(eid);
     }
