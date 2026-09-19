@@ -14,6 +14,7 @@ export class GridDrawLayer extends AbstractDrawLayer {
          */
         this._chunks = new Map();
         this._isMapMode = false;
+        this._isEnabled = false;
         // Every chunk's grid is the same geometry: built once, shared by all chunk Graphics.
         this._majorContext = GridDrawLayer._buildMajorContext();
         this._minorContext = GridDrawLayer._buildMinorContext();
@@ -35,7 +36,7 @@ export class GridDrawLayer extends AbstractDrawLayer {
         const tileX = x * CHUNK_SIZE;
         const tileY = y * CHUNK_SIZE;
         const grid = new GridChunk(this._majorContext, this._minorContext);
-        grid.minor.visible = !this._isMapMode;
+        grid.minor.visible = this._isMinorVisible();
         grid.position.set(tileX * TILE_SIZE, tileY * TILE_SIZE);
         grid.zIndex = tileX + tileY;
         this._chunks.set(chunkKey, grid);
@@ -59,8 +60,35 @@ export class GridDrawLayer extends AbstractDrawLayer {
 
     set isMapMode(value) {
         this._isMapMode = value;
+        this._applyMinorVisibility();
+    }
+
+    /**
+     * Shows or hides the tile lines; the chunk outlines stay whatever this is.
+     * @param {boolean} enabled
+     * @returns {void}
+     */
+    setEnabled(enabled) {
+        this._isEnabled = enabled;
+        this._applyMinorVisibility();
+    }
+
+    /**
+     * @private
+     * @returns {boolean}
+     */
+    _isMinorVisible() {
+        return this._isEnabled && !this._isMapMode;
+    }
+
+    /**
+     * @private
+     * @returns {void}
+     */
+    _applyMinorVisibility() {
+        const isVisible = this._isMinorVisible();
         for (const grid of this._chunks.values()) {
-            grid.minor.visible = !value;
+            grid.minor.visible = isVisible;
         }
     }
 
@@ -84,7 +112,7 @@ export class GridDrawLayer extends AbstractDrawLayer {
     static _buildMajorContext() {
         return new GraphicsContext()
             .rect(0, 0, TILE_SIZE * CHUNK_SIZE, TILE_SIZE * CHUNK_SIZE)
-            .stroke({color: 0x000000, pixelLine: true, alpha: 0.2});
+            .stroke({color: 0xffffff, pixelLine: true, alpha: 0.7});
     }
 
     /**
@@ -102,13 +130,13 @@ export class GridDrawLayer extends AbstractDrawLayer {
                 .moveTo(0, i * TILE_SIZE)
                 .lineTo(CHUNK_SIZE * TILE_SIZE, i * TILE_SIZE);
         }
-        context.stroke({color: 0x000000, pixelLine: true, alpha: 0.1});
+        context.stroke({color: 0xffffff, pixelLine: true, alpha: 0.3});
         return context;
     }
 }
 
 /**
- * One chunk's grid: the chunk outline plus its tile lines, which map mode hides.
+ * One chunk's grid: the chunk outline plus its tile lines, which the detailed overlay shows.
  */
 class GridChunk extends Container {
 

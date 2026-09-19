@@ -39,7 +39,7 @@ export class SettingsMenu {
         // The stored device settings drive the ground and the overlay the same way the menu's
         // toggles do.
         this.setTerrainEnabled(DeviceSettings.getBoolean(DEVICE_SETTING_TERRAIN, TERRAIN_ENABLED_DEFAULT));
-        this._client.productBadgeLayer.setEnabled(DeviceSettings.getBoolean(DEVICE_SETTING_DETAIL_OVERLAY, DETAIL_OVERLAY_ENABLED_DEFAULT));
+        this.setDetailOverlayEnabled(DeviceSettings.getBoolean(DEVICE_SETTING_DETAIL_OVERLAY, DETAIL_OVERLAY_ENABLED_DEFAULT));
     }
 
     /**
@@ -95,7 +95,7 @@ export class SettingsMenu {
     toggleDetailOverlay() {
         const enabled = !DeviceSettings.getBoolean(DEVICE_SETTING_DETAIL_OVERLAY, DETAIL_OVERLAY_ENABLED_DEFAULT);
         DeviceSettings.setBoolean(DEVICE_SETTING_DETAIL_OVERLAY, enabled);
-        this._client.productBadgeLayer.setEnabled(enabled);
+        this.setDetailOverlayEnabled(enabled);
     }
 
     /**
@@ -140,6 +140,15 @@ export class SettingsMenu {
     }
 
     /**
+     * @param {boolean} enabled
+     * @returns {void}
+     */
+    setDetailOverlayEnabled(enabled) {
+        this._client.productBadgeLayer.setEnabled(enabled);
+        this._client.gridDrawLayer.setEnabled(enabled);
+    }
+
+    /**
      * The engine's own settings section: device toggles and the theme picker.
      * @private
      * @returns {SettingCategory[]}
@@ -151,7 +160,7 @@ export class SettingsMenu {
                 new DeviceSettingToggle(DEVICE_SETTING_REDUCED_MOTION, "Reduced motion", ReducedMotion.isDevicePreferred(), on => ReducedMotion.setEnabled(on)),
                 new DeviceSettingToggle(DEVICE_SETTING_MOBILE, "Touchscreen input", Mobile.isDevicePreferred(), on => Mobile.setEnabled(on)),
                 new DeviceSettingToggle(DEVICE_SETTING_TERRAIN, "Terrain", TERRAIN_ENABLED_DEFAULT, on => this.setTerrainEnabled(on)),
-                new DeviceSettingToggle(DEVICE_SETTING_DETAIL_OVERLAY, "Detailed overlay", DETAIL_OVERLAY_ENABLED_DEFAULT, on => this._client.productBadgeLayer.setEnabled(on)),
+                new DeviceSettingToggle(DEVICE_SETTING_DETAIL_OVERLAY, "Detailed overlay", DETAIL_OVERLAY_ENABLED_DEFAULT, on => this.setDetailOverlayEnabled(on)),
                 new DeviceSettingChoice(DEVICE_SETTING_THEME, "Theme", THEME_NAMES, THEME_DEFAULT, index => applyTheme(index)),
                 new DeviceSettingChoice(DEVICE_SETTING_FPS_CAP, "Frame rate cap", FPS_CAP_NAMES, FPS_CAP_DEFAULT, index => this.setFpsCap(index)),
                 new DeviceSettingSlider(DEVICE_SETTING_UI_SCALE, "UI Scale", UI_SCALE_MIN, UI_SCALE_MAX, UI_SCALE_STEP, UI_SCALE_NORMAL, scale => applyUiScale(scale)),

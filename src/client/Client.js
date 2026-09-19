@@ -304,6 +304,8 @@ export class Client {
         this.hitsplatLayer = new HitsplatLayer();
         // The detailed overlay: the item each producer made last, centered over it; off by default.
         this.productBadgeLayer = new ProductBadgeLayer(this.modRegistry.items);
+        // Chunk outlines always, tile lines with the detailed overlay.
+        this.gridDrawLayer = new GridDrawLayer();
     }
 
     /**
@@ -360,7 +362,7 @@ export class Client {
         this.drawLayerRegistry.add(this.overworldLayer);
         this.drawLayerRegistry.add(this.terrainLayer);
         this.drawLayerRegistry.add(this.terrainDetailLayer);
-        this.drawLayerRegistry.add(new GridDrawLayer());
+        this.drawLayerRegistry.add(this.gridDrawLayer);
         this.drawLayerRegistry.add(this.placementFeedbackLayer);
         this.drawLayerRegistry.add(this.inspectLayer);
         this.drawLayerRegistry.add(this.itemInspectLayer);

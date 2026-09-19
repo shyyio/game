@@ -63,6 +63,7 @@ class FakeClient {
         this.terrainLayer = new FakeToggleableLayer();
         this.terrainDetailLayer = new FakeToggleableLayer();
         this.productBadgeLayer = new FakeToggleableLayer();
+        this.gridDrawLayer = new FakeToggleableLayer();
         this.terrain = null;
         this.debugLayers = null;
         this.eventLogging = null;
@@ -217,20 +218,24 @@ test("the stored detailed-overlay preference drives the overlay from the start",
     storage.setItem(DEVICE_SETTING_DETAIL_OVERLAY, "1");
     const on = build();
     assert.equal(on.client.productBadgeLayer.enabled, true);
+    assert.equal(on.client.gridDrawLayer.enabled, true);
 
     storage.setItem(DEVICE_SETTING_DETAIL_OVERLAY, "0");
     const off = build();
     assert.equal(off.client.productBadgeLayer.enabled, false);
+    assert.equal(off.client.gridDrawLayer.enabled, false);
 });
 
-test("toggling the detailed overlay flips both the overlay and the stored preference", () => {
+test("toggling the detailed overlay flips the overlay layers and the stored preference", () => {
     storage.setItem(DEVICE_SETTING_DETAIL_OVERLAY, "0");
     const {menu, client} = build();
     menu.toggleDetailOverlay();
     assert.equal(client.productBadgeLayer.enabled, true);
+    assert.equal(client.gridDrawLayer.enabled, true);
     assert.equal(storage.getItem(DEVICE_SETTING_DETAIL_OVERLAY), "1");
 
     menu.toggleDetailOverlay();
     assert.equal(client.productBadgeLayer.enabled, false);
+    assert.equal(client.gridDrawLayer.enabled, false);
     assert.equal(storage.getItem(DEVICE_SETTING_DETAIL_OVERLAY), "0");
 });
