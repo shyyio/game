@@ -193,13 +193,13 @@ export class TerrainPalette {
      */
     paintInto(bake, pixels, fromCell, toCell, shadeAt, ditherAt) {
         for (let cell = fromCell; cell < toCell; cell++) {
-            const shade = getShadeAt(cell);
+            const shade = shadeAt(cell);
             let biome = bake.biomes[cell];
             let weight = 0;
             let mixEntry = biome;
             if (bake.weights !== null && bake.weights[cell] > 0) {
                 if (blendLevels > 0) {
-                    weight = this._blendWeight(bake.weights[cell], getDitherAt(cell));
+                    weight = this._blendWeight(bake.weights[cell], ditherAt(cell));
                     // A shore blends one-way: the shore biome's edge runs to its own edge color at
                     // the line, and the neighbor keeps its color whole.
                     if (this._through[biome] !== -1) {
@@ -210,7 +210,7 @@ export class TerrainPalette {
                     } else {
                         mixEntry = bake.others[cell];
                     }
-                } else if (bake.weights[cell] * WEIGHT_PER_BAKED_UNIT > getDitherAt(cell)) {
+                } else if (bake.weights[cell] * WEIGHT_PER_BAKED_UNIT > ditherAt(cell)) {
                     // Nothing to mix, so the cell takes the other biome whole instead.
                     biome = bake.others[cell];
                 }

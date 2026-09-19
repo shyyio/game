@@ -56,9 +56,9 @@ function standardLoadout() {
     const height = new NoiseChannel("height", 0.01, 3);
     const humidity = new NoiseChannel("humidity", 0.004);
     return freezeLoadout([height, humidity], [
-        new Biome("peak", 0xffffff, [new NoiseRange(height, 0.7, 1)]),
-        new Biome("dry", 0xcccc88, [new NoiseRange(humidity, 0, 0.4)]),
-        new Biome("grass", 0x88cc88),
+        new Biome({name: "peak", color: 0xffffff, ranges: [new NoiseRange(height, 0.7, 1)]}),
+        new Biome({name: "dry", color: 0xcccc88, ranges: [new NoiseRange(humidity, 0, 0.4)]}),
+        new Biome({name: "grass", color: 0x88cc88}),
     ]);
 }
 
@@ -68,27 +68,27 @@ test("freeze assigns biomeIds in order and validates names, channels, fallback",
 
     const height = new NoiseChannel("height", 0.01);
     assert.throws(
-        () => freezeLoadout([height], [new Biome("a", 0, [new NoiseRange(height, 0, 1)]), new Biome("a", 0)]),
+        () => freezeLoadout([height], [new Biome({name: "a", color: 0, ranges: [new NoiseRange(height, 0, 1)]}), new Biome({name: "a", color: 0})]),
         /Duplicate biome "a"/,
     );
     const stray = new NoiseChannel("stray", 0.01);
     assert.throws(
-        () => freezeLoadout([height], [new Biome("a", 0, [new NoiseRange(stray, 0, 1)]), new Biome("b", 0)]),
+        () => freezeLoadout([height], [new Biome({name: "a", color: 0, ranges: [new NoiseRange(stray, 0, 1)]}), new Biome({name: "b", color: 0})]),
         /undeclared noise channel "stray"/,
     );
     assert.throws(
-        () => freezeLoadout([height], [new Biome("a", 0, [new NoiseRange(height, 0, 0.5)])]),
+        () => freezeLoadout([height], [new Biome({name: "a", color: 0, ranges: [new NoiseRange(height, 0, 0.5)]})]),
         /must be unconditional/,
     );
     assert.throws(() => new NoiseRange(height, 0.6, 0.5), RangeError);
-    assert.throws(() => new Biome("x", 0, [], -1), RangeError);
-    assert.equal(new Biome("x", 0).shadeStrength, 1);
-    assert.deepEqual(new Biome("x", 0).details, []);
+    assert.throws(() => new Biome({name: "x", color: 0, shadeStrength: -1}), RangeError);
+    assert.equal(new Biome({name: "x", color: 0}).shadeStrength, 1);
+    assert.deepEqual(new Biome({name: "x", color: 0}).details, []);
     assert.throws(() => new TerrainDetail("t", 1.5), RangeError);
     assert.throws(() => new TerrainDetail("t", 0.1, true, 0), RangeError);
     assert.equal(new TerrainDetail("t", 0.1).scale, 1);
-    assert.throws(() => new Biome("x", 0, [], 1, [new TerrainDetail("a", 0.6), new TerrainDetail("b", 0.5)]), RangeError);
-    assert.throws(() => new Biome("x", 0).biomeId, /freeze/);
+    assert.throws(() => new Biome({name: "x", color: 0, details: [new TerrainDetail("a", 0.6), new TerrainDetail("b", 0.5)]}), RangeError);
+    assert.throws(() => new Biome({name: "x", color: 0}).biomeId, /freeze/);
 });
 
 test("biomeAt is deterministic and honors first-match order", () => {
@@ -188,8 +188,8 @@ test("detailFor scatters a biome's details by density, deterministically", () =>
     const registry = standardLoadout();
     const rock = new TerrainDetail("rock", 0.05, false);
     const tuft = new TerrainDetail("tuft", 0.1);
-    const decorated = new Biome("decorated", 0x123456, [], 1, [rock, tuft]);
-    const bare = new Biome("bare", 0);
+    const decorated = new Biome({name: "decorated", color: 0x123456, details: [rock, tuft]});
+    const bare = new Biome({name: "bare", color: 0});
     const a = new Terrain(new WorldNoise(77, registry.noiseChannels), registry.biomes);
     const b = new Terrain(new WorldNoise(77, registry.noiseChannels), registry.biomes);
     const counts = new Map([[rock, 0], [tuft, 0], [null, 0]]);
@@ -217,8 +217,8 @@ test("detailFor scatters a biome's details by density, deterministically", () =>
 test("a range edge at 0 or 1 never blends", () => {
     const humidity = new NoiseChannel("humidity", 0.004);
     const registry = freezeLoadout([humidity], [
-        new Biome("dry", 0, [new NoiseRange(humidity, 0, 0.5)]),
-        new Biome("wet", 0),
+        new Biome({name: "dry", color: 0, ranges: [new NoiseRange(humidity, 0, 0.5)]}),
+        new Biome({name: "wet", color: 0}),
     ]);
     const terrain = new Terrain(new WorldNoise(3, registry.noiseChannels), registry.biomes);
     for (let i = 0; i < 20000; i++) {

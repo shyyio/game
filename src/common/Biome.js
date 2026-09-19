@@ -44,22 +44,36 @@ export class TerrainDetail {
 }
 
 /**
- * One terrain biome a mod declares: its palette color and the noise ranges that select it. Biomes
- * are tested in registration order and the first match wins; a biome without ranges matches every
- * tile, so the last declared biome must have none. biomeId is positional at ModRegistry.freeze().
+ * One terrain biome a mod declares: its ground art, its palette color and the noise ranges that
+ * select it. Biomes are tested in registration order and the first match wins; a biome without
+ * ranges matches every tile, so the last declared biome must have none. biomeId is positional at
+ * ModRegistry.freeze().
  */
 export class Biome {
 
     /**
-     * @param {string} name unique across the loadout
-     * @param {number} color 0xRRGGBB
-     * @param {NoiseRange[]} [ranges] all must hold; none = matches every tile
-     * @param {number} [shadeStrength] multiplier on the client's per-tile shade variation
-     * @param {TerrainDetail[]} [details] decorations scattered over its tiles; densities sum to <= 1
-     * @param {number|null} [blendColor] its own edge cells gradient to this color while the neighbor stays whole (a shore); null mixes the neighbor's color
-     * @param {number|null} [blendWidth] its own blend width; null takes the global width, a pair uses the narrower
+     * @param {object} config
+     * @param {string} config.name unique across the loadout
+     * @param {number} config.color 0xRRGGBB, drawn in map and overworld mode
+     * @param {string|null} [config.texture] its tiling frame in the terrain sheet; null draws the flat color
+     * @param {string|null} [config.transition] the frame its tiles draw where they blend toward a neighbor
+     * @param {NoiseRange[]} [config.ranges] all must hold; none = matches every tile
+     * @param {number} [config.shadeStrength] multiplier on the client's per-tile shade variation
+     * @param {TerrainDetail[]} [config.details] decorations scattered over its tiles; densities sum to <= 1
+     * @param {number|null} [config.blendColor] its own edge cells gradient to this color while the neighbor stays whole (a shore); null mixes the neighbor's color
+     * @param {number|null} [config.blendWidth] its own blend width; null takes the global width, a pair uses the narrower
      */
-    constructor(name, color, ranges = [], shadeStrength = 1, details = [], blendColor = null, blendWidth = null) {
+    constructor({
+        name,
+        color,
+        texture = null,
+        transition = null,
+        ranges = [],
+        shadeStrength = 1,
+        details = [],
+        blendColor = null,
+        blendWidth = null,
+    }) {
         if (!(shadeStrength >= 0)) {
             throw new RangeError(`Biome "${name}": shadeStrength must be >= 0, got ${shadeStrength}`);
         }
@@ -78,6 +92,8 @@ export class Biome {
         }
         this.name = name;
         this.color = color;
+        this.texture = texture;
+        this.transition = transition;
         this.ranges = ranges;
         this.shadeStrength = shadeStrength;
         this.details = details;

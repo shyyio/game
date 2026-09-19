@@ -239,7 +239,7 @@ function addBiome() {
   if (biomes.value.length > 0) {
     ranges.push(new NoiseRange(defaultChannel(), NEW_BIOME_MIN, NEW_BIOME_MAX));
   }
-  const biome = new Biome(freeName(), NEW_BIOME_COLOR, ranges);
+  const biome = new Biome({name: freeName(), color: NEW_BIOME_COLOR, ranges});
   biomes.value.splice(Math.max(0, biomes.value.length - 1), 0, biomeRow(biome));
   commitBiomes();
 }

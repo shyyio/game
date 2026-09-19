@@ -7,8 +7,11 @@ import animatedImageUrl from "./animated.png";
 import animatedSheet from "./animated.json";
 import mainImageUrl from "./main.png";
 import mainSheet from "./main.json";
+import terrainImageUrl from "./terrain.png";
+import terrainSheet from "./terrain.json";
 
 export const baseTextureAtlases = [
     new TextureAtlas(animatedImageUrl, animatedSheet),
     new TextureAtlas(mainImageUrl, mainSheet),
+    new TextureAtlas(terrainImageUrl, terrainSheet),
 ];

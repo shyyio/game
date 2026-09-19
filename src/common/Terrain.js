@@ -8,7 +8,7 @@ const UINT32_RANGE = 0x100000000;
 // Blending: a tile within the blend width of a threshold mixes toward the biome across it, up to
 // 50/50 at the line. A bake carries the weight at BLEND_WEIGHT_SCALE resolution; the client bands it
 // into BLEND_LEVELS steps so the palette stays stepped.
-export const BLEND_WIDTH = 0.04;
+export const BLEND_WIDTH = 0.015;
 export const BLEND_LEVELS = 3;
 export const BLEND_WEIGHT_SCALE = 255;
 const BLEND_MAX = 0.5;

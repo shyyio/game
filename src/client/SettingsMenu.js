@@ -19,7 +19,7 @@ import Mobile from "@/client/Mobile.js";
 import {FPS_CAP_NAMES, FPS_CAP_VALUES, FPS_CAP_DEFAULT} from "@/client/constants.js";
 
 // Terrain rendering while the device setting is unset.
-const TERRAIN_ENABLED_DEFAULT = false;
+const TERRAIN_ENABLED_DEFAULT = true;
 
 // The detailed overlay while its device setting is unset.
 const DETAIL_OVERLAY_ENABLED_DEFAULT = false;

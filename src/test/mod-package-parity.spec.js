@@ -139,8 +139,8 @@ test("a built package is its manifest plus one bundle, art included", async (t) 
     assert.deepEqual(manifest.files, ["mod.js"]);
     assert.deepEqual(readdirSync(textureRoot).sort(), ["mod.js", "mod.json"]);
 
-    // The atlases are inside the bundle: both images as data URLs, both frame sets as literals.
+    // The atlases are inside the bundle: every image as a data URL, every frame set as a literal.
     const bundle = readFileSync(join(textureRoot, "mod.js"), "utf8");
-    assert.equal(bundle.match(/data:image\/png;base64,/g).length, 2);
+    assert.equal(bundle.match(/data:image\/png;base64,/g).length, 3);
     assert.match(bundle, /"frames"|frames:/);
 });

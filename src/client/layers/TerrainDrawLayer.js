@@ -5,6 +5,7 @@ import {
 import {ViewMode} from "@/client/constants.js";
 import {OVERWORLD_CELLS_PER_AXIS} from "@/common/Terrain.js";
 import {setDitherTerrain} from "@/client/layers/DitherPatterns.js";
+import {TerrainCellTable, TerrainMesh} from "@/client/layers/TerrainMesh.js";
 
 // Overworld cells baked per frame (~2.5 ms of sampling), as whole rows.
 const OVERWORLD_SAMPLES_PER_TICK = 8192;
@@ -37,6 +38,32 @@ export class TerrainDrawLayer extends AbstractChunkedDrawLayer {
         this._overworld = null;
         this._overworldShown = false;
         this._enabled = true;
+        /**
+         * Built on first use: the texture cache is assigned after construction.
+         * @type {TerrainCellTable|null}
+         */
+        this._cellTable = null;
+        /**
+         * chunk -> its ground art, for the chunks whose biomes have any.
+         * @type {Map<number, TerrainMesh>}
+         */
+        this._meshes = new Map();
+        /**
+         * chunk -> its painted biome colors.
+         * @type {Map<number, TerrainSprite>}
+         */
+        this._colors = new Map();
+    }
+
+    /**
+     * @private
+     * @returns {TerrainCellTable}
+     */
+    _getCellTable() {
+        if (this._cellTable === null) {
+            this._cellTable = new TerrainCellTable(this._biomes, this.textureCache);
+        }
+        return this._cellTable;
     }
 
     // The ground: everything else draws over it.
@@ -89,11 +116,31 @@ export class TerrainDrawLayer extends AbstractChunkedDrawLayer {
     }
 
     /**
-     * The ground looks the same in map mode; no pooled geometry swap.
+     * Map mode drops to the flat biome colors the palette paints: ground art is authored for one
+     * world pixel per texel, and a map-mode tile is a handful of pixels wide.
      * @param {boolean} value
      */
     set isMapMode(value) {
         this._isMapMode = value;
+        for (const mesh of this._meshes.values()) {
+            mesh.visible = !value;
+        }
+        for (const sprite of this._colors.values()) {
+            sprite.visible = this._isColorShown;
+        }
+    }
+
+    /**
+     * The colors are the ground itself until every biome has art; after that they are what map mode
+     * drops to, and world mode would only draw them under opaque tiles.
+     * @private
+     * @returns {boolean}
+     */
+    get _isColorShown() {
+        if (this._isMapMode) {
+            return true;
+        }
+        return !this._getCellTable().coversEveryBiome;
     }
 
     /**
@@ -103,7 +150,8 @@ export class TerrainDrawLayer extends AbstractChunkedDrawLayer {
      */
     setViewMode(mode) {
         this.visible = true;
-        this._isMapMode = mode === ViewMode.MAP;
+        // Through the setter, so chunks mounted in another mode take the new one.
+        this.isMapMode = mode !== ViewMode.WORLD;
         this._overworldShown = mode === ViewMode.OVERWORLD;
         this._applyOverworldMode();
     }
@@ -192,13 +240,58 @@ export class TerrainDrawLayer extends AbstractChunkedDrawLayer {
      */
     _initChunkNode(node, chunkKey) {
         if (this._enabled) {
-            node.sprites.addChild(TerrainSprite.forChunk(
-                this._palette, chunkKey, this._terrain.bakeChunk(chunkKey), this._terrain,
-            ));
+            const bake = this._terrain.bakeChunk(chunkKey);
+            this._addColors(node, chunkKey, bake);
+            this._addMesh(node, chunkKey, bake);
         } else {
             node.sprites.addChild(blankChunkSprite(chunkKey));
         }
         node.showSprites();
+    }
+
+    /**
+     * Hangs the chunk's painted biome colors under its ground art.
+     * @private
+     * @param {ChunkNode} node
+     * @param {number} chunkKey
+     * @param {BiomeGrid} bake
+     * @returns {void}
+     */
+    _addColors(node, chunkKey, bake) {
+        const sprite = TerrainSprite.forChunk(this._palette, chunkKey, bake, this._terrain);
+        sprite.visible = this._isColorShown;
+        node.sprites.addChild(sprite);
+        this._colors.set(chunkKey, sprite);
+    }
+
+    /**
+     * Hangs the chunk's ground art over its painted colors, for the biomes that have art; the
+     * colors stay visible under the tiles of those that do not.
+     * @private
+     * @param {ChunkNode} node
+     * @param {number} chunkKey
+     * @param {BiomeGrid} bake
+     * @returns {void}
+     */
+    _addMesh(node, chunkKey, bake) {
+        const cells = this._getCellTable();
+        if (!cells.hasArt) {
+            return;
+        }
+        const mesh = new TerrainMesh(cells, chunkKey, bake);
+        mesh.visible = !this._isMapMode;
+        node.sprites.addChild(mesh);
+        this._meshes.set(chunkKey, mesh);
+    }
+
+    /**
+     * The chunk's ground goes with its node.
+     * @param {number} chunkKey
+     * @returns {void}
+     */
+    _onChunkDropped(chunkKey) {
+        this._meshes.delete(chunkKey);
+        this._colors.delete(chunkKey);
     }
 
     /**

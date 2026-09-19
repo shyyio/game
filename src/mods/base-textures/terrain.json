@@ -1,0 +1,39 @@
+{"frames": {
+
+"dirt.png":
+{
+	"frame": {"x":0,"y":0,"w":128,"h":128},
+	"rotated": false,
+	"trimmed": false,
+	"spriteSourceSize": {"x":0,"y":0,"w":128,"h":128},
+	"sourceSize": {"w":128,"h":128}
+},
+"grass1.png":
+{
+	"frame": {"x":128,"y":0,"w":128,"h":128},
+	"rotated": false,
+	"trimmed": false,
+	"spriteSourceSize": {"x":0,"y":0,"w":128,"h":128},
+	"sourceSize": {"w":128,"h":128}
+},
+"grass2.png":
+{
+	"frame": {"x":256,"y":0,"w":128,"h":128},
+	"rotated": false,
+	"trimmed": false,
+	"spriteSourceSize": {"x":0,"y":0,"w":128,"h":128},
+	"sourceSize": {"w":128,"h":128}
+}},
+"animations": {
+	"grass": ["grass1.png","grass2.png"]
+},
+"meta": {
+	"app": "https://www.codeandweb.com/texturepacker",
+	"version": "1.1",
+	"image": "terrain.png",
+	"format": "RGBA8888",
+	"size": {"w":384,"h":128},
+	"scale": "2",
+	"smartupdate": "$TexturePacker:SmartUpdate:86c325a9acdc84273a0825fc41372030:d6ec88ecb1bdc1e63db983ad5f0bb045:a52c91d73586a2a634ceb55ad22f4949$"
+}
+}

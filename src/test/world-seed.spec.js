@@ -92,3 +92,21 @@ test("game.terrain classifies the standard loadout's tiles", async () => {
     const bake = game.terrain.bakeChunk(0);
     assert.ok(bake.biomes.every(biomeId => biomeId < game.modRegistry.biomes.length));
 });
+
+test("the base game declares grass over dirt, both drawn from the terrain sheet", async () => {
+    const game = await makeSeededGame(undefined, 31337);
+    assert.deepEqual(game.modRegistry.biomes.map(biome => biome.name), ["grass", "dirt"]);
+    for (const biome of game.modRegistry.biomes) {
+        assert.ok(biome.texture !== null, `biome "${biome.name}" has no ground art`);
+    }
+});
+
+test("the loadout's biomes each take part of the world", async () => {
+    const game = await makeSeededGame(undefined, 31337);
+    const seen = new Set();
+    for (let tileX = -4000; tileX <= 4000; tileX += 137) {
+        seen.add(game.terrain.getBiomeIdAt(tileX, tileX * 3));
+        seen.add(game.terrain.getBiomeIdAt(-tileX, tileX * 7));
+    }
+    assert.deepEqual(Array.from(seen).sort(), game.modRegistry.biomes.map(biome => biome.biomeId));
+});
