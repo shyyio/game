@@ -43,7 +43,6 @@ export const TankType = new ObjectType({
         new PortDefinition("outputPort", {x: 1, y: -1, direction: Direction.UP}, false),
     ],
     geometry: "2x2",
-    renderConnections: true,
     textureName: "tank/0",
     label: "Tank",
     behavior: new TankBehavior({capacity: TANK_CAPACITY}),

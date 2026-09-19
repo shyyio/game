@@ -44,7 +44,6 @@ import {LaneItemDrawLayer} from "@/client/layers/LaneItemDrawLayer.js";
 import {ItemDrawLayer} from "@/client/layers/ItemDrawLayer.js";
 import {HitsplatLayer} from "@/client/layers/HitsplatLayer.js";
 import {ProductBadgeLayer} from "@/client/layers/ProductBadgeLayer.js";
-import {ConnectionDrawLayer} from "@/client/layers/ConnectionDrawLayer.js";
 import {WorkerDrawLayer} from "@/client/layers/WorkerDrawLayer.js";
 import {WorkerDebugLayer} from "@/client/layers/WorkerDebugLayer.js";
 import {WorkerBadgeLayer} from "@/client/layers/WorkerBadgeLayer.js";
@@ -295,8 +294,6 @@ export class Client {
         this.itemInspectLayer = new ItemInspectLayer(this.itemLayer, this.inspectLayer);
         // Shared placement-feedback layer, driven by whichever tool is active.
         this.placementFeedbackLayer = new PlacementFeedbackLayer();
-        // The single shared connection-stub layer, derived from the cache as objects change.
-        this.connectionLayer = new ConnectionDrawLayer();
         // Commuting worker figures for manned machines, routed over the cached road tiles.
         this.workerLayer = new WorkerDrawLayer(this.cache);
         // Debug overlay: road components, attachments, and assignments; hidden outside debug mode.
@@ -369,7 +366,6 @@ export class Client {
         this.drawLayerRegistry.add(this.itemInspectLayer);
         this.drawLayerRegistry.add(this.itemLayer);
         this.drawLayerRegistry.add(this.laneItemLayer);
-        this.drawLayerRegistry.add(this.connectionLayer);
         this.drawLayerRegistry.add(this.workerLayer);
         this.drawLayerRegistry.add(this.workerDebugLayer);
         this.drawLayerRegistry.add(this.workerBadgeLayer);

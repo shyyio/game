@@ -25,7 +25,6 @@ export const TestMachineType = new ObjectType({
     inputPorts: [new PortDefinition("inputPort", {x: 0, y: 0, direction: Direction.UP})],
     outputPorts: [new PortDefinition("outputPort", {x: 0, y: -1, direction: Direction.UP})],
     geometry: "1x1",
-    renderConnections: true,
     textureName: "demo-machine/0",
     label: "Test Machine",
     inspectable: true,

@@ -12,7 +12,6 @@ export const PebbleGeneratorType = new ObjectType({
     // One tile above the machine, facing away from it; positions are relative to the machine.
     outputPorts: [new PortDefinition("outputPort", {x: 0, y: -1, direction: Direction.UP})],
     geometry: "1x1",
-    renderConnections: true,
     textureName: "pebble-generator/machine",
     label: "Pebble Generator",
     inspectable: true,

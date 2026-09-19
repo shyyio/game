@@ -108,8 +108,6 @@ export class ObjectType {
      * @param [config.outputPorts] {PortDefinition[]}
      * @param [config.internalPorts] {PortDefinition[]}
      * @param config.geometry {string} a named geometry (key of ObjectGeometries, e.g. "1x1", "1x2")
-     * @param [config.renderConnections] {boolean} whether the shared ConnectionDrawLayer draws animated
-     *     stubs at this object's connected ports (belts render their own bends instead)
      * @param [config.textureName] {string|null} the object sprite's texture, used by the derived layers
      * @param [config.mapColor] {number|null} map-mode tile color; null uses the shared default
      * @param [config.overworldVisible] {boolean} whether the overworld bake includes this type's
@@ -145,7 +143,6 @@ export class ObjectType {
         outputPorts=[],
         internalPorts=[],
         geometry,
-        renderConnections=false,
         textureName=null,
         mapColor=null,
         overworldVisible=true,
@@ -171,7 +168,6 @@ export class ObjectType {
         this.internalPorts = internalPorts;
         // The named geometry; the `geometry` getter resolves it to the ObjectGeometry.
         this.geometryName = geometry;
-        this.renderConnections = renderConnections;
         this.textureName = textureName;
         this.mapColor = mapColor;
         this.overworldVisible = overworldVisible;
