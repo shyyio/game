@@ -23,22 +23,45 @@ export class Symbolicator {
     }
 
     /**
-     * Resolves every frame in stack it can find a matching map for; frames without a match, or
-     * an entirely missing buildVersion folder, pass through unchanged.
+     * True once buildVersion's own folder of maps is on disk.
      * @param {string} buildVersion
-     * @param {string} stack
-     * @returns {Promise<string|null>} null if no maps exist at all for buildVersion
+     * @returns {boolean}
      */
-    async resolve(buildVersion, stack) {
+    hasBuildMaps(buildVersion) {
         const buildDir = path.join(this._mapsDir, buildVersion);
         const mapsRoot = path.resolve(this._mapsDir) + path.sep;
         if (!path.resolve(buildDir).startsWith(mapsRoot)) {
+            return false;
+        }
+        return existsSync(buildDir);
+    }
+
+    /**
+     * Resolves every frame in stack it can find a matching map for; frames without a match pass
+     * through unchanged.
+     * @param {string} buildVersion
+     * @param {string} stack
+     * @returns {Promise<string|null>} null when not one frame resolved, so a stack is never cached
+     *     as symbolicated before its maps land
+     */
+    async resolve(buildVersion, stack) {
+        if (!this.hasBuildMaps(buildVersion)) {
             return null;
         }
-        if (!existsSync(buildDir)) {
+        const buildDir = path.join(this._mapsDir, buildVersion);
+        const lines = [];
+        let isAnyResolved = false;
+        for (const line of stack.split("\n")) {
+            const resolved = this._resolveFrame(buildVersion, buildDir, line);
+            if (resolved !== line) {
+                isAnyResolved = true;
+            }
+            lines.push(resolved);
+        }
+        if (!isAnyResolved) {
             return null;
         }
-        return stack.split("\n").map(line => this._resolveFrame(buildVersion, buildDir, line)).join("\n");
+        return lines.join("\n");
     }
 
     /**

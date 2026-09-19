@@ -128,6 +128,14 @@ const PAGE_STYLE = `<style>
     .empty {
         color: #5b6270;
     }
+    .note {
+        color: #8a4b12;
+        background: #fdf3e3;
+        border: 1px solid #f0d9ac;
+        border-radius: 6px;
+        padding: 8px 12px;
+        margin: 0 0 8px;
+    }
     .build-badge {
         position: fixed;
         top: 12px;
@@ -168,6 +176,18 @@ const BUILD_BADGE = `<div class="build-badge">
  * @property {string} url
  * @property {string|null} extra as JSON
  */
+
+/**
+ * Why a stack on the detail page is still minified.
+ * @param {boolean} hasBuildMaps
+ * @returns {string}
+ */
+export function buildSymbolicationNote(hasBuildMaps) {
+    if (hasBuildMaps) {
+        return "Unsymbolicated: this build's maps cover none of these files.";
+    }
+    return "Unsymbolicated: no maps for this build.";
+}
 
 /**
  * reportingserver's HTTP front end: an anonymous, unauthenticated ingest endpoint for client
@@ -335,7 +355,7 @@ export class ReportingHttpServer extends AbstractHttpServer {
         }
         if (report.resolvedStack !== null) {
             res.cork(() => {
-                res.writeHeader("Content-Type", "text/html; charset=utf-8").end(this._buildDetailHtml(report, report.resolvedStack));
+                res.writeHeader("Content-Type", "text/html; charset=utf-8").end(this._buildDetailHtml(report, report.resolvedStack, ""));
             });
             return;
         }
@@ -343,18 +363,23 @@ export class ReportingHttpServer extends AbstractHttpServer {
             if (res.aborted) {
                 return;
             }
-            if (resolvedStack !== null) {
+            if (resolvedStack === null) {
+                const note = buildSymbolicationNote(this._symbolicator.hasBuildMaps(report.buildVersion));
+                res.cork(() => {
+                    res.writeHeader("Content-Type", "text/html; charset=utf-8").end(this._buildDetailHtml(report, report.stack, note));
+                });
+            } else {
                 this._store.setResolvedStack(errorReportId, resolvedStack);
+                res.cork(() => {
+                    res.writeHeader("Content-Type", "text/html; charset=utf-8").end(this._buildDetailHtml(report, resolvedStack, ""));
+                });
             }
-            res.cork(() => {
-                res.writeHeader("Content-Type", "text/html; charset=utf-8").end(this._buildDetailHtml(report, resolvedStack || report.stack));
-            });
         }).catch(error => {
             if (res.aborted) {
                 return;
             }
             res.cork(() => {
-                res.writeHeader("Content-Type", "text/html; charset=utf-8").end(this._buildDetailHtml(report, report.stack));
+                res.writeHeader("Content-Type", "text/html; charset=utf-8").end(this._buildDetailHtml(report, report.stack, `Unsymbolicated: ${error.message}`));
             });
         });
     }
@@ -387,12 +412,17 @@ export class ReportingHttpServer extends AbstractHttpServer {
      * @private
      * @param {object} report
      * @param {string} stack
+     * @param {string} note - why stack is still minified, empty when it resolved
      * @returns {string}
      */
-    _buildDetailHtml(report, stack) {
+    _buildDetailHtml(report, stack, note) {
         const extra = report.extra !== null
             ? `<h2>Extra</h2><pre>${escapeHtml(report.extra)}</pre>`
             : "";
+        let noteHtml = "";
+        if (note !== "") {
+            noteHtml = `<p class="note">${escapeHtml(note)}</p>`;
+        }
         const body = `<a class="back" href="/admin">&laquo; all reports</a>
 <h1>${escapeHtml(report.message)}</h1>
 <dl class="meta">
@@ -403,6 +433,7 @@ export class ReportingHttpServer extends AbstractHttpServer {
     <dt>URL</dt><dd><code>${escapeHtml(report.url)}</code></dd>
 </dl>
 <h2>Stack</h2>
+${noteHtml}
 <pre>${escapeHtml(stack)}</pre>
 ${extra}`;
         return this._page(`reportingserver — report ${report.errorReportId}`, body);
