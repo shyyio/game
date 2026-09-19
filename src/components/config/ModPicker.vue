@@ -85,7 +85,7 @@ const rows = computed(() => {
     if (listing !== undefined) {
       return new ModRow(name, displayNameOf(listing), listing);
     }
-    const local = props.loadout.find(name);
+    const local = props.loadout.getEntryByNameOrNull(name);
     if (local !== null) {
       return new ModRow(name, local.title, null);
     }
@@ -139,7 +139,7 @@ function commit(next) {
  * @returns {LocalMod|null}
  */
 function chosen(row) {
-  return props.loadout.find(row.name);
+  return props.loadout.getEntryByNameOrNull(row.name);
 }
 
 /**
