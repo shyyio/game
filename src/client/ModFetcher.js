@@ -17,6 +17,7 @@ import {modName} from "@/mods/modNames.js";
 import {GAME_VERSION} from "@/common/constants.js";
 import {ModFileStore, fetchVerifiedFile, importBundle, instantiatePackage} from "@/client/ModPackageLoader.js";
 import {assertModsVerified} from "@/client/ModVerification.js";
+import {requestUrl} from "@/client/ConnectionError.js";
 
 const ENTRY_FILE = "mod.js";
 
@@ -65,7 +66,7 @@ function assertSdkVersion(list) {
  */
 export async function fetchModLoadout(serverUrl) {
     const origin = httpOriginFor(serverUrl);
-    const response = await fetch(`${origin}/mods/index.json`);
+    const response = await requestUrl(`${origin}/mods/index.json`);
     if (!response.ok) {
         throw new Error(`This server does not serve its mod list (${response.status})`);
     }

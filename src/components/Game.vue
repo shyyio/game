@@ -23,6 +23,8 @@ import {DeviceSettingSlider} from "@/client/hud/DeviceSettingSlider.js";
 import {applyTheme, onThemeChange, THEME_DEFAULT} from "@/client/Theme.js";
 import {vuetifyThemeName} from "@/client/vuetifyTheme.js";
 import {gameStart, startError, GAME_MODE_REMOTE} from "@/client/GameStart.js";
+import {reportError} from "@/client/CrashReporter.js";
+import {ConnectionError} from "@/client/ConnectionError.js";
 import {useRouter} from "vue-router";
 import TerrainTuner from "@/components/TerrainTuner.vue";
 
@@ -147,6 +149,11 @@ onMounted(async () => {
     bootstrap = await createClient(app, viewport, gameStart.value);
   } catch (error) {
     destroyPixiApp();
+    // Caught here, so neither window nor Vue reports it. An unreachable host is the player's
+    // network, not something to report.
+    if (!(error instanceof ConnectionError)) {
+      reportError(error, "Client bootstrap failed");
+    }
     // The stack is worth having in the console; the screen we bounce to only gets the message.
     console.error(error);
     startError.value = reasonOf(error);

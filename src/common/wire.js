@@ -224,7 +224,9 @@ export class WireRegistry {
                 throw new Error(`Class ${cls.name} is registered for the wire but has no static wireFields`);
             }
             const wireId = index + 1;
-            const {type, definitions} = buildType(cls.name, cls.wireFields);
+            // Named by wire id, not class name: a minified build mangles class names, and two
+            // mangled to the same string would collide in the root.
+            const {type, definitions} = buildType(`Wire${wireId}`, cls.wireFields);
             this.root.add(type);
             const codec = {cls, wireId, type, definitions};
             this.byClass.set(cls, codec);

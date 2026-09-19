@@ -3,6 +3,9 @@ import assert from "node:assert";
 
 import {ModRegistry} from "@/common/ModRegistry.js";
 import {WireRegistry} from "@/common/wire.js";
+import {ModPackage} from "@/common/ModPackage.js";
+import {AbstractModDeclaration} from "@/common/AbstractModDeclaration.js";
+import {AbstractWireObject} from "@/common/AbstractWireObject.js";
 
 import {SetViewportMessage, SetInspectedObjectsMessage, OverworldRequestMessage} from "@/common/CoreMessages.js";
 import {OverworldSnapshotEvent} from "@/common/OverworldEvents.js";
@@ -283,4 +286,39 @@ test("A port item batch explodes into rows carrying the item's birth tick", () =
     const rows = reg.decode(reg.encode(batch)).explode();
 
     assert.deepStrictEqual(rows.map(row => row.birthTick), [1999998]);
+});
+
+// A production build mangles class names, so two wire classes can end up sharing one.
+test("two wire classes with the same class name each keep their own codec", () => {
+    class FirstMangledMessage extends AbstractWireObject {
+        static wireFields = {first: "int32"};
+        constructor(first) {
+            super();
+            this.first = first;
+        }
+    }
+    class SecondMangledMessage extends AbstractWireObject {
+        static wireFields = {second: "int32"};
+        constructor(second) {
+            super();
+            this.second = second;
+        }
+    }
+    Object.defineProperty(FirstMangledMessage, "name", {value: "Dt"});
+    Object.defineProperty(SecondMangledMessage, "name", {value: "Dt"});
+    class MangledDeclaration extends AbstractModDeclaration {
+        get name() {
+            return "mangled";
+        }
+        get wireClasses() {
+            return [FirstMangledMessage, SecondMangledMessage];
+        }
+    }
+    const modRegistry = new ModRegistry();
+    modRegistry.register(new ModPackage(new MangledDeclaration()));
+    modRegistry.freeze();
+
+    const reg = new WireRegistry(modRegistry);
+    assert.strictEqual(reg.decode(reg.encode(new FirstMangledMessage(7))).first, 7);
+    assert.strictEqual(reg.decode(reg.encode(new SecondMangledMessage(9))).second, 9);
 });

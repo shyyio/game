@@ -10,6 +10,7 @@ import {formatIntegrity, integrityHex, contentName} from "@/common/ModIntegrity.
 import {sha256} from "@noble/hashes/sha2.js";
 import {bytesToHex} from "@noble/hashes/utils.js";
 import * as sdk from "@/sdk/client.js";
+import {requestUrl} from "@/client/ConnectionError.js";
 
 const DB_NAME = "spup-mods";
 const STORE_NAME = "files";
@@ -130,7 +131,7 @@ export async function fetchVerifiedFile(store, url, cacheKey, expectedHex) {
  * @returns {Promise<Uint8Array>}
  */
 async function fetchModFile(url) {
-    const response = await fetch(url);
+    const response = await requestUrl(url);
     if (!response.ok) {
         throw new Error(`Could not download ${url} (${response.status})`);
     }

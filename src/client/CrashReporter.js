@@ -33,6 +33,16 @@ export function installCrashReporter() {
 }
 
 /**
+ * Reports an error the client caught and handled itself, which no global handler ever sees.
+ * @param {unknown} error
+ * @param {string} fallbackPrefix
+ * @returns {void}
+ */
+export function reportError(error, fallbackPrefix) {
+    reporter.reportError(error, fallbackPrefix);
+}
+
+/**
  * Reports an error Vue's own error handler caught (component render/lifecycle/reactive-effect errors
  * never reach window's "error" event, since Vue handles them internally).
  * @param {unknown} error
