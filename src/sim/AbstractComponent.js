@@ -33,11 +33,14 @@ export class FieldDefinition {
      * @param {string} name
      * @param {string} kind "i32", "f32", "eid", "type", or "item"
      * @param {number} defaultValue
+     * @param {boolean} [isTransient] - a transient field stays out of the snapshot and loads at its
+     *     default, for state the tick recomputes from the columns that are saved
      */
-    constructor(name, kind = "i32", defaultValue = 0) {
+    constructor(name, kind = "i32", defaultValue = 0, isTransient = false) {
         this.name = name;
         this.kind = kind;
         this.defaultValue = defaultValue;
+        this.isTransient = isTransient;
     }
 }
 
@@ -67,6 +70,7 @@ export class AbstractComponent {
     constructor(name, fields, {isSnapshotOnly = false, isSparse = false} = {}) {
         this.name = name;
         this.fields = fields;
+        this.savedFields = fields.filter(field => !field.isTransient);
         this.isSnapshotOnly = isSnapshotOnly;
         this.isSparse = isSparse;
         this.capacity = AbstractComponent.INITIAL_CAPACITY;

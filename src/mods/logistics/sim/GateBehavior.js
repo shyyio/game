@@ -1,4 +1,4 @@
-import {AbstractBehavior, EMPTY, NO_EID, LAYER_SURFACE, CONVEYS_ITEM, CONVEYS_FLUID, SyncedFieldSet, SyncedField, ProductField, AbstractSystem, AbstractComponent, FieldDefinition} from "@spup/sdk";
+import {AbstractBehavior, EMPTY, NO_EID, LAYER_SURFACE, CONVEYS_ITEM, CONVEYS_FLUID, SyncedFieldSet, SyncedField, FIELD_ROLE_PRODUCT, AbstractSystem, AbstractComponent, FieldDefinition} from "@spup/sdk";
 import {LOGIC_KEY_OPEN} from "../common/constants.js";
 import {gateConnections, isPlacementBlockedByGate} from "../common/gateConnections.js";
 
@@ -32,7 +32,7 @@ class GateComponent extends AbstractComponent {
 const SYNCED_FIELDS = new SyncedFieldSet("Gate", [
     new SyncedField("open", 1),
     new SyncedField("fluid"),
-    new ProductField("lastOutput", EMPTY),
+    new SyncedField("lastOutput", EMPTY, FIELD_ROLE_PRODUCT),
 ]);
 
 /**

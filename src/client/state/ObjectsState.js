@@ -1,4 +1,5 @@
 import {EMPTY} from "@/sim/AbstractComponent.js";
+import {FIELD_ROLE_PRODUCT, FIELD_ROLE_STALL} from "@/common/SyncedFieldSet.js";
 import {ChunkUnsubscribeEvent} from "@/common/CoreEvents.js";
 import {ObjectInsertEvent, ObjectSyncEvent, ObjectDeleteEvent, ObjectFieldsEvent} from "@/common/ObjectEvents.js";
 import {TILE_VARIANT_LIMIT, chunkKeyAt, tileKeyAt, tileVariantKey} from "@/common/util.js";
@@ -235,16 +236,28 @@ export class CacheEntry {
     }
 
     /**
-     * The synced field holding what this object offers as its product, or null for an object that
-     * produces nothing.
-     * @returns {ProductField|null}
+     * The synced field this object's behavior declares for `role`, or null when it declares none.
+     * @param {FieldRole} role
+     * @returns {SyncedField|null}
      */
-    getProductFieldOrNull() {
+    getFieldByRoleOrNull(role) {
         const synced = this.behavior.syncedFields;
         if (synced === null) {
             return null;
         }
-        return synced.productField;
+        return synced.getFieldByRoleOrNull(role);
+    }
+
+    /**
+     * Whether this object is holding finished product it cannot hand off, so its art holds still.
+     * @returns {boolean}
+     */
+    get isStalled() {
+        const field = this.getFieldByRoleOrNull(FIELD_ROLE_STALL);
+        if (field === null) {
+            return false;
+        }
+        return this.data[field.name] === 1;
     }
 
     /**
@@ -252,7 +265,7 @@ export class CacheEntry {
      * @returns {number}
      */
     get productItemTypeId() {
-        const field = this.getProductFieldOrNull();
+        const field = this.getFieldByRoleOrNull(FIELD_ROLE_PRODUCT);
         if (field === null) {
             return EMPTY;
         }

@@ -6,20 +6,26 @@ import {Direction} from "@/common/constants.js";
 export const BODY_DRAW_HEIGHT = 16;
 
 /**
+ * A type's body frames: its animation sequence, or its still as a one-frame sequence, or null when
+ * it has no body art.
  * @param {TextureCache} textureCache
  * @param {ObjectType} type
- * @returns {Texture|null}
+ * @returns {Texture[]|null}
  */
-export function getBodyTextureOrNull(textureCache, type) {
+export function getBodyFramesOrNull(textureCache, type) {
+    if (type.bodyAnimationName !== null) {
+        return textureCache.getAnimation(type.bodyAnimationName);
+    }
     if (type.bodyTextureName === null) {
         return null;
     }
-    return textureCache.get(type.bodyTextureName);
+    return [textureCache.get(type.bodyTextureName)];
 }
 
 /**
- * Static object sprite, centered on its type's geometry and rotated to its facing. The derived
- * Object layers build it from a type + texture; animated/custom art (belts) is bespoke.
+ * Object sprite, centered on its type's geometry and rotated to its facing. The derived Object
+ * layers build it from a type + texture; an animated body cycles its own frames off the shared
+ * clock and rests on its first frame while stalled, and custom art (belts) is bespoke.
  */
 export class ObjectSprite extends Sprite {
 
@@ -31,7 +37,9 @@ export class ObjectSprite extends Sprite {
      * @param config.direction {Direction}
      * @param config.texture {Texture} already resolved
      * @param config.type {ObjectType} for the geometry the sprite centers on
-     * @param [config.bodyTexture] {Texture|null} already resolved; drawn over the frame
+     * @param [config.bodyFrames] {Texture[]|null} already resolved; drawn over the frame, cycled
+     *     off the shared clock
+     * @param [config.isStalled] {boolean} whether the body rests on its first frame
      */
     constructor({
         id,
@@ -40,7 +48,8 @@ export class ObjectSprite extends Sprite {
         direction,
         texture,
         type,
-        bodyTexture=null,
+        bodyFrames=null,
+        isStalled=false,
     }) {
         super(texture);
 
@@ -59,10 +68,21 @@ export class ObjectSprite extends Sprite {
             (tileY + sum.y / cells.length) * TILE_SIZE + TILE_SIZE / 2,
         );
 
+        /**
+         * @type {Texture[]|null}
+         * @private
+         */
+        this._bodyFrames = bodyFrames;
+        /**
+         * Whether the object rests on its first body frame instead of cycling.
+         * @type {boolean}
+         */
+        this.isStalled = isStalled;
+
         /** @type {Sprite|null} */
         this.body = null;
-        if (bodyTexture !== null) {
-            this.body = new Sprite(bodyTexture);
+        if (bodyFrames !== null) {
+            this.body = new Sprite(bodyFrames[0]);
             this.body.anchor = 0.5;
             this.body.position.set(0, -BODY_DRAW_HEIGHT);
             this.addChild(this.body);
@@ -70,11 +90,20 @@ export class ObjectSprite extends Sprite {
     }
 
     /**
-     * No-op: an easy object sprite is a single static frame.
-     * @param {number} frame
+     * Draws the animated body's frame for this instant; a static body ignores the call.
+     * @param {number} frame the shared clock's frame
      * @returns {void}
      */
-    tick(frame) {}
+    tick(frame) {
+        if (this._bodyFrames === null) {
+            return;
+        }
+        if (this.isStalled) {
+            this.body.texture = this._bodyFrames[0];
+        } else {
+            this.body.texture = this._bodyFrames[frame % this._bodyFrames.length];
+        }
+    }
 
     /**
      * Renders this sprite as a placement-preview ghost in the given tint and alpha. The body child

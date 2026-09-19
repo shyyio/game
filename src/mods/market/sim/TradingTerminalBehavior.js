@@ -1,4 +1,4 @@
-import {AbstractBehavior, EMPTY, NO_EID, PLAYER_REF_NONE, SyncedFieldSet, ProductField, AbstractSystem, AbstractComponent, FieldDefinition} from "@spup/sdk";
+import {AbstractBehavior, EMPTY, NO_EID, PLAYER_REF_NONE, SyncedFieldSet, SyncedField, FIELD_ROLE_PRODUCT, AbstractSystem, AbstractComponent, FieldDefinition} from "@spup/sdk";
 import {MARKET_MODE_SELL, MARKET_MODE_BUY} from "../common/constants.js";
 import {MarketBook} from "./MarketBook.js";
 
@@ -29,7 +29,7 @@ class MarketTerminalComponent extends AbstractComponent {
     }
 }
 
-const SYNCED_FIELDS = new SyncedFieldSet("MarketTerminal", [new ProductField("lastOutput", EMPTY)]);
+const SYNCED_FIELDS = new SyncedFieldSet("MarketTerminal", [new SyncedField("lastOutput", EMPTY, FIELD_ROLE_PRODUCT)]);
 
 /**
  * Ticks every trading terminal.

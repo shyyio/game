@@ -6,6 +6,7 @@ import {GeneratorBehavior} from "@/sim/behaviors/GeneratorBehavior.js";
 import {GateBehavior} from "@/mods/logistics/sim/GateBehavior.js";
 import {TankBehavior} from "@/mods/fluids/sim/TankBehavior.js";
 import {TradingTerminalBehavior} from "@/mods/market/sim/TradingTerminalBehavior.js";
+import {FIELD_ROLE_PRODUCT} from "@/common/SyncedFieldSet.js";
 
 const ITEM_TYPE_ID = 7;
 
@@ -18,10 +19,10 @@ test("every producer marks the synced field holding its last product", () => {
         new TradingTerminalBehavior(),
     ];
     for (const behavior of producers) {
-        assert.equal(behavior.syncedFields.productField.name, "lastOutput", behavior.constructor.name);
+        assert.equal(behavior.syncedFields.getFieldByRoleOrNull(FIELD_ROLE_PRODUCT).name, "lastOutput", behavior.constructor.name);
     }
 });
 
 test("a tank's product is the fluid it holds", () => {
-    assert.equal(new TankBehavior({capacity: 10}).syncedFields.productField.name, "fluidType");
+    assert.equal(new TankBehavior({capacity: 10}).syncedFields.getFieldByRoleOrNull(FIELD_ROLE_PRODUCT).name, "fluidType");
 });

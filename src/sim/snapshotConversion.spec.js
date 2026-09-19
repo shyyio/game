@@ -43,12 +43,22 @@ function snapshot() {
     };
 }
 
+/**
+ * A registered component as convertSnapshot reads it.
+ * @param {string} name
+ * @param {object[]} fields
+ * @returns {object}
+ */
+function componentDef(name, fields) {
+    return {name, fields, savedFields: fields.filter(field => !field.isTransient)};
+}
+
 // The next loadout drops Gadget (and its Gadgetry component), adds Pump first, and no longer has gold.
 const NEXT = {typeNames: ["Pump", "Belt", "Furnace"], itemTypeIds: new Set([IRON])};
 const NEXT_DEFS = [
-    {name: "PlacedObject", fields: [{name: "objectTypeId", kind: "type"}, {name: "objectRef", kind: "i32"}]},
-    {name: "Port", fields: [{name: "item", kind: "item"}]},
-    {name: "PumpState", fields: [{name: "pressure", kind: "i32"}]},
+    componentDef("PlacedObject", [{name: "objectTypeId", kind: "type"}, {name: "objectRef", kind: "i32"}]),
+    componentDef("Port", [{name: "item", kind: "item"}]),
+    componentDef("PumpState", [{name: "pressure", kind: "i32"}]),
 ];
 
 test("the losses name every object type and item the next loadout lacks, with counts", () => {
@@ -89,11 +99,20 @@ test("a component that gained a field carries it on every row, at the new column
     const before = snapshot();
     before.components[0].rows.splice(2, 1);
     const defs = NEXT_DEFS.slice();
-    defs[1] = {name: "Port", fields: [{name: "item", kind: "item", defaultValue: EMPTY}, {name: "flow", kind: "i32", defaultValue: -7}]};
+    defs[1] = componentDef("Port", [{name: "item", kind: "item", defaultValue: EMPTY}, {name: "flow", kind: "i32", defaultValue: -7}]);
     const port = convertSnapshot(before, NEXT, defs).components.find(component => component.name === "Port");
     assert.deepEqual(port.rows.map(row => row.flow), [-7, -7, -7, -7]);
 });
 
 test("converting refuses a snapshot that still holds an object of a lost type", () => {
     assert.throws(() => convertSnapshot(snapshot(), NEXT, NEXT_DEFS), /Gadget/);
+});
+
+test("a transient field is left out of a converted component", () => {
+    const defs = NEXT_DEFS.slice();
+    defs[1] = componentDef("Port", [{name: "item", kind: "item"}, {name: "flow", kind: "i32", isTransient: true}]);
+    const port = convertSnapshot(snapshot(), {typeNames: ["Belt", "Gadget", "Furnace"], itemTypeIds: new Set([IRON])}, defs)
+        .components.find(component => component.name === "Port");
+    assert.deepEqual(port.fields, [{name: "item", kind: "item"}]);
+    assert.ok(port.rows.every(row => row.flow === undefined));
 });

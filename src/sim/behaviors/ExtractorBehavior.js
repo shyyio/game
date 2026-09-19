@@ -2,7 +2,7 @@ import {EMPTY, NO_EID, AbstractComponent, FieldDefinition} from "@/sim/AbstractC
 import {InspectHeartbeatEvent} from "@/common/InspectEvents.js";
 import {AbstractSystem} from "@/sim/AbstractSystem.js";
 import {AbstractBehavior} from "@/common/behaviors/AbstractBehavior.js";
-import {SyncedFieldSet, ProductField} from "@/common/SyncedFieldSet.js";
+import {SyncedFieldSet, SyncedField, FIELD_ROLE_PRODUCT, FIELD_ROLE_STALL} from "@/common/SyncedFieldSet.js";
 import {LAYER_RESOURCE} from "@/sim/behaviors/ResourceBehavior.js";
 
 /**
@@ -19,6 +19,9 @@ class ExtractorComponent extends AbstractComponent {
             new FieldDefinition("carry", "f32"),
             new FieldDefinition("output", "item", EMPTY),
             new FieldDefinition("lastOutput", "item", EMPTY),
+            // 1 while a finished product sits in the output port with nowhere to go; the tick
+            // recomputes it, so it stays out of the save.
+            new FieldDefinition("isStalled", "i32", 0, true),
             // The countdown length, kept on the row so the submit pass reaches no behavior instance
             // while an extractor is merely counting down.
             new FieldDefinition("processingTicks"),
@@ -26,7 +29,10 @@ class ExtractorComponent extends AbstractComponent {
     }
 }
 
-const SYNCED_FIELDS = new SyncedFieldSet("Extractor", [new ProductField("lastOutput", EMPTY)]);
+const SYNCED_FIELDS = new SyncedFieldSet("Extractor", [
+    new SyncedField("lastOutput", EMPTY, FIELD_ROLE_PRODUCT),
+    new SyncedField("isStalled", 0, FIELD_ROLE_STALL),
+]);
 
 /**
  * Ticks every extractor.
@@ -241,7 +247,8 @@ export class ExtractorBehavior extends AbstractBehavior {
     }
 
     /**
-     * POST_RESOLVE: a delivered extractor records last_output and goes idle (ready to produce again).
+     * POST_RESOLVE: a delivered extractor records last_output and goes idle (ready to produce again);
+     * one that finished its cycle without delivering syncs as stalled.
      * @private
      * @param {GameEngine} engine
      * @returns {void}
@@ -253,8 +260,8 @@ export class ExtractorBehavior extends AbstractBehavior {
         const eids = extractors.eids;
         const count = extractors.count;
         for (let row = 0; row < count; row += 1) {
+            const eid = eids[row];
             if (engine.transfers.isDest(extractor.outputPort[row])) {
-                const eid = eids[row];
                 engine.itemProduced.notify(placed.getClaimOwnerByEid(eid), extractor.output[row], 1);
                 if (extractor.lastOutput[row] !== extractor.output[row]) {
                     extractor.lastOutput[row] = extractor.output[row];
@@ -262,6 +269,15 @@ export class ExtractorBehavior extends AbstractBehavior {
                 }
                 extractor.output[row] = EMPTY;
                 extractor.remaining[row] = EMPTY;
+            }
+            // Stalled: the countdown sits at zero with product still in the port.
+            let isStalled = 0;
+            if (extractor.output[row] !== EMPTY && extractor.remaining[row] === 0) {
+                isStalled = 1;
+            }
+            if (extractor.isStalled[row] !== isStalled) {
+                extractor.isStalled[row] = isStalled;
+                engine.sync.markDirty(extractors, eid);
             }
         }
     }

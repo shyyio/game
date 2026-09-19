@@ -14,8 +14,10 @@ import {
     textureBit,
     textureBitGl,
 } from "pixi.js";
-import {ANIMATION_FRAME_COUNT} from "@/client/layers/animation.js";
 import {TileMeshColumns, writeTile} from "@/client/layers/tileMeshGeometry.js";
+
+// Every tile-mesh sequence is this long; the shared animation clock runs a multiple of it.
+export const SEQUENCE_FRAME_COUNT = 8;
 
 // Attribute slots. The WGSL compiler sorts vertex inputs by name before assigning locations, so
 // these follow "aPosition" < "aSequence" < "aUV".
@@ -45,7 +47,7 @@ function animatedFrameBit(frameCount) {
                 @group(2) @binding(3) var<uniform> frameUniforms : FrameUniforms;
             `,
             main: /* wgsl */ `
-                let slot = u32(aSequence) * ${ANIMATION_FRAME_COUNT}u + u32(frameUniforms.uFrame);
+                let slot = u32(aSequence) * ${SEQUENCE_FRAME_COUNT}u + u32(frameUniforms.uFrame);
                 let rect = frameUniforms.uFrames[slot];
                 uv = rect.xy + uv * rect.zw;
             `,
@@ -68,7 +70,7 @@ function animatedFrameBitGl(frameCount) {
                 uniform float uFrame;
             `,
             main: /* glsl */ `
-                int slot = int(aSequence) * ${ANIMATION_FRAME_COUNT} + int(uFrame);
+                int slot = int(aSequence) * ${SEQUENCE_FRAME_COUNT} + int(uFrame);
                 vec4 rect = uFrames[slot];
                 uv = rect.xy + uv * rect.zw;
             `,
@@ -101,7 +103,7 @@ export class FrameTable {
          * @type {TextureSource|null}
          */
         this.source = null;
-        this.frameCount = sequenceNames.length * ANIMATION_FRAME_COUNT;
+        this.frameCount = sequenceNames.length * SEQUENCE_FRAME_COUNT;
         this.uniforms = new Float32Array(this.frameCount * 4);
 
         for (const [slot, name] of sequenceNames.entries()) {
@@ -118,11 +120,8 @@ export class FrameTable {
      */
     _addSequence(slot, name, textureCache) {
         const frames = textureCache.getAnimation(name);
-        if (frames === undefined) {
-            throw new Error(`Unknown animation sequence: "${name}"`);
-        }
-        if (frames.length !== ANIMATION_FRAME_COUNT) {
-            throw new Error(`Sequence "${name}" has ${frames.length} frames, expected ${ANIMATION_FRAME_COUNT}`);
+        if (frames.length !== SEQUENCE_FRAME_COUNT) {
+            throw new Error(`Sequence "${name}" has ${frames.length} frames, expected ${SEQUENCE_FRAME_COUNT}`);
         }
         this._slots.set(name, slot);
 
@@ -134,7 +133,7 @@ export class FrameTable {
                 throw new Error(`Sequence "${name}" spans a second atlas page; animated frames must share one`);
             }
             // Normalized so the shader needs no atlas dimensions.
-            const at = (slot * ANIMATION_FRAME_COUNT + index) * 4;
+            const at = (slot * SEQUENCE_FRAME_COUNT + index) * 4;
             this.uniforms[at] = texture.frame.x / source.width;
             this.uniforms[at + 1] = texture.frame.y / source.height;
             this.uniforms[at + 2] = texture.frame.width / source.width;
@@ -190,11 +189,12 @@ export class AnimatedTileShader extends Shader {
     }
 
     /**
-     * Advances every tile drawn with this shader to the shared animation frame, in [0, 8).
+     * Advances every tile drawn with this shader to the shared animation frame, wrapped into the
+     * table's own stride.
      * @param {number} value
      */
     set frame(value) {
-        this.resources.frameUniforms.uniforms.uFrame = value;
+        this.resources.frameUniforms.uniforms.uFrame = value % SEQUENCE_FRAME_COUNT;
     }
 }
 

@@ -81,6 +81,7 @@ export const ExtractorType = new ObjectType({
     geometry: "1x1",
     textureName: "machine/1x1",
     bodyTextureName: "machine/extractor/exctractor_still",
+    bodyAnimationName: "machine/extractor",
     label: "Extractor",
     inspectable: true,
     placement: new PlacementRule({shouldReplaceSameKind: true, placeOn: RESOURCE_TYPES}),

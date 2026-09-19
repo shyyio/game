@@ -3,7 +3,7 @@ import assert from "node:assert";
 
 import {ObjectsView, ObjectClientEntry} from "@/client/state/ObjectsState.js";
 import {AbstractBehavior} from "@/common/behaviors/AbstractBehavior.js";
-import {SyncedFieldSet, ProductField} from "@/common/SyncedFieldSet.js";
+import {SyncedFieldSet, SyncedField, FIELD_ROLE_PRODUCT} from "@/common/SyncedFieldSet.js";
 import {EMPTY} from "@/sim/AbstractComponent.js";
 import {ObjectType, PortDefinition} from "@/common/ObjectType.js";
 import {Direction, LAYER_SURFACE} from "@/common/constants.js";
@@ -25,7 +25,7 @@ const machineType = new ObjectType({
 });
 const ITEM_TYPE_ID = 7;
 
-const PRODUCER_SYNCED_FIELDS = new SyncedFieldSet("Producer", [new ProductField("lastOutput", EMPTY)]);
+const PRODUCER_SYNCED_FIELDS = new SyncedFieldSet("Producer", [new SyncedField("lastOutput", EMPTY, FIELD_ROLE_PRODUCT)]);
 
 class ProducerBehavior extends AbstractBehavior {
 

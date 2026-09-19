@@ -161,13 +161,17 @@ export class TextureCache {
     }
 
     /**
-     * The ordered frame textures for an animation sequence, or undefined if no
-     * frames are grouped under that base name.
+     * The ordered frame textures for an animation sequence, throwing if no frames are grouped
+     * under that base name.
      * @param {string} name base sequence name (e.g. "belt-up")
-     * @returns {Texture[]|undefined}
+     * @returns {Texture[]}
      */
     getAnimation(name) {
-        return this.animations[name];
+        const frames = this.animations[name];
+        if (frames === undefined) {
+            throw new Error(`Unknown animation sequence: "${name}"`);
+        }
+        return frames;
     }
 
     /**

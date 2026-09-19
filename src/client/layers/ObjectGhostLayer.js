@@ -1,6 +1,6 @@
 import {Container} from "pixi.js";
 import {AbstractDrawLayer} from "@/client/layers/AbstractDrawLayer.js";
-import {getBodyTextureOrNull, ObjectSprite} from "@/client/layers/ObjectSprite.js";
+import {ObjectSprite} from "@/client/layers/ObjectSprite.js";
 import Mouse from "@/client/input/Mouse.js";
 import {TILE_SIZE} from "@/client/constants.js";
 import {Direction} from "@/common/constants.js";
@@ -56,6 +56,11 @@ export class ObjectGhostLayer extends AbstractDrawLayer {
         this._anchorTileY = tileY;
         this._direction = direction;
         this._snapKey = null;
+        // The placement ghost draws the type's still.
+        let bodyFrames = null;
+        if (this._type.bodyTextureName !== null) {
+            bodyFrames = [this.textureCache.get(this._type.bodyTextureName)];
+        }
         const sprite = new ObjectSprite({
             id: 0,
             tileX,
@@ -63,7 +68,7 @@ export class ObjectGhostLayer extends AbstractDrawLayer {
             direction,
             texture: this.textureCache.get(this._type.textureName),
             type: this._type,
-            bodyTexture: getBodyTextureOrNull(this.textureCache, this._type),
+            bodyFrames,
         });
         let ghostTint;
         let ghostAlpha;

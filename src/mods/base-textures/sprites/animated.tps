@@ -4,7 +4,7 @@
         <key>fileFormatVersion</key>
         <int>6</int>
         <key>texturePackerVersion</key>
-        <string>8.0.1</string>
+        <string>8.3.0</string>
         <key>autoSDSettings</key>
         <array>
             <struct type="AutoSDSettings">
@@ -34,7 +34,7 @@
         <key>dataFormat</key>
         <string>pixijs4</string>
         <key>textureFileName</key>
-        <filename>../96376792/animated.png</filename>
+        <filename>../animated.png</filename>
         <key>flipPVR</key>
         <false/>
         <key>pvrQualityLevel</key>
@@ -124,7 +124,7 @@
             <key>data</key>
             <struct type="DataFile">
                 <key>name</key>
-                <filename>../5795ebf9/animated.json</filename>
+                <filename>../animated.json</filename>
             </struct>
         </map>
         <key>multiPackMode</key>
@@ -175,86 +175,142 @@
         </struct>
         <key>individualSpriteSettings</key>
         <map type="IndividualSpriteSettingsMap">
-            <key type="filename">../97fbb8c1/animated/belt-left/0.png</key>
-            <key type="filename">../97fbb8c1/animated/belt-left/1.png</key>
-            <key type="filename">../97fbb8c1/animated/belt-left/2.png</key>
-            <key type="filename">../97fbb8c1/animated/belt-left/3.png</key>
-            <key type="filename">../97fbb8c1/animated/belt-left/4.png</key>
-            <key type="filename">../97fbb8c1/animated/belt-left/5.png</key>
-            <key type="filename">../97fbb8c1/animated/belt-left/6.png</key>
-            <key type="filename">../97fbb8c1/animated/belt-left/7.png</key>
-            <key type="filename">../97fbb8c1/animated/belt-tunnel-down/0.png</key>
-            <key type="filename">../97fbb8c1/animated/belt-tunnel-down/1.png</key>
-            <key type="filename">../97fbb8c1/animated/belt-tunnel-down/2.png</key>
-            <key type="filename">../97fbb8c1/animated/belt-tunnel-down/3.png</key>
-            <key type="filename">../97fbb8c1/animated/belt-tunnel-down/4.png</key>
-            <key type="filename">../97fbb8c1/animated/belt-tunnel-down/5.png</key>
-            <key type="filename">../97fbb8c1/animated/belt-tunnel-down/6.png</key>
-            <key type="filename">../97fbb8c1/animated/belt-tunnel-down/7.png</key>
-            <key type="filename">../97fbb8c1/animated/belt-tunnel-up/0.png</key>
-            <key type="filename">../97fbb8c1/animated/belt-tunnel-up/1.png</key>
-            <key type="filename">../97fbb8c1/animated/belt-tunnel-up/2.png</key>
-            <key type="filename">../97fbb8c1/animated/belt-tunnel-up/3.png</key>
-            <key type="filename">../97fbb8c1/animated/belt-tunnel-up/4.png</key>
-            <key type="filename">../97fbb8c1/animated/belt-tunnel-up/5.png</key>
-            <key type="filename">../97fbb8c1/animated/belt-tunnel-up/6.png</key>
-            <key type="filename">../97fbb8c1/animated/belt-tunnel-up/7.png</key>
-            <key type="filename">../97fbb8c1/animated/belt-right/0.png</key>
-            <key type="filename">../97fbb8c1/animated/belt-right/1.png</key>
-            <key type="filename">../97fbb8c1/animated/belt-right/2.png</key>
-            <key type="filename">../97fbb8c1/animated/belt-right/3.png</key>
-            <key type="filename">../97fbb8c1/animated/belt-right/4.png</key>
-            <key type="filename">../97fbb8c1/animated/belt-right/5.png</key>
-            <key type="filename">../97fbb8c1/animated/belt-right/6.png</key>
-            <key type="filename">../97fbb8c1/animated/belt-right/7.png</key>
-            <key type="filename">../97fbb8c1/animated/belt-straight/0.png</key>
-            <key type="filename">../97fbb8c1/animated/belt-straight/1.png</key>
-            <key type="filename">../97fbb8c1/animated/belt-straight/2.png</key>
-            <key type="filename">../97fbb8c1/animated/belt-straight/3.png</key>
-            <key type="filename">../97fbb8c1/animated/belt-straight/4.png</key>
-            <key type="filename">../97fbb8c1/animated/belt-straight/5.png</key>
-            <key type="filename">../97fbb8c1/animated/belt-straight/6.png</key>
-            <key type="filename">../97fbb8c1/animated/belt-straight/7.png</key>
-            <key type="filename">../97fbb8c1/animated/machine-connection-bottom-down/0.png</key>
-            <key type="filename">../97fbb8c1/animated/machine-connection-bottom-down/1.png</key>
-            <key type="filename">../97fbb8c1/animated/machine-connection-bottom-down/2.png</key>
-            <key type="filename">../97fbb8c1/animated/machine-connection-bottom-down/3.png</key>
-            <key type="filename">../97fbb8c1/animated/machine-connection-bottom-down/4.png</key>
-            <key type="filename">../97fbb8c1/animated/machine-connection-bottom-down/5.png</key>
-            <key type="filename">../97fbb8c1/animated/machine-connection-bottom-down/6.png</key>
-            <key type="filename">../97fbb8c1/animated/machine-connection-bottom-down/7.png</key>
-            <key type="filename">../97fbb8c1/animated/machine-connection-bottom-up/0.png</key>
-            <key type="filename">../97fbb8c1/animated/machine-connection-bottom-up/1.png</key>
-            <key type="filename">../97fbb8c1/animated/machine-connection-bottom-up/2.png</key>
-            <key type="filename">../97fbb8c1/animated/machine-connection-bottom-up/3.png</key>
-            <key type="filename">../97fbb8c1/animated/machine-connection-bottom-up/4.png</key>
-            <key type="filename">../97fbb8c1/animated/machine-connection-bottom-up/5.png</key>
-            <key type="filename">../97fbb8c1/animated/machine-connection-bottom-up/6.png</key>
-            <key type="filename">../97fbb8c1/animated/machine-connection-bottom-up/7.png</key>
-            <key type="filename">../97fbb8c1/animated/machine-connection-top-down/0.png</key>
-            <key type="filename">../97fbb8c1/animated/machine-connection-top-down/1.png</key>
-            <key type="filename">../97fbb8c1/animated/machine-connection-top-down/2.png</key>
-            <key type="filename">../97fbb8c1/animated/machine-connection-top-down/3.png</key>
-            <key type="filename">../97fbb8c1/animated/machine-connection-top-down/4.png</key>
-            <key type="filename">../97fbb8c1/animated/machine-connection-top-down/5.png</key>
-            <key type="filename">../97fbb8c1/animated/machine-connection-top-down/6.png</key>
-            <key type="filename">../97fbb8c1/animated/machine-connection-top-down/7.png</key>
-            <key type="filename">../97fbb8c1/animated/machine-connection-top-up/0.png</key>
-            <key type="filename">../97fbb8c1/animated/machine-connection-top-up/1.png</key>
-            <key type="filename">../97fbb8c1/animated/machine-connection-top-up/2.png</key>
-            <key type="filename">../97fbb8c1/animated/machine-connection-top-up/3.png</key>
-            <key type="filename">../97fbb8c1/animated/machine-connection-top-up/4.png</key>
-            <key type="filename">../97fbb8c1/animated/machine-connection-top-up/5.png</key>
-            <key type="filename">../97fbb8c1/animated/machine-connection-top-up/6.png</key>
-            <key type="filename">../97fbb8c1/animated/machine-connection-top-up/7.png</key>
-            <key type="filename">../97fbb8c1/animated/worker-walk/0.png</key>
-            <key type="filename">../97fbb8c1/animated/worker-walk/1.png</key>
-            <key type="filename">../97fbb8c1/animated/worker-walk/2.png</key>
-            <key type="filename">../97fbb8c1/animated/worker-walk/3.png</key>
-            <key type="filename">../97fbb8c1/animated/worker-walk/4.png</key>
-            <key type="filename">../97fbb8c1/animated/worker-walk/5.png</key>
-            <key type="filename">../97fbb8c1/animated/worker-walk/6.png</key>
-            <key type="filename">../97fbb8c1/animated/worker-walk/7.png</key>
+            <key type="filename">animated/belt-down-left/0.png</key>
+            <key type="filename">animated/belt-down-left/1.png</key>
+            <key type="filename">animated/belt-down-left/2.png</key>
+            <key type="filename">animated/belt-down-left/3.png</key>
+            <key type="filename">animated/belt-down-left/4.png</key>
+            <key type="filename">animated/belt-down-left/5.png</key>
+            <key type="filename">animated/belt-down-left/6.png</key>
+            <key type="filename">animated/belt-down-left/7.png</key>
+            <key type="filename">animated/belt-down-right/0.png</key>
+            <key type="filename">animated/belt-down-right/1.png</key>
+            <key type="filename">animated/belt-down-right/2.png</key>
+            <key type="filename">animated/belt-down-right/3.png</key>
+            <key type="filename">animated/belt-down-right/4.png</key>
+            <key type="filename">animated/belt-down-right/5.png</key>
+            <key type="filename">animated/belt-down-right/6.png</key>
+            <key type="filename">animated/belt-down-right/7.png</key>
+            <key type="filename">animated/belt-down/0.png</key>
+            <key type="filename">animated/belt-down/1.png</key>
+            <key type="filename">animated/belt-down/2.png</key>
+            <key type="filename">animated/belt-down/3.png</key>
+            <key type="filename">animated/belt-down/4.png</key>
+            <key type="filename">animated/belt-down/5.png</key>
+            <key type="filename">animated/belt-down/6.png</key>
+            <key type="filename">animated/belt-down/7.png</key>
+            <key type="filename">animated/belt-left-down/0.png</key>
+            <key type="filename">animated/belt-left-down/1.png</key>
+            <key type="filename">animated/belt-left-down/2.png</key>
+            <key type="filename">animated/belt-left-down/3.png</key>
+            <key type="filename">animated/belt-left-down/4.png</key>
+            <key type="filename">animated/belt-left-down/5.png</key>
+            <key type="filename">animated/belt-left-down/6.png</key>
+            <key type="filename">animated/belt-left-down/7.png</key>
+            <key type="filename">animated/belt-left-up/0.png</key>
+            <key type="filename">animated/belt-left-up/1.png</key>
+            <key type="filename">animated/belt-left-up/2.png</key>
+            <key type="filename">animated/belt-left-up/3.png</key>
+            <key type="filename">animated/belt-left-up/4.png</key>
+            <key type="filename">animated/belt-left-up/5.png</key>
+            <key type="filename">animated/belt-left-up/6.png</key>
+            <key type="filename">animated/belt-left-up/7.png</key>
+            <key type="filename">animated/belt-left/0.png</key>
+            <key type="filename">animated/belt-left/1.png</key>
+            <key type="filename">animated/belt-left/2.png</key>
+            <key type="filename">animated/belt-left/3.png</key>
+            <key type="filename">animated/belt-left/4.png</key>
+            <key type="filename">animated/belt-left/5.png</key>
+            <key type="filename">animated/belt-left/6.png</key>
+            <key type="filename">animated/belt-left/7.png</key>
+            <key type="filename">animated/belt-ramp-down/0.png</key>
+            <key type="filename">animated/belt-ramp-down/1.png</key>
+            <key type="filename">animated/belt-ramp-down/2.png</key>
+            <key type="filename">animated/belt-ramp-down/3.png</key>
+            <key type="filename">animated/belt-ramp-down/4.png</key>
+            <key type="filename">animated/belt-ramp-down/5.png</key>
+            <key type="filename">animated/belt-ramp-down/6.png</key>
+            <key type="filename">animated/belt-ramp-down/7.png</key>
+            <key type="filename">animated/belt-ramp-up/0.png</key>
+            <key type="filename">animated/belt-ramp-up/1.png</key>
+            <key type="filename">animated/belt-ramp-up/2.png</key>
+            <key type="filename">animated/belt-ramp-up/3.png</key>
+            <key type="filename">animated/belt-ramp-up/4.png</key>
+            <key type="filename">animated/belt-ramp-up/5.png</key>
+            <key type="filename">animated/belt-ramp-up/6.png</key>
+            <key type="filename">animated/belt-ramp-up/7.png</key>
+            <key type="filename">animated/belt-right-down/0.png</key>
+            <key type="filename">animated/belt-right-down/1.png</key>
+            <key type="filename">animated/belt-right-down/2.png</key>
+            <key type="filename">animated/belt-right-down/3.png</key>
+            <key type="filename">animated/belt-right-down/4.png</key>
+            <key type="filename">animated/belt-right-down/5.png</key>
+            <key type="filename">animated/belt-right-down/6.png</key>
+            <key type="filename">animated/belt-right-down/7.png</key>
+            <key type="filename">animated/belt-right-up/0.png</key>
+            <key type="filename">animated/belt-right-up/1.png</key>
+            <key type="filename">animated/belt-right-up/2.png</key>
+            <key type="filename">animated/belt-right-up/3.png</key>
+            <key type="filename">animated/belt-right-up/4.png</key>
+            <key type="filename">animated/belt-right-up/5.png</key>
+            <key type="filename">animated/belt-right-up/6.png</key>
+            <key type="filename">animated/belt-right-up/7.png</key>
+            <key type="filename">animated/belt-right/0.png</key>
+            <key type="filename">animated/belt-right/1.png</key>
+            <key type="filename">animated/belt-right/2.png</key>
+            <key type="filename">animated/belt-right/3.png</key>
+            <key type="filename">animated/belt-right/4.png</key>
+            <key type="filename">animated/belt-right/5.png</key>
+            <key type="filename">animated/belt-right/6.png</key>
+            <key type="filename">animated/belt-right/7.png</key>
+            <key type="filename">animated/belt-tunnel-down/0.png</key>
+            <key type="filename">animated/belt-tunnel-down/1.png</key>
+            <key type="filename">animated/belt-tunnel-down/2.png</key>
+            <key type="filename">animated/belt-tunnel-down/3.png</key>
+            <key type="filename">animated/belt-tunnel-down/4.png</key>
+            <key type="filename">animated/belt-tunnel-down/5.png</key>
+            <key type="filename">animated/belt-tunnel-down/6.png</key>
+            <key type="filename">animated/belt-tunnel-down/7.png</key>
+            <key type="filename">animated/belt-tunnel-up/0.png</key>
+            <key type="filename">animated/belt-tunnel-up/1.png</key>
+            <key type="filename">animated/belt-tunnel-up/2.png</key>
+            <key type="filename">animated/belt-tunnel-up/3.png</key>
+            <key type="filename">animated/belt-tunnel-up/4.png</key>
+            <key type="filename">animated/belt-tunnel-up/5.png</key>
+            <key type="filename">animated/belt-tunnel-up/6.png</key>
+            <key type="filename">animated/belt-tunnel-up/7.png</key>
+            <key type="filename">animated/belt-up-left/0.png</key>
+            <key type="filename">animated/belt-up-left/1.png</key>
+            <key type="filename">animated/belt-up-left/2.png</key>
+            <key type="filename">animated/belt-up-left/3.png</key>
+            <key type="filename">animated/belt-up-left/4.png</key>
+            <key type="filename">animated/belt-up-left/5.png</key>
+            <key type="filename">animated/belt-up-left/6.png</key>
+            <key type="filename">animated/belt-up-left/7.png</key>
+            <key type="filename">animated/belt-up-right/0.png</key>
+            <key type="filename">animated/belt-up-right/1.png</key>
+            <key type="filename">animated/belt-up-right/2.png</key>
+            <key type="filename">animated/belt-up-right/3.png</key>
+            <key type="filename">animated/belt-up-right/4.png</key>
+            <key type="filename">animated/belt-up-right/5.png</key>
+            <key type="filename">animated/belt-up-right/6.png</key>
+            <key type="filename">animated/belt-up-right/7.png</key>
+            <key type="filename">animated/belt-up/0.png</key>
+            <key type="filename">animated/belt-up/1.png</key>
+            <key type="filename">animated/belt-up/2.png</key>
+            <key type="filename">animated/belt-up/3.png</key>
+            <key type="filename">animated/belt-up/4.png</key>
+            <key type="filename">animated/belt-up/5.png</key>
+            <key type="filename">animated/belt-up/6.png</key>
+            <key type="filename">animated/belt-up/7.png</key>
+            <key type="filename">animated/worker-walk/0.png</key>
+            <key type="filename">animated/worker-walk/1.png</key>
+            <key type="filename">animated/worker-walk/2.png</key>
+            <key type="filename">animated/worker-walk/3.png</key>
+            <key type="filename">animated/worker-walk/4.png</key>
+            <key type="filename">animated/worker-walk/5.png</key>
+            <key type="filename">animated/worker-walk/6.png</key>
+            <key type="filename">animated/worker-walk/7.png</key>
             <struct type="IndividualSpriteSettings">
                 <key>pivotPoint</key>
                 <point_f>0,0</point_f>
@@ -269,6 +325,36 @@
                 <key>scale9FromFile</key>
                 <false/>
             </struct>
+            <key type="filename">animated/machine/extractor/0.png</key>
+            <key type="filename">animated/machine/extractor/1.png</key>
+            <key type="filename">animated/machine/extractor/10.png</key>
+            <key type="filename">animated/machine/extractor/11.png</key>
+            <key type="filename">animated/machine/extractor/12.png</key>
+            <key type="filename">animated/machine/extractor/13.png</key>
+            <key type="filename">animated/machine/extractor/14.png</key>
+            <key type="filename">animated/machine/extractor/15.png</key>
+            <key type="filename">animated/machine/extractor/2.png</key>
+            <key type="filename">animated/machine/extractor/3.png</key>
+            <key type="filename">animated/machine/extractor/4.png</key>
+            <key type="filename">animated/machine/extractor/5.png</key>
+            <key type="filename">animated/machine/extractor/6.png</key>
+            <key type="filename">animated/machine/extractor/7.png</key>
+            <key type="filename">animated/machine/extractor/8.png</key>
+            <key type="filename">animated/machine/extractor/9.png</key>
+            <struct type="IndividualSpriteSettings">
+                <key>pivotPoint</key>
+                <point_f>0,0</point_f>
+                <key>spriteScale</key>
+                <double>1</double>
+                <key>scale9Enabled</key>
+                <false/>
+                <key>scale9Borders</key>
+                <rect>12,14,24,28</rect>
+                <key>scale9Paddings</key>
+                <rect>12,14,24,28</rect>
+                <key>scale9FromFile</key>
+                <false/>
+            </struct>
         </map>
         <key>fileLists</key>
         <map type="SpriteSheetMap">
@@ -276,7 +362,7 @@
             <struct type="SpriteSheet">
                 <key>files</key>
                 <array>
-                    <filename>../97fbb8c1/animated</filename>
+                    <filename>animated</filename>
                 </array>
             </struct>
         </map>

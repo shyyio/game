@@ -3,7 +3,7 @@ import {TILE_SIZE} from "@/client/constants.js";
 import {chunkKeyAt} from "@/common/util.js";
 import {MAP_TILE_COLOR} from "@/client/Theme.js";
 import {ObjectClientEntry} from "@/client/state/ObjectsState.js";
-import {getBodyTextureOrNull, ObjectSprite} from "@/client/layers/ObjectSprite.js";
+import {getBodyFramesOrNull, ObjectSprite} from "@/client/layers/ObjectSprite.js";
 
 /**
  * Renders one object type's placed sprites off the shared cache: the objects state owns the
@@ -45,7 +45,8 @@ export class ObjectDrawLayer extends AbstractChunkedDrawLayer {
             direction: entry.data.direction,
             texture: this.textureCache.get(this._type.getTextureByData(entry.data)),
             type: this._type,
-            bodyTexture: getBodyTextureOrNull(this.textureCache, this._type),
+            bodyFrames: getBodyFramesOrNull(this.textureCache, this._type),
+            isStalled: entry.isStalled,
         }));
     }
 
@@ -58,7 +59,7 @@ export class ObjectDrawLayer extends AbstractChunkedDrawLayer {
     }
 
     /**
-     * Re-resolves a patched entry's state-dependent texture.
+     * Re-resolves a patched entry's state-dependent texture, and whether its body holds still.
      * @param {CacheEntry} entry
      * @returns {void}
      */
@@ -71,6 +72,7 @@ export class ObjectDrawLayer extends AbstractChunkedDrawLayer {
             return;
         }
         sprite.texture = this.textureCache.get(this._type.getTextureByData(entry.data));
+        sprite.isStalled = entry.isStalled;
     }
 
     /**
@@ -104,11 +106,14 @@ export class ObjectDrawLayer extends AbstractChunkedDrawLayer {
 
     /**
      * Advances every on-screen sprite to the shared animation frame.
-     * @param {number} frame animation frame, in [0, 8)
+     * @param {number} frame the shared clock's animation frame
      * @param {number} deltaMS elapsed time since the previous tick, in ms
      * @returns {void}
      */
     _drawSprites(frame, deltaMS) {
+        if (this._type.bodyAnimationName === null) {
+            return;
+        }
         for (const chunk of this._mounted) {
             for (const sprite of this._chunks.get(chunk).spriteList) {
                 sprite.tick(frame);

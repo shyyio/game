@@ -95,14 +95,14 @@ export function convertSnapshot(snapshot, loadout, registered) {
  * @returns {TableSnapshot}
  */
 function convertComponent(snapshot, loadout, objectTypeIdByName, component, savedComponent) {
-    const fields = component.fields.map(field => ({name: field.name, kind: field.kind}));
+    const fields = component.savedFields.map(field => ({name: field.name, kind: field.kind}));
     if (savedComponent === undefined) {
         return {name: component.name, fields, rows: []};
     }
     const savedNames = new Set(savedComponent.fields.map(field => field.name));
     const rows = savedComponent.rows.map(row => {
         const converted = {eid: row.eid};
-        for (const field of component.fields) {
+        for (const field of component.savedFields) {
             if (!savedNames.has(field.name)) {
                 // A field this loadout added: the save has no value, so the column's own default stands.
                 converted[field.name] = field.defaultValue;

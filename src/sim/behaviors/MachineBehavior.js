@@ -4,7 +4,7 @@ import {LOGIC_KEY_ENABLED, LOGIC_KEY_PROCESSING} from "@/common/constants.js";
 import {AbstractSystem} from "@/sim/AbstractSystem.js";
 import {deterministicRoll} from "@/sim/Rng.js";
 import {AbstractBehavior} from "@/common/behaviors/AbstractBehavior.js";
-import {SyncedFieldSet, ProductField} from "@/common/SyncedFieldSet.js";
+import {SyncedFieldSet, SyncedField, FIELD_ROLE_PRODUCT} from "@/common/SyncedFieldSet.js";
 import {syncFluidSource} from "@/sim/behaviors/util.js";
 
 /**
@@ -58,7 +58,7 @@ const RECIPE_SLOT_LIMIT = 1024;
 const MANNED_SPEED_MULTIPLIER = 1.3;
 
 // Per-slot column names, indexed 0..RECIPE_SLOTS-1.
-const SYNCED_FIELDS = new SyncedFieldSet("Machine", [new ProductField("lastOutput", EMPTY)]);
+const SYNCED_FIELDS = new SyncedFieldSet("Machine", [new SyncedField("lastOutput", EMPTY, FIELD_ROLE_PRODUCT)]);
 
 const IN_COLS = ["inputPort0", "inputPort1", "inputPort2"];
 const SLOT_COLS = ["slot0", "slot1", "slot2"];

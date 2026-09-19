@@ -26,7 +26,7 @@ test("an extractor on water produces the water item into its output port", async
     const insert = events.find(event => event instanceof ObjectInsertEvent && event.objectTypeId === ExtractorType.objectTypeId);
     assert.equal(insert.lastOutput, undefined, "the insert carries no output slot");
     const fields = events.find(event => event instanceof ObjectFieldsEvent && event.objectRef === insert.objectRef);
-    assert.deepEqual(fields.values, [ITEM_TYPE_WATER], "lastOutput seeded at placement");
+    assert.deepEqual(fields.values, [ITEM_TYPE_WATER, 0], "lastOutput seeded at placement, running");
 
     const outputPort = engine.ports.getPortEidAt(5, 4, Direction.UP);
     let produced = false;

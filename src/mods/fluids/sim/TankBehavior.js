@@ -1,4 +1,4 @@
-import {AbstractBehavior, EMPTY, NO_EID, SyncedFieldSet, ProductField, AbstractSystem, AbstractComponent, FieldDefinition} from "@spup/sdk";
+import {AbstractBehavior, EMPTY, NO_EID, SyncedFieldSet, SyncedField, FIELD_ROLE_PRODUCT, AbstractSystem, AbstractComponent, FieldDefinition} from "@spup/sdk";
 import {LOGIC_KEY_AMOUNT} from "../common/constants.js";
 
 /**
@@ -18,7 +18,7 @@ class TankComponent extends AbstractComponent {
     }
 }
 
-const SYNCED_FIELDS = new SyncedFieldSet("Tank", [new ProductField("fluidType", EMPTY)]);
+const SYNCED_FIELDS = new SyncedFieldSet("Tank", [new SyncedField("fluidType", EMPTY, FIELD_ROLE_PRODUCT)]);
 
 /**
  * Ticks every tank.

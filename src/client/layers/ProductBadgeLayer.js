@@ -5,6 +5,7 @@ import {KeyedDisplayPool} from "@/client/layers/KeyedDisplayPool.js";
 import {fitIconScale} from "@/client/layers/pixiUtils.js";
 import {ViewMode} from "@/client/constants.js";
 import {EMPTY} from "@/sim/AbstractComponent.js";
+import {FIELD_ROLE_PRODUCT} from "@/common/SyncedFieldSet.js";
 
 // The box an item sprite is scaled into, and the disc shadowed under it so the icon reads over
 // the machine art: black under the icon, fading out to nothing at the disc's edge.
@@ -164,7 +165,7 @@ export class ProductBadgeLayer extends AbstractDrawLayer {
      * @returns {void}
      */
     onCacheSet(entry) {
-        if (this._isEnabled && entry.getProductFieldOrNull() !== null) {
+        if (this._isEnabled && entry.getFieldByRoleOrNull(FIELD_ROLE_PRODUCT) !== null) {
             this._dirtyObjects.add(entry.id);
         }
     }
@@ -174,7 +175,7 @@ export class ProductBadgeLayer extends AbstractDrawLayer {
      * @returns {void}
      */
     onCacheUpdate(entry) {
-        if (this._isEnabled && entry.getProductFieldOrNull() !== null) {
+        if (this._isEnabled && entry.getFieldByRoleOrNull(FIELD_ROLE_PRODUCT) !== null) {
             this._dirtyObjects.add(entry.id);
         }
     }
@@ -202,7 +203,7 @@ export class ProductBadgeLayer extends AbstractDrawLayer {
         if (this._isStale) {
             this._isStale = false;
             for (const entry of this.cache.values()) {
-                if (entry.getProductFieldOrNull() !== null) {
+                if (entry.getFieldByRoleOrNull(FIELD_ROLE_PRODUCT) !== null) {
                     this._dirtyObjects.add(entry.id);
                 }
             }

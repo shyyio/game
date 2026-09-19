@@ -183,6 +183,7 @@ export class WorkerDrawLayer extends AbstractDrawLayer {
         if (this._pendingDeltaMS < WORKER_ADVANCE_INTERVAL_MS) {
             return;
         }
+        const walkFrames = this._walkFrames();
         for (const worker of this._workers.values()) {
             if (!worker.visible) {
                 continue;
@@ -190,11 +191,11 @@ export class WorkerDrawLayer extends AbstractDrawLayer {
             worker.advance(this._pendingDeltaMS);
             let walkFrame;
             if (worker.moving) {
-                walkFrame = frame;
+                walkFrame = frame % walkFrames.length;
             } else {
                 walkFrame = 0;
             }
-            worker.texture = this._walkFrames()[walkFrame];
+            worker.texture = walkFrames[walkFrame];
         }
         this._pendingDeltaMS = 0;
     }
@@ -231,11 +232,7 @@ export class WorkerDrawLayer extends AbstractDrawLayer {
      */
     _walkFrames() {
         if (this._frames === null) {
-            const frames = this.textureCache.getAnimation(WORKER_ANIMATION);
-            if (frames === undefined) {
-                throw new Error(`Missing "${WORKER_ANIMATION}" animation frames in the atlas`);
-            }
-            this._frames = frames;
+            this._frames = this.textureCache.getAnimation(WORKER_ANIMATION);
         }
         return this._frames;
     }

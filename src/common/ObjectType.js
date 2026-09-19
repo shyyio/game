@@ -110,6 +110,8 @@ export class ObjectType {
      * @param config.geometry {string} a named geometry (key of ObjectGeometries, e.g. "1x1", "1x2")
      * @param [config.textureName] {string|null} the object sprite's texture, used by the derived layers
      * @param [config.bodyTextureName] {string|null} art drawn over textureName, for a machine standing on the shared frame
+     * @param [config.bodyAnimationName] {string|null} the frame sequence a placed instance's body
+     *     cycles through; bodyTextureName stays the still the placement ghost draws
      * @param [config.mapColor] {number|null} map-mode tile color; null uses the shared default
      * @param [config.overworldVisible] {boolean} whether the overworld bake includes this type's
      *     tiles; off for buried objects
@@ -146,6 +148,7 @@ export class ObjectType {
         geometry,
         textureName=null,
         bodyTextureName=null,
+        bodyAnimationName=null,
         mapColor=null,
         overworldVisible=true,
         drawLayerIndex=20,
@@ -172,6 +175,7 @@ export class ObjectType {
         this.geometryName = geometry;
         this.textureName = textureName;
         this.bodyTextureName = bodyTextureName;
+        this.bodyAnimationName = bodyAnimationName;
         this.mapColor = mapColor;
         this.overworldVisible = overworldVisible;
         this.drawLayerIndex = drawLayerIndex;

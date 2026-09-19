@@ -158,7 +158,8 @@ export {
     TARGET_TILE_BORDER_WIDTH,
 } from "@/client/Theme.js";
 
-// Shared mod-8 animation clock: frames named "<base>/0".."<base>/7"; currentAnimationFrame() keeps all mods in lockstep.
+// Shared animation clock: frames named "<base>/0" up, indexed modulo the sequence's own length
+// (8 or 16); currentAnimationFrame() keeps all mods in lockstep.
 export {currentAnimationFrame} from "@/client/layers/animation.js";
 
 // Scalar tween + easing curves, and display-object pooling for layers that churn sprites.

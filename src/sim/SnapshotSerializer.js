@@ -49,7 +49,7 @@ export class SnapshotSerializer {
             const rows = [];
             for (const slot of component.getSlots()) {
                 const row = {eid: component.getEidBySlot(slot)};
-                for (const field of component.fields) {
+                for (const field of component.savedFields) {
                     row[field.name] = component.store[field.name][slot];
                 }
                 rows.push(row);
@@ -59,7 +59,7 @@ export class SnapshotSerializer {
             rows.sort((a, b) => a.eid - b.eid);
             return {
                 name: component.name,
-                fields: component.fields.map(field => ({name: field.name, kind: field.kind})),
+                fields: component.savedFields.map(field => ({name: field.name, kind: field.kind})),
                 rows: rows,
             };
         });
@@ -137,7 +137,7 @@ export class SnapshotSerializer {
                 const eid = remap.get(row.eid);
                 registered.attach(eid);
                 const slot = registered.getSlotByEid(eid);
-                for (const field of registered.fields) {
+                for (const field of registered.savedFields) {
                     const raw = row[field.name];
                     if (field.kind === "eid") {
                         registered.store[field.name][slot] = translate(raw);
@@ -226,7 +226,7 @@ export class SnapshotSerializer {
                 continue;
             }
             const savedKinds = new Map(component.fields.map(field => [field.name, field.kind]));
-            for (const field of registered.fields) {
+            for (const field of registered.savedFields) {
                 const savedKind = savedKinds.get(field.name);
                 if (savedKind === undefined) {
                     mismatches.push(`${component.name}.${field.name} is registered but missing from the save`);
@@ -235,7 +235,7 @@ export class SnapshotSerializer {
                     mismatches.push(`${component.name}.${field.name} was saved as "${savedKind}", now "${field.kind}"`);
                 }
             }
-            const currentNames = new Set(registered.fields.map(field => field.name));
+            const currentNames = new Set(registered.savedFields.map(field => field.name));
             for (const name of savedKinds.keys()) {
                 if (!currentNames.has(name)) {
                     mismatches.push(`${component.name}.${name} is in the save but no longer registered`);
