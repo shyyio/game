@@ -1,9 +1,13 @@
 import {Sprite, Texture} from "pixi.js";
 import {TILE_SIZE} from "@/client/constants.js";
 import {Direction} from "@/common/constants.js";
+import {ANIMATION_CYCLE_FRAMES} from "@/client/layers/animation.js";
 
 // World pixels the machine body stands above the frame it sits on.
 export const BODY_DRAW_HEIGHT = 16;
+
+// A run that has not seen a clock frame yet; the next tick starts it.
+const NO_FRAME = -1;
 
 /**
  * A type's body frames: its animation sequence, or its still as a one-frame sequence, or null when
@@ -24,8 +28,9 @@ export function getBodyFramesOrNull(textureCache, type) {
 
 /**
  * Object sprite, centered on its type's geometry and rotated to its facing. The derived Object
- * layers build it from a type + texture; an animated body cycles its own frames off the shared
- * clock and rests on its first frame while stalled, and custom art (belts) is bespoke.
+ * layers build it from a type + texture; an animated body steps its own frames off the shared
+ * clock, starting each run on its first frame and resting there while stalled, and custom art
+ * (belts) is bespoke.
  */
 export class ObjectSprite extends Sprite {
 
@@ -74,10 +79,16 @@ export class ObjectSprite extends Sprite {
          */
         this._bodyFrames = bodyFrames;
         /**
-         * Whether the object rests on its first body frame instead of cycling.
          * @type {boolean}
+         * @private
          */
-        this.isStalled = isStalled;
+        this._isStalled = isStalled;
+        /**
+         * The clock frame the current run started on.
+         * @type {number}
+         * @private
+         */
+        this._startFrame = NO_FRAME;
 
         /** @type {Sprite|null} */
         this.body = null;
@@ -90,6 +101,26 @@ export class ObjectSprite extends Sprite {
     }
 
     /**
+     * Whether the object rests on its first body frame instead of stepping through them.
+     * @returns {boolean}
+     */
+    get isStalled() {
+        return this._isStalled;
+    }
+
+    /**
+     * Stalling parks the body on its first frame; resuming replays the sequence from it.
+     * @param {boolean} isStalled
+     */
+    set isStalled(isStalled) {
+        if (isStalled === this._isStalled) {
+            return;
+        }
+        this._isStalled = isStalled;
+        this._startFrame = NO_FRAME;
+    }
+
+    /**
      * Draws the animated body's frame for this instant; a static body ignores the call.
      * @param {number} frame the shared clock's frame
      * @returns {void}
@@ -98,10 +129,15 @@ export class ObjectSprite extends Sprite {
         if (this._bodyFrames === null) {
             return;
         }
-        if (this.isStalled) {
+        if (this._isStalled) {
             this.body.texture = this._bodyFrames[0];
         } else {
-            this.body.texture = this._bodyFrames[frame % this._bodyFrames.length];
+            if (this._startFrame === NO_FRAME) {
+                this._startFrame = frame;
+            }
+            // The clock wraps on its own cycle, which every sequence length divides.
+            const index = (frame - this._startFrame + ANIMATION_CYCLE_FRAMES) % this._bodyFrames.length;
+            this.body.texture = this._bodyFrames[index];
         }
     }
 
