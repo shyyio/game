@@ -23,7 +23,7 @@ const TAG = `v${GAME_VERSION}`;
 // breaks here first.
 const BUILDS = ["build", "build:server", "build:auth", "build:reporting"];
 
-const DEPLOY_REMOTES = ["ca1", "de1", "auth", "spup-reporting-ca1", "mirror", "pages"];
+const DEPLOY_REMOTES = ["ca1", "de1", "auth", "spup-reporting-ca1", "pages"];
 
 const NOTHING_PUSHED = "Nothing has been pushed, so the live servers are untouched.";
 
@@ -170,13 +170,6 @@ function main() {
     // the remote check, then the registry listing.
     const steps = new StepLog(BUILDS.length + 6);
 
-    steps.begin("pre-flight checks");
-    assertOnMain();
-    assertCommitted();
-    assertVersionTag();
-    assertModsBuildable();
-    console.log(`deploying ${GAME_VERSION}`);
-
     for (const script of BUILDS) {
         steps.begin(`build: ${script}`);
         runStep(script, "npm", ["run", script], {
@@ -184,6 +177,13 @@ function main() {
             hint: `The build failed here rather than on a host. ${NOTHING_PUSHED}`,
         });
     }
+
+    steps.begin("pre-flight checks");
+    assertOnMain();
+    assertCommitted();
+    assertVersionTag();
+    assertModsBuildable();
+    console.log(`deploying ${GAME_VERSION}`);
 
     steps.begin("run the tests");
     runStep("tests", "npm", ["test"], {
