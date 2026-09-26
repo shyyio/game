@@ -84,6 +84,12 @@ export {default as DeviceSettings} from "@/client/state/DeviceSettings.js";
 
 // Base class for a placement/interaction tool shown in the toolbar.
 export {AbstractTool, ToolActionEntry} from "@/client/input/AbstractTool.js";
+// The blocked reasons a bespoke tool returns from its own placement rules, phrased like the core tools'.
+export {
+    BLOCKED_REASON_CANNOT_BUILD_HERE,
+    BLOCKED_REASON_OCCUPIED,
+    BLOCKED_REASON_CROSSES_CHUNK,
+} from "@/client/input/placementBlockedReasons.js";
 // The derived-default tap-to-place tool (with center-lock); knobs come from the type's PlacementRule.
 export {ObjectTool} from "@/client/input/ObjectTool.js";
 // The shared pointer singleton; ghost layers read `currentX`/`currentY` (world coordinates) to float on the cursor.

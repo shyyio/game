@@ -44,6 +44,11 @@ export class EraserTool extends AbstractTool {
     }
 
     onTap(tileX, tileY) {
+        const blockedReason = this._client.getBuildBlockedReasonOrNull(tileX, tileY);
+        if (blockedReason !== null) {
+            this._client.drawPlacementBlockedReason(tileX, tileY, blockedReason);
+            return;
+        }
         this._erase(tileX, tileY);
     }
 

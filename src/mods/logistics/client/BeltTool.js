@@ -8,6 +8,7 @@ import {
     LANE_LEVEL_BURIED,
     CreateObjectMessage,
     DeleteObjectMessage,
+    BLOCKED_REASON_OCCUPIED,
 } from "@spup/sdk/client";
 import {
     BELT_NORMAL,
@@ -27,6 +28,9 @@ import {
     getTunnelPartnerOrNull,
     getUndergroundBeltsToCreate,
 } from "../common/geometry.js";
+
+const BLOCKED_REASON_NO_TUNNEL_ENTRANCE = "No tunnel entrance";
+const BLOCKED_REASON_NOT_CONNECTED = "Nothing to connect to";
 
 /**
  * Whether a belt facing `beltDirection` connects at `level` to a parent facing `parentDirection`;
@@ -173,9 +177,12 @@ export class BeltTool extends AbstractTool {
         const direction = this._rotation.direction;
         this._prevDragTileX = null;
         this._prevDragTileY = null;
-        if (this._placeBelt(tileX, tileY, direction)) {
+        const blockedReason = this._placeBelt(tileX, tileY, direction);
+        if (blockedReason === null) {
             // Advance the center-lock crosshair one tile so consecutive taps lay a line.
             this._client.centerLock.advance(tileX, tileY, direction);
+        } else {
+            this._client.drawPlacementBlockedReason(tileX, tileY, blockedReason);
         }
         // The placement may have consumed a transition, so the ghost shows what comes next.
         this._showGhost(tileX, tileY, direction);
@@ -226,7 +233,7 @@ export class BeltTool extends AbstractTool {
     _showGhost(tileX, tileY, direction) {
         const placement = this._resolvePlacement(tileX, tileY, direction);
         const occupant = this._cache.getObjectAtOrNull(tileX, tileY, placement.layer);
-        const isBlocked = this._isTileBlocked(tileX, tileY, direction, placement);
+        const isBlocked = this._getTileBlockedReasonOrNull(tileX, tileY, direction, placement) !== null;
         const isOverwrite = occupant !== null && !isBlocked;
         this._placementFeedbackLayer.showTile({tileX, tileY, isBlocked, isOverwrite});
         if (placement.kind === BELT_TUNNEL_UP) {
@@ -298,27 +305,29 @@ export class BeltTool extends AbstractTool {
     }
 
     /**
-     * Whether the tile sits outside buildable chunks, a mod vetoes the placement, an occupant on
-     * the kind's own layer can't be overwritten, or an elevated cell would stand on its own.
+     * Why the tile blocks the placement: it sits outside buildable chunks, the limit is reached,
+     * a mod vetoes it, an elevated cell would stand on its own, or an occupant on the kind's own
+     * layer can't be overwritten. Null when it may be placed.
      * @private
      * @param {BeltPlacement} placement - what the tile would take, already resolved
-     * @returns {boolean}
+     * @returns {string|null}
      */
-    _isTileBlocked(tileX, tileY, direction, placement) {
-        if (!this._client.canBuildAt(tileX, tileY)) {
-            return true;
-        }
-        if (this._client.isPlacementLimitReached(placement.type)) {
-            return true;
-        }
-        if (!this._client.isPlacementAllowedByMods(placement.type, tileX, tileY, direction)) {
-            return true;
+    _getTileBlockedReasonOrNull(tileX, tileY, direction, placement) {
+        const veto = this._client.getPlacementBlockedReasonOrNull(placement.type, tileX, tileY, direction);
+        if (veto !== null) {
+            return veto;
         }
         if (!this._isConnected(tileX, tileY, direction, placement)) {
-            return true;
+            if (placement.kind === BELT_TUNNEL_UP) {
+                return BLOCKED_REASON_NO_TUNNEL_ENTRANCE;
+            }
+            return BLOCKED_REASON_NOT_CONNECTED;
         }
         const occupant = this._cache.getObjectAtOrNull(tileX, tileY, placement.layer);
-        return occupant !== null && !this._isOccupantOverwritable(occupant, placement);
+        if (occupant !== null && !this._isOccupantOverwritable(occupant, placement)) {
+            return BLOCKED_REASON_OCCUPIED;
+        }
+        return null;
     }
 
     /**
@@ -414,13 +423,14 @@ export class BeltTool extends AbstractTool {
      * Lays one belt of the kind the level calls for, replacing an overwritable lane of that same
      * level and leaving everything else untouched. An armed transition consumes one step.
      * @private
-     * @returns {boolean} whether a belt was laid
+     * @returns {string|null} why no belt was laid, null when one was
      */
     _placeBelt(tileX, tileY, direction) {
         const placement = this._resolvePlacement(tileX, tileY, direction);
         // The server would drop an ungated or mod-vetoed placement anyway.
-        if (this._isTileBlocked(tileX, tileY, direction, placement)) {
-            return false;
+        const blockedReason = this._getTileBlockedReasonOrNull(tileX, tileY, direction, placement);
+        if (blockedReason !== null) {
+            return blockedReason;
         }
         const occupant = this._cache.getObjectAtOrNull(tileX, tileY, placement.layer);
         if (occupant !== null) {
@@ -429,7 +439,7 @@ export class BeltTool extends AbstractTool {
         this.session.sendMessage(new CreateObjectMessage(placement.type.objectTypeId, tileX, tileY, direction));
         Haptics.tap();
         this._consumeArmed();
-        return true;
+        return null;
     }
 
     /**

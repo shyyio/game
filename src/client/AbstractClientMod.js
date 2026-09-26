@@ -105,16 +105,16 @@ export class AbstractClientMod {
 
     /**
      * Client-side mirror of a sim placement rule the derived ObjectTool cannot know (a pipe
-     * bridging fluid types); false marks the whole placement blocked in the feedback.
+     * bridging fluid types): the player-facing reason the placement is blocked, or null to allow it.
      * @param {ObjectType} type
      * @param {number} tileX
      * @param {number} tileY
      * @param {Direction} direction
      * @param {Client} client
-     * @returns {boolean}
+     * @returns {string|null}
      */
-    canPlace(type, tileX, tileY, direction, client) {
-        return true;
+    getPlacementBlockedReasonOrNull(type, tileX, tileY, direction, client) {
+        return null;
     }
 
     /**

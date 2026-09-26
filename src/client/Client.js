@@ -44,6 +44,8 @@ import {InspectHighlightSprite} from "@/client/layers/InspectHighlightSprite.js"
 import {LaneItemDrawLayer} from "@/client/layers/LaneItemDrawLayer.js";
 import {ItemDrawLayer} from "@/client/layers/ItemDrawLayer.js";
 import {HitsplatLayer} from "@/client/layers/HitsplatLayer.js";
+import {BLOCKED_TILE_COLOR} from "@/client/Theme.js";
+import {BLOCKED_REASON_CANNOT_BUILD_HERE} from "@/client/input/placementBlockedReasons.js";
 import {ProductBadgeLayer} from "@/client/layers/ProductBadgeLayer.js";
 import {WorkerDrawLayer} from "@/client/layers/WorkerDrawLayer.js";
 import {WorkerDebugLayer} from "@/client/layers/WorkerDebugLayer.js";
@@ -458,15 +460,54 @@ export class Client {
     }
 
     /**
-     * Whether every client mod's canPlace allows the placement.
+     * Why a tile blocks any build or erase: it lies outside the player's buildable chunks. Null
+     * when it may be built on.
+     * @param {number} tileX
+     * @param {number} tileY
+     * @returns {string|null}
+     */
+    getBuildBlockedReasonOrNull(tileX, tileY) {
+        if (this.canBuildAt(tileX, tileY)) {
+            return null;
+        }
+        return BLOCKED_REASON_CANNOT_BUILD_HERE;
+    }
+
+    /**
+     * Why the whole placement is blocked, mirroring the sim's gates in order: the chunk, the type's
+     * limit, then the client mods. Null when nothing blocks it.
      * @param {ObjectType} type
      * @param {number} tileX
      * @param {number} tileY
      * @param {Direction} direction
-     * @returns {boolean}
+     * @returns {string|null}
      */
-    isPlacementAllowedByMods(type, tileX, tileY, direction) {
-        return this.modRegistry.clientMods.every(mod => mod.canPlace(type, tileX, tileY, direction, this));
+    getPlacementBlockedReasonOrNull(type, tileX, tileY, direction) {
+        const buildBlockedReason = this.getBuildBlockedReasonOrNull(tileX, tileY);
+        if (buildBlockedReason !== null) {
+            return buildBlockedReason;
+        }
+        if (this.isPlacementLimitReached(type)) {
+            return `${type.label} limit reached`;
+        }
+        for (const mod of this.modRegistry.clientMods) {
+            const blockedReason = mod.getPlacementBlockedReasonOrNull(type, tileX, tileY, direction, this);
+            if (blockedReason !== null) {
+                return blockedReason;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Floats a blocked placement's reason off the tile it was tried on.
+     * @param {number} tileX
+     * @param {number} tileY
+     * @param {string} blockedReason
+     * @returns {void}
+     */
+    drawPlacementBlockedReason(tileX, tileY, blockedReason) {
+        this.hitsplatLayer.drawHitsplat({tileX, tileY, text: blockedReason, color: BLOCKED_TILE_COLOR});
     }
 
     /**

@@ -141,14 +141,18 @@ export class LogisticsClientMod extends AbstractClientMod {
      * @param {number} tileY
      * @param {Direction} direction
      * @param {Client} client
-     * @returns {boolean}
+     * @returns {string|null}
      */
-    canPlace(type, tileX, tileY, direction, client) {
-        return !isPlacementBlockedByGate(
+    getPlacementBlockedReasonOrNull(type, tileX, tileY, direction, client) {
+        const isBlocked = isPlacementBlockedByGate(
             this._createOccupantLookup(client),
             occupant => isGateType(occupant.type),
             type, tileX, tileY, direction,
         );
+        if (isBlocked) {
+            return "Blocked by a gate";
+        }
+        return null;
     }
 
     /**

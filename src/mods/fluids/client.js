@@ -58,14 +58,14 @@ export class FluidsClientMod extends AbstractClientMod {
      * @param {number} tileY
      * @param {Direction} direction
      * @param {Client} client
-     * @returns {boolean}
+     * @returns {string|null}
      */
-    canPlace(type, tileX, tileY, direction, client) {
+    getPlacementBlockedReasonOrNull(type, tileX, tileY, direction, client) {
         if (!isPipeType(type)) {
-            return true;
+            return null;
         }
         const chunkKey = chunkKeyAt(tileX, tileY);
-        return joinedFluidType(neighborDirection => {
+        const joined = joinedFluidType(neighborDirection => {
             const nx = tileX + Direction.dx(neighborDirection);
             const ny = tileY + Direction.dy(neighborDirection);
             const candidates = [];
@@ -80,7 +80,11 @@ export class FluidsClientMod extends AbstractClientMod {
                 candidates.push(this._producedFluidType(client, parent.entry));
             }
             return candidates;
-        }) !== null;
+        });
+        if (joined === null) {
+            return "Would mix fluids";
+        }
+        return null;
     }
 
     /**

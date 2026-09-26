@@ -3,6 +3,7 @@ import {Direction} from "@/common/constants.js";
 import {chunkKeyAt, rotate} from "@/common/util.js";
 import {DeleteObjectMessage, CreateObjectMessage} from "@/common/CoreMessages.js";
 import Haptics from "@/client/Haptics.js";
+import {BLOCKED_REASON_CROSSES_CHUNK, BLOCKED_REASON_OCCUPIED} from "@/client/input/placementBlockedReasons.js";
 
 /**
  * @typedef {Object} PlacementCells
@@ -10,6 +11,7 @@ import Haptics from "@/client/Haptics.js";
  * @property {Point[]} overwriteCells
  * @property {Point[]} clearCells
  * @property {number[]} overwriteIds the occupants an overwrite deletes
+ * @property {string|null} blockedReason why the placement is blocked, null when it is not
  */
 
 /**
@@ -77,7 +79,9 @@ export class ObjectTool extends AbstractTool {
         if (base === null) {
             return;
         }
-        if (!this._placeAt(base.x, base.y, direction)) {
+        const blockedReason = this._placeAt(base.x, base.y, direction);
+        if (blockedReason !== null) {
+            this._client.drawPlacementBlockedReason(base.x, base.y, blockedReason);
             return;
         }
         if (this._client.centerLock.enabled && this._advanceOnPlace) {
@@ -87,15 +91,14 @@ export class ObjectTool extends AbstractTool {
     }
 
     /**
-     * Places the object at the base tile facing `direction`, deleting its overwrites first. Returns
-     * whether it placed (false when any cell is blocked).
+     * Places the object at the base tile facing `direction`, deleting its overwrites first.
      * @private
-     * @returns {boolean}
+     * @returns {string|null} why it did not place, null when it did
      */
     _placeAt(baseX, baseY, direction) {
         const result = this._evaluate(baseX, baseY, direction);
-        if (result.blockedCells.length > 0) {
-            return false;
+        if (result.blockedReason !== null) {
+            return result.blockedReason;
         }
         for (const id of result.overwriteIds) {
             this.session.sendMessage(new DeleteObjectMessage(id));
@@ -104,7 +107,7 @@ export class ObjectTool extends AbstractTool {
         Haptics.tap();
         // Re-evaluate next frame so the just-placed tile now reads as occupied.
         this._ghostLayer.invalidateSnap();
-        return true;
+        return null;
     }
 
     /**
@@ -249,16 +252,28 @@ export class ObjectTool extends AbstractTool {
             ? new Set(this._targetTiles().map(tile => `${tile.x},${tile.y}`))
             : null;
 
-        // Classify each placeable body cell on the object's primary layer (chunk, target, occupant).
+        // Classify each placeable body cell on the object's primary layer (chunk, target, occupant);
+        // the first blocked cell's reason is the placement's.
         const bodyByKey = new Map();
         const blockedCells = [];
         const overwriteCells = [];
         const clearCells = [];
         const overwriteIds = new Set();
+        let blockedReason = null;
         for (const cell of this._geometryTiles(tileX, tileY, direction)) {
             const key = `${cell.x},${cell.y}`;
-            if (chunkKeyAt(cell.x, cell.y) !== base || (targetKeys !== null && !targetKeys.has(key))) {
+            if (chunkKeyAt(cell.x, cell.y) !== base) {
                 bodyByKey.set(key, {cell, state: "blocked"});
+                if (blockedReason === null) {
+                    blockedReason = BLOCKED_REASON_CROSSES_CHUNK;
+                }
+                continue;
+            }
+            if (targetKeys !== null && !targetKeys.has(key)) {
+                bodyByKey.set(key, {cell, state: "blocked"});
+                if (blockedReason === null) {
+                    blockedReason = this._getPlaceOnBlockedReason();
+                }
                 continue;
             }
             const occupant = this._getSolidOccupantAtOrNull(cell.x, cell.y);
@@ -269,6 +284,9 @@ export class ObjectTool extends AbstractTool {
                 overwriteIds.add(occupant.id);
             } else {
                 bodyByKey.set(key, {cell, state: "blocked"});
+                if (blockedReason === null) {
+                    blockedReason = BLOCKED_REASON_OCCUPIED;
+                }
             }
         }
 
@@ -285,6 +303,9 @@ export class ObjectTool extends AbstractTool {
                 const key = `${world.x},${world.y}`;
                 if (!occupied.has(key)) {
                     continue;
+                }
+                if (blockedReason === null) {
+                    blockedReason = BLOCKED_REASON_OCCUPIED;
                 }
                 const body = bodyByKey.get(key);
                 if (body !== undefined) {
@@ -306,23 +327,31 @@ export class ObjectTool extends AbstractTool {
             }
         }
 
-        // An unbuildable chunk, a reached limit or a mod veto blocks the whole placement.
-        const vetoed = !this._client.canBuildAt(tileX, tileY)
-            || this._client.isPlacementLimitReached(this._type)
-            || !this._client.isPlacementAllowedByMods(this._type, tileX, tileY, direction);
-        if (vetoed) {
+        // An unbuildable chunk, a reached limit or a mod veto blocks the whole placement, and its
+        // reason outranks any cell's.
+        const veto = this._client.getPlacementBlockedReasonOrNull(this._type, tileX, tileY, direction);
+        if (veto !== null) {
             for (const cell of overwriteCells) {
                 blockedCells.push(cell);
             }
             for (const cell of clearCells) {
                 blockedCells.push(cell);
             }
-            return {blockedCells, overwriteCells: [], clearCells: [], overwriteIds: []};
+            return {blockedCells, overwriteCells: [], clearCells: [], overwriteIds: [], blockedReason: veto};
         }
 
         // Overwrites survive only if no body cell got re-blocked above.
         const finalOverwriteIds = overwriteCells.map(cell => bodyByKey.get(`${cell.x},${cell.y}`).id);
-        return {blockedCells, overwriteCells, clearCells, overwriteIds: finalOverwriteIds};
+        return {blockedCells, overwriteCells, clearCells, overwriteIds: finalOverwriteIds, blockedReason};
+    }
+
+    /**
+     * The blocked reason for a cell off every target this type must sit on.
+     * @private
+     * @returns {string}
+     */
+    _getPlaceOnBlockedReason() {
+        return `Needs ${this._placeOn.map(type => type.label).join(" or ")}`;
     }
 
     /**
