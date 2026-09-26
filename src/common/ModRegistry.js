@@ -39,6 +39,10 @@ export class ModRegistry {
         this._frozen = false;
         this._objectTypes = [];
         this._objectTypeById = new Map();
+        /**
+         * @type {ObjectType[]}
+         */
+        this._limitedObjectTypes = [];
         // Aggregates computed once at freeze; the getters are on per-event hot paths.
         this._wireClasses = [];
         this._simMods = [];
@@ -82,6 +86,10 @@ export class ModRegistry {
          */
         this._marketListings = [];
         /**
+         * @type {PlacementLimitBonusType[]}
+         */
+        this._placementLimitBonuses = [];
+        /**
          * @type {Map<number, MetricsGlobalQueryEntry>}
          */
         this._metricsGlobalQueries = new Map();
@@ -122,9 +130,10 @@ export class ModRegistry {
         this._collectBiomes();
         this._collectLogicKeys();
         this._collectMarketListings();
+        this._collectPlacementLimitBonuses();
         this._collectMetricsQueries();
         // Handed out as they are; only the biomes stay mutable, replaced in place by setBiomes.
-        for (const list of [this._objectTypes, this._wireClasses, this._simMods, this._clientMods, this._textureAtlases, this._itemCategories, this._noiseChannels, this._marketListings]) {
+        for (const list of [this._objectTypes, this._limitedObjectTypes, this._wireClasses, this._simMods, this._clientMods, this._textureAtlases, this._itemCategories, this._noiseChannels, this._marketListings, this._placementLimitBonuses]) {
             Object.freeze(list);
         }
         this._fluidTypes = new FrozenSet(this._fluidTypes);
@@ -176,6 +185,9 @@ export class ModRegistry {
                 type._assignObjectTypeId(this._objectTypes.length);
                 this._objectTypeById.set(this._objectTypes.length, type);
                 this._objectTypes.push(type);
+                if (type.initialPlacementLimit !== null) {
+                    this._limitedObjectTypes.push(type);
+                }
             }
         }
     }
@@ -330,6 +342,30 @@ export class ModRegistry {
     }
 
     /**
+     * Assigns each placement limit bonus its bonusTypeId and resolves its object type.
+     * @private
+     * @returns {void}
+     */
+    _collectPlacementLimitBonuses() {
+        const typeIdsByName = new Map(this._objectTypes.map(type => [type.name, type.objectTypeId]));
+        const bonusNames = new Set();
+        for (const pkg of this._packages) {
+            for (const bonus of pkg.declaration.placementLimitBonuses) {
+                if (bonusNames.has(bonus.name)) {
+                    throw new Error(`Duplicate placement limit bonus "${bonus.name}"`);
+                }
+                const objectTypeId = typeIdsByName.get(bonus.objectTypeName);
+                if (objectTypeId === undefined) {
+                    throw new Error(`Placement limit bonus "${bonus.name}" names undeclared object type "${bonus.objectTypeName}"`);
+                }
+                bonusNames.add(bonus.name);
+                bonus._assignTypeIds(this._placementLimitBonuses.length, objectTypeId);
+                this._placementLimitBonuses.push(bonus);
+            }
+        }
+    }
+
+    /**
      * Collects the global metrics queries, at most one per metrics type.
      * @private
      * @returns {void}
@@ -371,6 +407,16 @@ export class ModRegistry {
     get objectTypes() {
         this._assertFrozen();
         return this._objectTypes;
+    }
+
+    /**
+     * The object types with a placement limit, in objectTypeId order; the order own-count syncs
+     * are zipped against.
+     * @returns {ObjectType[]}
+     */
+    get limitedObjectTypes() {
+        this._assertFrozen();
+        return this._limitedObjectTypes;
     }
 
     /**
@@ -588,6 +634,28 @@ export class ModRegistry {
     get marketListings() {
         this._assertFrozen();
         return this._marketListings;
+    }
+
+    /**
+     * Every placement limit bonus across the loadout, in bonusTypeId order.
+     * @returns {PlacementLimitBonusType[]}
+     */
+    get placementLimitBonuses() {
+        this._assertFrozen();
+        return this._placementLimitBonuses;
+    }
+
+    /**
+     * @param {number} bonusTypeId
+     * @returns {PlacementLimitBonusType}
+     */
+    getPlacementLimitBonusByTypeId(bonusTypeId) {
+        this._assertFrozen();
+        const bonus = this._placementLimitBonuses[bonusTypeId];
+        if (bonus === undefined) {
+            throw new Error(`Unknown placement limit bonusTypeId ${bonusTypeId}`);
+        }
+        return bonus;
     }
 
     /**

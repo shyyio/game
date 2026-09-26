@@ -205,7 +205,7 @@ export class PlacedObjectIndex extends AbstractSystem {
         if (type === undefined) {
             return NO_EID;
         }
-        return this.getEidBySlot(tileX, tileY, type.getPositionLayerTilesByDirection(message.direction)[0].layer);
+        return this.getEidAt(tileX, tileY, type.getPositionLayerTilesByDirection(message.direction)[0].layer);
     }
 
     /**
@@ -283,6 +283,9 @@ export class PlacedObjectIndex extends AbstractSystem {
             return true;
         }
         if (!engine.isPlacementAllowed(type, message.x, message.y, message.direction)) {
+            return true;
+        }
+        if (playerRef !== PLAYER_REF_NONE && engine.limits.isAtLimit(playerRef, type.objectTypeId)) {
             return true;
         }
         const footprint = engine.getFootprintAt(type, message.x, message.y, message.direction);

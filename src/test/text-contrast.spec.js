@@ -57,6 +57,8 @@ function themedTexts() {
         {where: "ProductionLogPanelLayer category caption (complete)", fill: Theme.SUCCESS_TEXT, background: inset, fontSize: 12, isBold: false},
         {where: "ToolbarLayer slot label", fill: Theme.PANEL_TINT_TEXT, background: slot, fontSize: 15, isBold: false},
         {where: "ToolbarLayer shortcut badge", fill: Theme.PANEL_TINT_TEXT, alpha: 0.6, background: slot, fontSize: 45, isBold: false},
+        {where: "ToolbarLayer limit text", fill: Theme.PANEL_TINT_TEXT, background: slot, fontSize: 13, isBold: false},
+        {where: "ToolbarLayer limit text (reached)", fill: Theme.LIMIT_REACHED_TEXT, background: slot, fontSize: 13, isBold: false},
         // textOn picks each label from its tint. A disabled button fades whole and is AA-exempt,
         // so only the enabled tints are checked.
         {where: "panelButton label (accent)", fill: Theme.textOn(Theme.ACTIVE_ACCENT), background: buttonActive, fontSize: 15, isBold: true},
@@ -91,7 +93,7 @@ const CHECKED_TEXTS = {
     "src/client/hud/RotateButtonsLayer.js": 1,
     "src/client/hud/StatusMessageLayer.js": 1,
     "src/client/hud/TextInput.js": 2,
-    "src/client/hud/ToolbarLayer.js": 2,
+    "src/client/hud/ToolbarLayer.js": 3,
     "src/client/hud/UIPanel.js": 1,
     "src/client/hud/panelButton.js": 1,
     "src/mods/notes/client/NoteTooltipLayer.js": 2,

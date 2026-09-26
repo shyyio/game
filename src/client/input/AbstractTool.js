@@ -98,6 +98,15 @@ export class AbstractTool {
     }
 
     /**
+     * How many more the own player may place, drawn in the tool icon's corner; null for a tool
+     * without a limit.
+     * @returns {number|null}
+     */
+    get remainingPlacements() {
+        return null;
+    }
+
+    /**
      * Actions the top status bar offers beside Back while this tool is active; their keys are
      * bound with the tool and the bar redraws after one fires.
      * @returns {ToolActionEntry[]}

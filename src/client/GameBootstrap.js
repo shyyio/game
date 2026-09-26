@@ -240,6 +240,9 @@ export async function createClient(app, viewport, props) {
     // wired only after the toolbar's first render, so an in-flight sync racing client.init()
     // never rebuilds it before its textureCache is set.
     client.cache.subscribe("playerSettings.toolOrder", rebuildToolbar);
+    const resyncLimitTexts = () => client.hud.toolbarLayer.resyncLimitTexts();
+    client.cache.subscribe("placementLimits.countByTypeId", resyncLimitTexts);
+    client.cache.subscribe("placementLimits.bonusTypeIds", resyncLimitTexts);
 
     /**
      * Reverses everything above that outlives a Client/viewport teardown: the reconnect loop,

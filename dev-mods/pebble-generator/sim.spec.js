@@ -5,8 +5,8 @@ import {test} from "node:test";
 import assert from "node:assert/strict";
 import {makeGameEngine, makeGame} from "@/test/ecsSim.js";
 import {CapturingSession} from "@/test/CapturingSession.js";
-import {CreateObjectMessage, ClaimChunkMessage, Direction, chunkKeyAt} from "@spup/sdk";
-import {PebbleGeneratorType} from "./common/objectTypes.js";
+import {CreateObjectMessage, ClaimChunkMessage, Direction, chunkKeyAt, PlacementLimitBonusGrantedEvent} from "@spup/sdk";
+import {PebbleGeneratorType, FirstGeneratorBonus} from "./common/objectTypes.js";
 import {ITEM_TYPE_PEBBLE, GENERATOR_TICKS} from "./common/constants.js";
 import {GeneratorCountRequestMessage} from "./common/messages.js";
 import {GeneratorCountEvent} from "./common/events.js";
@@ -71,4 +71,19 @@ test("a session that never asked is told nothing", async () => {
     game.runTick();
 
     assert.deepEqual(countsSeen(builder), []);
+});
+
+test("a player's first generator grants them the generator bonus, once", async () => {
+    const game = await makeGame();
+    const builder = new CapturingSession(1);
+    game.connect(builder);
+    game.dispatchMessage(new ClaimChunkMessage(chunkKeyAt(5, 5)), builder);
+    builder.events.length = 0;
+
+    game.dispatchMessage(new CreateObjectMessage(PebbleGeneratorType.objectTypeId, 5, 5, Direction.UP), builder);
+    game.dispatchMessage(new CreateObjectMessage(PebbleGeneratorType.objectTypeId, 7, 5, Direction.UP), builder);
+
+    const granted = builder.events.filter(event => event instanceof PlacementLimitBonusGrantedEvent);
+    assert.deepEqual(granted.map(event => event.bonusTypeId), [FirstGeneratorBonus.bonusTypeId]);
+    assert.equal(game.simEngine.limits.isGranted(builder.playerRef, FirstGeneratorBonus.bonusTypeId), true);
 });

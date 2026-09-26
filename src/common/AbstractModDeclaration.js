@@ -95,6 +95,15 @@ export class AbstractModDeclaration {
     }
 
     /**
+     * Ways this mod raises a player's placement limits; registration order across the loadout
+     * assigns each its bonusTypeId at ModRegistry.freeze(). Names must be unique across the loadout.
+     * @returns {PlacementLimitBonusType[]}
+     */
+    get placementLimitBonuses() {
+        return [];
+    }
+
+    /**
      * Logic key -> its UI metadata for this mod's device behaviors; keys must be unique across the
      * loadout.
      * @returns {Object.<number, LogicKeyEntry>}

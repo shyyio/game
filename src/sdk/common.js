@@ -110,6 +110,8 @@ export {ObjectInsertEvent, ObjectSyncEvent, ObjectDeleteEvent} from "@/common/Ob
 // A synced-field delta per object (`engine.sync.eventFor` builds one for a corrective send) and the
 // per-chunk batch the engine emits.
 export {ObjectFieldsEvent, ObjectFieldsBatchEvent} from "@/common/ObjectEvents.js";
+// The own player's placed counts and placement limit bonuses, as the client receives them.
+export {OwnPlacementLimitsSyncEvent, OwnPlacedCountEvent, PlacementLimitBonusGrantedEvent} from "@/common/PlacementLimitEvents.js";
 
 // The core player intents a mod's client side (or its specs) may send: viewport subscription,
 // chunk claiming, friend list edits, and a player-setting write.
@@ -175,6 +177,9 @@ export {SETTING_ON, SETTING_OFF} from "@/common/constants.js";
 // Item type -> tradable-catalog listing a declaration contributes (marketListings); npcPrice null
 // means player-market-only (no fixed NPC price).
 export {MarketListingEntry} from "@/common/MarketListingEntry.js";
+// A declaration's placementLimitBonuses entries; a sim mod grants one with engine.limits.grant.
+export {PlacementLimitBonusType} from "@/common/PlacementLimitBonusType.js";
+export {PlacementLimitIndex} from "@/sim/PlacementLimitIndex.js";
 
 // GLOBAL-scope query opt-in a declaration contributes (metricsGlobalQueries); rowFilter trims a
 // public answer's rows (e.g. one side of each trade).

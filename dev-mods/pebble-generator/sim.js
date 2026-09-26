@@ -1,7 +1,33 @@
-import {AbstractSimMod} from "@spup/sdk";
-import {PebbleGeneratorType} from "./common/objectTypes.js";
+import {AbstractSimMod, AbstractSystem, PLAYER_REF_NONE} from "@spup/sdk";
+import {PebbleGeneratorType, FirstGeneratorBonus} from "./common/objectTypes.js";
 import {GeneratorCountRequestMessage} from "./common/messages.js";
 import {GeneratorCountEvent} from "./common/events.js";
+
+/**
+ * Grants the belt bonus to a player the moment their first generator stands.
+ */
+class FirstGeneratorBonusSystem extends AbstractSystem {
+
+    /**
+     * @param {GameEngine} engine
+     */
+    constructor(engine) {
+        super();
+        this.engine = engine;
+    }
+
+    onSpawn(eid, objectRef) {
+        const placed = this.engine.placed;
+        if (placed.getObjectTypeIdByEid(eid) !== PebbleGeneratorType.objectTypeId) {
+            return;
+        }
+        const playerRef = placed.getPlacerByEid(eid);
+        if (playerRef === PLAYER_REF_NONE || this.engine.limits.isGranted(playerRef, FirstGeneratorBonus.bonusTypeId)) {
+            return;
+        }
+        this.engine.limits.grant(playerRef, FirstGeneratorBonus.bonusTypeId);
+    }
+}
 
 /**
  * The half of the mod that runs on the server, for anything a placed machine cannot do by itself.
@@ -21,11 +47,13 @@ export class PebbleGeneratorSimMod extends AbstractSimMod {
     }
 
     /**
-     * No ECS content; the machine's behavior registers its own component and system.
+     * The machine's behavior registers its own component and system; this adds the reward watcher.
      * @param {GameEngine} engine
      * @returns {void}
      */
-    init(engine) {}
+    init(engine) {
+        engine.registerSystem(new FirstGeneratorBonusSystem(engine));
+    }
 
     /**
      * Sends nothing while the number holds still.

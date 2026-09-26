@@ -16,6 +16,7 @@ import {SettingsMenu} from "@/client/SettingsMenu.js";
 import {Hud} from "@/client/Hud.js";
 import {ClientCache} from "@/client/state/ClientCache.js";
 import {CHUNK_CLAIMS_SCHEMA, ChunkClaimsWriter, ChunkClaimsView} from "@/client/state/ChunkClaimsState.js";
+import {PLACEMENT_LIMITS_SCHEMA, PlacementLimitsWriter, PlacementLimitsView} from "@/client/state/PlacementLimitsState.js";
 import {PLAYERS_SCHEMA, PlayersWriter, PlayersView} from "@/client/state/PlayersState.js";
 import {PLAYER_SETTINGS_SCHEMA, GAME_SETTINGS_SCHEMA, PlayerSettingsWriter, GameSettingsWriter, PlayerSettingsView, GameSettingsView} from "@/client/state/SettingsState.js";
 import {WORKER_ASSIGNMENTS_SCHEMA, WorkerAssignmentsWriter, WorkerAssignmentsView} from "@/client/state/WorkerAssignmentsState.js";
@@ -230,6 +231,7 @@ export class Client {
         this.cache.register("inspect", INSPECT_SCHEMA, new InspectWriter(this.cache), new InspectView());
         this.cache.register("metrics", METRICS_SCHEMA, new MetricsWriter(this.cache), new MetricsView());
         this.cache.register("clock", CLOCK_SCHEMA, new ClockWriter(this.cache), new ClockView());
+        this.cache.register("placementLimits", PLACEMENT_LIMITS_SCHEMA, new PlacementLimitsWriter(this.modRegistry, this.cache), new PlacementLimitsView(this.modRegistry));
         // The open-menu set rides to the sim as the inspect subscription, whoever changes it.
         this.cache.subscribe("inspect.openObjects", () => this._sendSetInspectedObjects());
     }
@@ -444,6 +446,15 @@ export class Client {
      */
     canBuildAt(tileX, tileY) {
         return this.cache.view("chunkClaims").canBuildIn(chunkKeyAt(tileX, tileY));
+    }
+
+    /**
+     * Mirrors the sim's placement limit gate: whether the own player may place no more of the type.
+     * @param {ObjectType} type
+     * @returns {boolean}
+     */
+    isPlacementLimitReached(type) {
+        return this.cache.view("placementLimits").isAtLimit(type.objectTypeId);
     }
 
     /**

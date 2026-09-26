@@ -1,7 +1,7 @@
 import {Container, Sprite, Text, Rectangle, FederatedPointerEvent} from "pixi.js";
 import Haptics from "@/client/Haptics.js";
 import {GAME_FONT} from "@/client/constants.js";
-import {PANEL_TINT_TEXT, PANEL_TINT} from "@/client/Theme.js";
+import {PANEL_TINT_TEXT, PANEL_TINT, LIMIT_REACHED_TEXT} from "@/client/Theme.js";
 import {Tween, easeOutBack, easeInCubic} from "@/client/layers/Tween.js";
 import ReducedMotion from "@/client/ReducedMotion.js";
 import Mobile from "@/client/Mobile.js";
@@ -20,6 +20,9 @@ import {keyLabel} from "@/client/hud/panelButton.js";
 const ICON_PADDING = 7;
 const LABEL_GAP = 0;
 const LABEL_SIZE = 15;
+const LIMIT_TEXT_SIZE = 13;
+const LIMIT_TEXT_STROKE = 2;
+const LIMIT_TEXT_INSET = 3;
 // Toolbar slot bindings cover the first this-many mod tools.
 export const TOOL_SHORTCUT_COUNT = KEYBINDING_TOOL_SLOTS.length;
 // Reserved height for the label under each slot (up to 2 wrapped lines), so cells align regardless of text.
@@ -404,6 +407,8 @@ export class ToolbarLayer extends Container {
      */
     _createCell(tool, isDraggable) {
         const slot = this._createSlot(tool.label, this._getShortcutByTool(tool), (slot) => this._addSprite(slot, tool.textureName), isDraggable);
+        slot._limitText = this._createLimitText(slot);
+        this._resyncLimitText(slot, tool);
         const onPress = () => {
             if (tool === this._activeTool) {
                 this.setActiveTool(null);
@@ -421,6 +426,54 @@ export class ToolbarLayer extends Container {
             }, {stopNativePropagation: true});
         }
         return slot;
+    }
+
+    /**
+     * The remaining-placements figure in the slot's bottom-right corner, empty until a tool fills it.
+     * @private
+     * @param {Container} slot
+     * @returns {Text}
+     */
+    _createLimitText(slot) {
+        const text = new Text({
+            text: "",
+            style: {fontFamily: GAME_FONT, fontSize: LIMIT_TEXT_SIZE, fill: PANEL_TINT_TEXT, stroke: {color: PANEL_TINT, width: LIMIT_TEXT_STROKE}},
+        });
+        text.anchor = 1;
+        text.x = SLOT_SIZE - LIMIT_TEXT_INSET;
+        text.y = SLOT_SIZE - LIMIT_TEXT_INSET;
+        slot.addChild(text);
+        return text;
+    }
+
+    /**
+     * @private
+     * @param {Container} slot
+     * @param {AbstractTool} tool
+     * @returns {void}
+     */
+    _resyncLimitText(slot, tool) {
+        const remaining = tool.remainingPlacements;
+        if (remaining === null) {
+            slot._limitText.text = "";
+            return;
+        }
+        slot._limitText.text = String(remaining);
+        if (remaining === 0) {
+            slot._limitText.style.fill = LIMIT_REACHED_TEXT;
+        } else {
+            slot._limitText.style.fill = PANEL_TINT_TEXT;
+        }
+    }
+
+    /**
+     * Redraws every tool's corner figure after the own counts or limits change.
+     * @returns {void}
+     */
+    resyncLimitTexts() {
+        for (const [index, slot] of this._cells.entries()) {
+            this._resyncLimitText(slot, this._tools[index]);
+        }
     }
 
     /**

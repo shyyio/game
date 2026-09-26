@@ -5,3 +5,7 @@ export const TOOL_ID_PEBBLE_GENERATOR = 900;
 
 // Ticks between pebbles.
 export const GENERATOR_TICKS = 8;
+
+// Generators a player may have standing, and how many more their first one earns them.
+export const GENERATOR_LIMIT = 5;
+export const FIRST_GENERATOR_BONUS = 5;

@@ -10,6 +10,7 @@ import {ItemType} from "@/common/ItemType.js";
 import {ItemCategory} from "@/common/ItemCategory.js";
 import {ObjectType, PlacementRule} from "@/common/ObjectType.js";
 import {StaticBehavior} from "@/common/behaviors/StaticBehavior.js";
+import {PlacementLimitBonusType} from "@/common/PlacementLimitBonusType.js";
 
 const MOD_KEY = 900;
 const MOD_ITEM_TYPE = 910;
@@ -246,4 +247,57 @@ test("a keybinding is found by the player setting key it stores", () => {
     registry.freeze();
     assert.equal(registry.getKeybindingEntryByPlayerSettingKeyOrNull(MOD_KEY), entry);
     assert.equal(registry.getKeybindingEntryByPlayerSettingKeyOrNull(MOD_KEY + 1), null);
+});
+
+class BonusDeclaration extends AbstractModDeclaration {
+
+    /**
+     * @param {string} name
+     * @param {ObjectType[]} types
+     * @param {PlacementLimitBonusType[]} bonuses
+     */
+    constructor(name, types, bonuses) {
+        super();
+        this._name = name;
+        this._types = types;
+        this._bonuses = bonuses;
+    }
+
+    get name() {
+        return this._name;
+    }
+
+    get objectTypes() {
+        return this._types;
+    }
+
+    get placementLimitBonuses() {
+        return this._bonuses;
+    }
+}
+
+test("placement limit bonuses take positional ids and resolve their object type at freeze", () => {
+    const belt = objectType("Belt");
+    const registry = new ModRegistry();
+    registry.register(new ModPackage(new BonusDeclaration("A", [belt], [
+        new PlacementLimitBonusType("first", "First", "Belt", 10),
+        new PlacementLimitBonusType("second", "Second", "Belt", 5),
+    ])));
+    registry.freeze();
+    assert.deepEqual(registry.placementLimitBonuses.map(bonus => bonus.bonusTypeId), [0, 1]);
+    assert.equal(registry.getPlacementLimitBonusByTypeId(1).amount, 5);
+    assert.equal(registry.getPlacementLimitBonusByTypeId(1).objectTypeId, belt.objectTypeId);
+});
+
+test("a placement limit bonus naming an undeclared object type throws at freeze", () => {
+    const registry = new ModRegistry();
+    registry.register(new ModPackage(new BonusDeclaration("A", [], [new PlacementLimitBonusType("first", "First", "Belt", 10)])));
+    assert.throws(() => registry.freeze(), /undeclared object type "Belt"/);
+});
+
+test("a duplicate placement limit bonus name across mods throws at freeze", () => {
+    const registry = new ModRegistry();
+    registry.register(new ModPackage(new BonusDeclaration("A", [objectType("Belt")], [new PlacementLimitBonusType("first", "First", "Belt", 10)])));
+    registry.register(new ModPackage(new BonusDeclaration("B", [], [new PlacementLimitBonusType("first", "Again", "Belt", 10)])));
+    assert.throws(() => registry.freeze(), /Duplicate placement limit bonus "first"/);
 });

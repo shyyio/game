@@ -1,6 +1,6 @@
 import {AbstractModDeclaration, ItemCategory, ItemType} from "@spup/sdk";
 import {ITEM_TYPE_PEBBLE} from "./common/constants.js";
-import {PebbleGeneratorType} from "./common/objectTypes.js";
+import {PebbleGeneratorType, FirstGeneratorBonus} from "./common/objectTypes.js";
 import {GeneratorCountRequestMessage} from "./common/messages.js";
 import {GeneratorCountEvent} from "./common/events.js";
 
@@ -30,6 +30,14 @@ export class PebbleGeneratorDeclaration extends AbstractModDeclaration {
      */
     get wireClasses() {
         return [GeneratorCountRequestMessage, GeneratorCountEvent];
+    }
+
+    /**
+     * Ways this mod raises a player's placement limits; sim.js decides when one is granted.
+     * @returns {PlacementLimitBonusType[]}
+     */
+    get placementLimitBonuses() {
+        return [FirstGeneratorBonus];
     }
 
     /**

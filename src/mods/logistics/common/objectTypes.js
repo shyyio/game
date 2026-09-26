@@ -122,6 +122,7 @@ export const BeltType = new BeltObjectType({
     beltKind: BELT_NORMAL,
     label: "Belt",
     mapColor: MAP_COLOR_BELT,
+    initialPlacementLimit: 100,
 });
 
 export const BeltTunnelDownType = new BeltObjectType({

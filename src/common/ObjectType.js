@@ -139,6 +139,8 @@ export class ObjectType {
      *     null for non-transport types
      * @param [config.wireAnchor] {{x: number, y: number}|null} where a logic wire attaches, in
      *     tiles from the origin tile's top-left corner; null = not wireable
+     * @param [config.initialPlacementLimit] {number|null} how many a player may have placed before
+     *     bonuses; null for an unlimited type
      */
     constructor({
         name,
@@ -163,6 +165,7 @@ export class ObjectType {
         toolId=null,
         conveys=null,
         wireAnchor=null,
+        initialPlacementLimit=null,
     }) {
         if (ObjectGeometries[geometry] === undefined) {
             throw new Error(`Unknown object geometry "${geometry}"`);
@@ -199,6 +202,7 @@ export class ObjectType {
         this.toolId = toolId;
         this.conveys = conveys;
         this.wireAnchor = wireAnchor;
+        this.initialPlacementLimit = initialPlacementLimit;
         this.inspectable = inspectable;
         if (tapAction !== null) {
             this.tapAction = tapAction;

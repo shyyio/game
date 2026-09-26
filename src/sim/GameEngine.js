@@ -8,6 +8,7 @@ import {CreateObjectMessage, DeleteObjectMessage} from "@/common/CoreMessages.js
 import {PlacedObjectIndex} from "@/sim/PlacedObjectIndex.js";
 import {OverworldTileIndex} from "@/sim/OverworldTileIndex.js";
 import {WorkerNetworkIndex} from "@/sim/WorkerNetworkIndex.js";
+import {PlacementLimitIndex} from "@/sim/PlacementLimitIndex.js";
 import {ComponentRegistry} from "@/sim/ComponentRegistry.js";
 import {SpatialIndex} from "@/sim/SpatialIndex.js";
 import {TransferResolver} from "@/sim/TransferResolver.js";
@@ -91,6 +92,12 @@ export class GameEngine {
          * @type {WorkerNetworkIndex|null}
          */
         this.workers = null;
+
+        /**
+         * Per-player placed counts and placement limits over the placed objects; built with the entity host.
+         * @type {PlacementLimitIndex|null}
+         */
+        this.limits = null;
 
         // Provided service instances by their exported marker class (see provide/resolve).
         this._services = new Map();
@@ -208,6 +215,8 @@ export class GameEngine {
         this._eventSink = null;
         // Sink for metrics entries, delivered whether or not the chunk has a subscriber.
         this._metricsSink = null;
+        // Sink for events addressed to one player's sessions. Null until one is installed.
+        this._playerEventSink = null;
         /**
          * Notified (playerRef, itemTypeId, amount) when a producer's output is delivered.
          * @type {ListenerList}
@@ -244,6 +253,26 @@ export class GameEngine {
         this._eventSink = sink;
         this._isChunkSubscribed = isChunkSubscribed === undefined ? () => true : isChunkSubscribed;
         this.invalidateSubscriptions();
+    }
+
+    /**
+     * Passes an event addressed to one player to the player event sink; a no-op if none is installed.
+     * @param {number} playerRef
+     * @param {AbstractEvent} event
+     * @returns {void}
+     */
+    emitPlayerEvent(playerRef, event) {
+        if (this._playerEventSink !== null) {
+            this._playerEventSink(playerRef, event);
+        }
+    }
+
+    /**
+     * @param {function(number, AbstractEvent): void} sink
+     * @returns {void}
+     */
+    setPlayerEventSink(sink) {
+        this._playerEventSink = sink;
     }
 
     /**
@@ -341,6 +370,7 @@ export class GameEngine {
             this.placed.installBehaviors();
             this.overworldTiles = new OverworldTileIndex(this, this.placed);
             this.workers = new WorkerNetworkIndex(this, this.placed);
+            this.limits = new PlacementLimitIndex(this, this.placed);
             for (const mod of this.modRegistry.simMods) {
                 mod.init(this);
             }

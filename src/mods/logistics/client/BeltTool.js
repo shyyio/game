@@ -10,6 +10,7 @@ import {
     DeleteObjectMessage,
 } from "@spup/sdk/client";
 import {
+    BELT_NORMAL,
     BELT_TUNNEL_DOWN,
     BELT_TUNNEL_UP,
     KEYBINDING_BELT_LOWER,
@@ -95,6 +96,14 @@ export class BeltTool extends AbstractTool {
 
     get textureName() {
         return "belt-up/0";
+    }
+
+    get remainingPlacements() {
+        const type = getBeltTypeByKind(BELT_NORMAL);
+        if (type.initialPlacementLimit === null) {
+            return null;
+        }
+        return this._client.cache.view("placementLimits").getRemainingByTypeId(type.objectTypeId);
     }
 
     get statusText() {
@@ -297,6 +306,9 @@ export class BeltTool extends AbstractTool {
      */
     _isTileBlocked(tileX, tileY, direction, placement) {
         if (!this._client.canBuildAt(tileX, tileY)) {
+            return true;
+        }
+        if (this._client.isPlacementLimitReached(placement.type)) {
             return true;
         }
         if (!this._client.isPlacementAllowedByMods(placement.type, tileX, tileY, direction)) {

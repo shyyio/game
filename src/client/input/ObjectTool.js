@@ -62,6 +62,13 @@ export class ObjectTool extends AbstractTool {
         return this._type.textureName;
     }
 
+    get remainingPlacements() {
+        if (this._type.initialPlacementLimit === null) {
+            return null;
+        }
+        return this._client.cache.view("placementLimits").getRemainingByTypeId(this._type.objectTypeId);
+    }
+
     onTap(tileX, tileY) {
         const direction = this._placementDirection();
         // Snap and evaluate synchronously from the live cursor/rotation, so a tap never trusts a
@@ -123,6 +130,11 @@ export class ObjectTool extends AbstractTool {
             // Keep the target highlight live as resources come and go, only while active.
             this._unsubscribes.push(this._cache.onStructuralChange(() => this._resyncHighlight()));
             this._unsubscribes.push(this._cache.onRemove(() => this._resyncHighlight()));
+        }
+        if (this._type.initialPlacementLimit !== null) {
+            // A count or bonus landing re-tints the resting ghost.
+            this._unsubscribes.push(this._client.cache.subscribe("placementLimits.countByTypeId", () => this._ghostLayer.invalidateSnap()));
+            this._unsubscribes.push(this._client.cache.subscribe("placementLimits.bonusTypeIds", () => this._ghostLayer.invalidateSnap()));
         }
         this._resyncHighlight();
     }
@@ -294,8 +306,9 @@ export class ObjectTool extends AbstractTool {
             }
         }
 
-        // An unbuildable chunk or a mod veto blocks the whole placement.
+        // An unbuildable chunk, a reached limit or a mod veto blocks the whole placement.
         const vetoed = !this._client.canBuildAt(tileX, tileY)
+            || this._client.isPlacementLimitReached(this._type)
             || !this._client.isPlacementAllowedByMods(this._type, tileX, tileY, direction);
         if (vetoed) {
             for (const cell of overwriteCells) {

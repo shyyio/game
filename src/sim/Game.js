@@ -8,12 +8,14 @@ import {
     SetPlayerSettingsToolOrderMessage,
 } from "@/common/PlayerMessages.js";
 import {WelcomeEvent} from "@/common/PlayerEvents.js";
+import {OwnPlacementLimitsSyncEvent} from "@/common/PlacementLimitEvents.js";
 import {ClaimChunkMessage, UnclaimChunkMessage, SetChunkPermissionMessage} from "@/common/ClaimMessages.js";
 import {WireRegistry} from "@/common/wire.js";
 import {GameEngine} from "@/sim/GameEngine.js";
 import {EventBus} from "@/sim/EventBus.js";
 import {SettingsCache, PlayerSettingsCache, PLAYER_SETTING_TABLE} from "@/common/SettingsCache.js";
 import {PlayerSettingsToolOrderCache, PLAYER_SETTINGS_TOOL_ORDER_TABLE} from "@/common/PlayerSettingsToolOrderCache.js";
+import {PLACEMENT_LIMIT_BONUS_TABLE} from "@/sim/PlacementLimitIndex.js";
 import {ChunkClaimIndex, CHUNK_CLAIM_TABLE} from "@/sim/ChunkClaimIndex.js";
 import {PlayerRegistry, PLAYER_TABLE, FRIEND_TABLE} from "@/sim/PlayerRegistry.js";
 import {PlayerDirectory} from "@/sim/PlayerDirectory.js";
@@ -53,6 +55,7 @@ export class Game {
             event => this.bus.publish(event),
             chunk => this.bus.hasChunkSubscribers(chunk),
         );
+        this.simEngine.setPlayerEventSink((playerRef, event) => this.bus.publishToPlayer(playerRef, event));
 
         /**
          * Protobuf wire codec registry, shared by sessions to encode/decode
@@ -186,6 +189,7 @@ export class Game {
             this.claims.serializeTables(),
             this.playerSettings.serializeTables(),
             this.toolOrder.serializeTables(),
+            this.simEngine.limits.serializeTables(),
         ];
         for (const mod of this.modRegistry.simMods) {
             for (const table of mod.serializeTables()) {
@@ -231,6 +235,7 @@ export class Game {
         this.claims.deserializeTables(byName.get(CHUNK_CLAIM_TABLE));
         this.playerSettings.deserializeTables(byName.get(PLAYER_SETTING_TABLE));
         this.toolOrder.deserializeTables(byName.get(PLAYER_SETTINGS_TOOL_ORDER_TABLE));
+        this.simEngine.limits.deserializeTables(byName.get(PLACEMENT_LIMIT_BONUS_TABLE));
         for (const mod of this.modRegistry.simMods) {
             mod.deserializeTables(byName);
         }
@@ -278,6 +283,11 @@ export class Game {
     _syncPlayerState(session) {
         const entry = this.players.getPlayerByRef(session.playerRef);
         this.bus.publishTo(session.sessionRef, new WelcomeEvent(entry.playerRef, entry.maxChunks, entry.friendCode));
+        const limits = this.simEngine.limits;
+        this.bus.publishTo(session.sessionRef, new OwnPlacementLimitsSyncEvent(
+            limits.getCountsByPlayerRef(session.playerRef),
+            limits.getBonusTypeIdsByPlayerRef(session.playerRef),
+        ));
         this.playerDirectory.syncUsernames(session.sessionRef, [session.playerRef]);
         this.claimService.syncOwnClaims(session);
         this.playerDirectory.syncFriendList(session.sessionRef, session.playerRef);

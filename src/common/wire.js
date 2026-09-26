@@ -27,6 +27,7 @@ import {
     MetricsRollupRequestMessage, MetricsSubscribeMessage, MetricsUnsubscribeMessage,
 } from "@/common/MetricsMessages.js";
 import {MetricsRollupEvent, MetricsRollupBucketEvent} from "@/common/MetricsEvents.js";
+import {OwnPlacementLimitsSyncEvent, OwnPlacedCountEvent, PlacementLimitBonusGrantedEvent} from "@/common/PlacementLimitEvents.js";
 
 const {Type, Field, MapField, Root} = protobuf;
 const Long = protobuf.util.Long;
@@ -93,6 +94,9 @@ const CORE_WIRE_CLASSES = [
     LaneItemDeleteEvent,
     LaneDeletedEvent,
     LaneItemBatchEvent,
+    OwnPlacementLimitsSyncEvent,
+    OwnPlacedCountEvent,
+    PlacementLimitBonusGrantedEvent,
 ];
 
 class WireFieldDefinition {
