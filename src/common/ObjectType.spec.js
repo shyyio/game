@@ -1,6 +1,8 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
 import {PlacementRule} from "@/common/ObjectType.js";
+import {Direction} from "@/common/constants.js";
+import {ObjectsView} from "@/client/state/ObjectsState.js";
 import {BeltType, BeltUndergroundType, BeltRampUp1Type, RoadType} from "@/mods/logistics/common/objectTypes.js";
 import {PipeType} from "@/mods/fluids/common/objectTypes.js";
 
@@ -15,9 +17,10 @@ test("a buried belt span is not copyable; its mouths are", () => {
 });
 
 test("a type names its ghost texture; a belt kind names its UP-facing frame", () => {
-    assert.equal(RoadType.ghostTextureName, RoadType.textureName);
-    assert.equal(BeltType.ghostTextureName, "belt-up/0");
-    assert.equal(BeltRampUp1Type.ghostTextureName, "belt-ramp-up/0");
+    const objects = new ObjectsView(null);
+    assert.equal(RoadType.getGhostTextureNameAt(objects, 5, 5, Direction.UP), RoadType.textureName);
+    assert.equal(BeltType.getGhostTextureNameAt(objects, 5, 5, Direction.RIGHT), "belt-up/0");
+    assert.equal(BeltRampUp1Type.getGhostTextureNameAt(objects, 5, 5, Direction.UP), "belt-ramp-up/0");
 });
 
 test("a pipe placed over a pipe overwrites it", () => {

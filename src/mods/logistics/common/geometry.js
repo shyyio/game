@@ -66,6 +66,22 @@ export function inferBeltParent(cache, tileX, tileY, direction) {
 }
 
 /**
+ * The way items travel entering a belt at (tileX, tileY) from its parent's tile; a belt with no
+ * parent takes items along its own facing.
+ * @param {Direction} direction the belt's facing
+ * @param {number} tileX
+ * @param {number} tileY
+ * @param {ParentTile} parent
+ * @returns {Direction}
+ */
+export function getIncomingDirection(direction, tileX, tileY, parent) {
+    if (parent.parentX === null) {
+        return direction;
+    }
+    return Direction.fromDelta(tileX - parent.parentX, tileY - parent.parentY);
+}
+
+/**
  * An elevated belt's parent tile and the level it hands flow on at; all three null/surface when it
  * has no parent.
  * @typedef {Object} ElevatedParentTile

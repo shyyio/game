@@ -242,10 +242,15 @@ export class ObjectType {
     }
 
     /**
-     * The texture a placement ghost draws this type with, facing UP.
+     * The texture a placement ghost at (tileX, tileY) draws this type with, facing UP, among the
+     * objects standing around it.
+     * @param {ObjectsView} objects
+     * @param {number} tileX
+     * @param {number} tileY
+     * @param {Direction} direction
      * @returns {string}
      */
-    get ghostTextureName() {
+    getGhostTextureNameAt(objects, tileX, tileY, direction) {
         return this.textureName;
     }
 

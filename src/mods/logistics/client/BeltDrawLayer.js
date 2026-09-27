@@ -73,23 +73,6 @@ export class BeltEntry {
         this.incoming = incoming;
         this.type = type;
     }
-
-    /**
-     * The way items travel entering a belt at (x, y), from the tile its parent stands on; a belt
-     * with no parent takes items along its own facing.
-     * @param {Direction} direction - the belt's facing
-     * @param {number} x
-     * @param {number} y
-     * @param {number|null} parentX
-     * @param {number|null} parentY
-     * @returns {Direction}
-     */
-    static getIncomingDirection(direction, x, y, parentX, parentY) {
-        if (parentX === null) {
-            return direction;
-        }
-        return Direction.fromDelta(x - parentX, y - parentY);
-    }
 }
 
 // Pixels an elevated cell's sprite sits above its tile, so it reads as standing over the ground.

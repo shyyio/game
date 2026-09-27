@@ -18,6 +18,7 @@ import {
     BELT_ELEVATED_1,
     BELT_RAMP_DOWN_1,
     getBeltKindEntryByKind,
+    getBuildLevelByBeltKind,
     HOUSING_WORKER_SUPPLY,
     MAP_COLOR_HOUSING,
     MAP_COLOR_ROAD,
@@ -27,6 +28,7 @@ import {
     MAP_COLOR_BELT_ELEVATED_1,
     DRAW_LAYER_ROAD,
 } from "./constants.js";
+import {inferBeltParent, inferElevatedBeltParent, getIncomingDirection} from "./geometry.js";
 import {SplitterBehavior} from "../sim/SplitterBehavior.js";
 import {BeltBehavior} from "../sim/BeltBehavior.js";
 import {GateBehavior} from "../sim/GateBehavior.js";
@@ -61,8 +63,16 @@ class BeltObjectType extends ObjectType {
         this.beltKind = beltKind;
     }
 
-    get ghostTextureName() {
-        return `${beltFrameBase(Direction.UP, Direction.UP, this.beltKind)}/0`;
+    // Bent by the parent the lane rebuild would give it; the frame faces UP since the ghost turns.
+    getGhostTextureNameAt(objects, tileX, tileY, direction) {
+        let parent;
+        if (getBuildLevelByBeltKind(this.beltKind) === LANE_LEVEL_SURFACE) {
+            parent = inferBeltParent(objects, tileX, tileY, direction);
+        } else {
+            parent = inferElevatedBeltParent(objects, tileX, tileY, direction);
+        }
+        const incoming = Direction.toLocal(getIncomingDirection(direction, tileX, tileY, parent), direction);
+        return `${beltFrameBase(incoming, Direction.UP, this.beltKind)}/0`;
     }
 
     // A non-merging kind takes only its straight-axis input (local UP); outputs are unchanged.

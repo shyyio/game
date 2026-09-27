@@ -1,6 +1,7 @@
 import {Container} from "pixi.js";
 import {AbstractDrawLayer} from "@/client/layers/AbstractDrawLayer.js";
 import {ObjectSprite} from "@/client/layers/ObjectSprite.js";
+import {ObjectsView} from "@/client/state/ObjectsState.js";
 import Mouse from "@/client/input/Mouse.js";
 import Keyboard from "@/client/input/Keyboard.js";
 import {TILE_SIZE} from "@/client/constants.js";
@@ -66,6 +67,7 @@ export class BlueprintGhostLayer extends AbstractDrawLayer {
         const bounds = blueprint.getBounds(this._modRegistry);
         this._centerTileX = (bounds.minTileX + bounds.maxTileX) / 2;
         this._centerTileY = (bounds.minTileY + bounds.maxTileY) / 2;
+        const objects = this._buildObjectsView(blueprint);
         for (const entry of blueprint.entries) {
             const type = this._modRegistry.getObjectTypeByTypeId(entry.objectTypeId);
             let bodyFrames = null;
@@ -77,7 +79,7 @@ export class BlueprintGhostLayer extends AbstractDrawLayer {
                 tileX: entry.tileX,
                 tileY: entry.tileY,
                 direction: entry.direction,
-                texture: this.textureCache.get(type.ghostTextureName),
+                texture: this.textureCache.get(type.getGhostTextureNameAt(objects, entry.tileX, entry.tileY, entry.direction)),
                 type,
                 bodyFrames,
             });
@@ -171,6 +173,27 @@ export class BlueprintGhostLayer extends AbstractDrawLayer {
             this._applyStates(this._snapCallback(anchor.x, anchor.y));
         }
         this._spriteContainer.position.set(anchor.x * TILE_SIZE, anchor.y * TILE_SIZE);
+    }
+
+    /**
+     * The blueprint's entries as standing objects, ids in placement order as the sim assigns them.
+     * @private
+     * @param {Blueprint} blueprint
+     * @returns {ObjectsView}
+     */
+    _buildObjectsView(blueprint) {
+        const objects = new ObjectsView(null);
+        for (const [index, entry] of blueprint.entries.entries()) {
+            const type = this._modRegistry.getObjectTypeByTypeId(entry.objectTypeId);
+            const cells = [];
+            for (const {layer, cells: layerCells} of type.getPositionLayerTilesByDirection(entry.direction)) {
+                for (const cell of layerCells) {
+                    cells.push({x: entry.tileX + cell.x, y: entry.tileY + cell.y, layer});
+                }
+            }
+            objects.set(index + 1, entry.tileX, entry.tileY, cells, {}, {type, direction: entry.direction});
+        }
+        return objects;
     }
 
     /**

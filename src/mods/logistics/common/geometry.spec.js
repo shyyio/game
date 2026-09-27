@@ -130,3 +130,17 @@ test("inferBeltParent recognizes a non-belt object (a machine) parenting a belt"
     const parent = inferBeltParent(cache, 5, 5, Direction.UP);
     assert.deepEqual([parent.parentX, parent.parentY], [4, 5]);
 });
+
+test("a belt ghost bends from the belt parenting it, in its own UP-facing frame", () => {
+    const cache = new ObjectsView(null);
+    belt(cache, 1, 5, 4, BeltType, Direction.DOWN);
+
+    assert.equal(BeltType.getGhostTextureNameAt(cache, 5, 5, Direction.LEFT), "belt-left-up/0");
+});
+
+test("an elevated belt ghost bends from the elevated cell parenting it", () => {
+    const cache = new ObjectsView(null);
+    belt(cache, 1, 4, 5, BeltElevated1Type, Direction.RIGHT);
+
+    assert.equal(BeltElevated1Type.getGhostTextureNameAt(cache, 5, 5, Direction.UP), "belt-right-up/0");
+});

@@ -21,10 +21,10 @@ import {
     getBeltKindEntryByKind,
 } from "../common/constants.js";
 import {getBeltTypeByKind, getLayerByBeltType, isBeltType} from "../common/objectTypes.js";
-import {BeltEntry} from "./BeltDrawLayer.js";
 import {
     inferBeltParent,
     inferElevatedBeltParent,
+    getIncomingDirection,
     getTunnelPartnerOrNull,
     getUndergroundBeltsToCreate,
 } from "../common/geometry.js";
@@ -279,7 +279,7 @@ export class BeltTool extends AbstractTool {
         } else {
             parent = inferElevatedBeltParent(this._cache, tileX, tileY, direction);
         }
-        return this._buildPlacement(kind, direction, BeltEntry.getIncomingDirection(direction, tileX, tileY, parent.parentX, parent.parentY));
+        return this._buildPlacement(kind, direction, getIncomingDirection(direction, tileX, tileY, parent));
     }
 
     /**

@@ -50,6 +50,16 @@ export const Direction = {
     },
 
     /**
+     * A world direction stated in the frame of an object with the given facing.
+     * @param {Direction} world
+     * @param {Direction} facing
+     * @returns {Direction}
+     */
+    toLocal(world, facing) {
+        return Direction.rotate(world, 4 - facing);
+    },
+
+    /**
      * The opposite direction (a 180° turn).
      * @param {Direction} direction
      * @returns {Direction}
