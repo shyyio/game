@@ -15,6 +15,7 @@ import {ToolReorderMode} from "@/client/hud/ToolReorderMode.js";
 import {TapRecognizer} from "@/client/input/TapRecognizer.js";
 import {KEYBINDING_TOOL_SLOTS} from "@/common/KeybindingEntry.js";
 import {keyLabel} from "@/client/hud/panelButton.js";
+import {formatCount} from "@/common/util.js";
 
 // Inset of the icon sprite from the slot's edges.
 const ICON_PADDING = 7;
@@ -458,7 +459,7 @@ export class ToolbarLayer extends Container {
             slot._limitText.text = "";
             return;
         }
-        slot._limitText.text = String(remaining);
+        slot._limitText.text = formatCount(remaining);
         if (remaining === 0) {
             slot._limitText.style.fill = LIMIT_REACHED_TEXT;
         } else {
