@@ -1,5 +1,5 @@
 import {NO_EID, AbstractComponent, FieldDefinition} from "@/sim/AbstractComponent.js";
-import {CreateObjectMessage, DeleteObjectMessage, PlaceBlueprintMessage} from "@/common/CoreMessages.js";
+import {CreateObjectMessage, DeleteObjectMessage, PlaceBlueprintMessage, DeleteBlueprintMessage} from "@/common/CoreMessages.js";
 import {ObjectInsertEvent, ObjectDeleteEvent, ObjectSyncBatchEvent} from "@/common/ObjectEvents.js";
 import {Direction, PLAYER_REF_NONE} from "@/common/constants.js";
 import {chunkKeyAt, chunkOrigin} from "@/common/util.js";
@@ -169,6 +169,18 @@ export class PlacedObjectIndex extends AbstractSystem {
     }
 
     /**
+     * The placed entity on the position layer `type` takes at a tile facing `direction`, NO_EID when it is free.
+     * @param {ObjectType} type
+     * @param {number} tileX
+     * @param {number} tileY
+     * @param {Direction} direction
+     * @returns {number}
+     */
+    getPlacedEidAt(type, tileX, tileY, direction) {
+        return this.getEidAt(tileX, tileY, type.getPositionLayerTilesByDirection(direction)[0].layer);
+    }
+
+    /**
      * The placed entity occupying a cell, NO_EID when it is free.
      * @param {number} tileX
      * @param {number} tileY
@@ -205,7 +217,7 @@ export class PlacedObjectIndex extends AbstractSystem {
         if (type === undefined) {
             return NO_EID;
         }
-        return this.getEidAt(tileX, tileY, type.getPositionLayerTilesByDirection(message.direction)[0].layer);
+        return this.getPlacedEidAt(type, tileX, tileY, message.direction);
     }
 
     /**
@@ -256,6 +268,9 @@ export class PlacedObjectIndex extends AbstractSystem {
         if (message instanceof PlaceBlueprintMessage) {
             return this._placeBlueprint(message, playerRef);
         }
+        if (message instanceof DeleteBlueprintMessage) {
+            return this._deleteBlueprint(message, playerRef);
+        }
         return false;
     }
 
@@ -285,6 +300,28 @@ export class PlacedObjectIndex extends AbstractSystem {
                 break;
             }
             pending = leftovers;
+        }
+        return true;
+    }
+
+    /**
+     * Deletes each entry's object through the engine's own delete path, so every gate applies.
+     * @private
+     * @param {DeleteBlueprintMessage} message
+     * @param {number} playerRef
+     * @returns {boolean}
+     */
+    _deleteBlueprint(message, playerRef) {
+        for (let i = 0; i < message.objectTypeIds.length; i += 1) {
+            const type = this._types.get(message.objectTypeIds[i]);
+            if (type === undefined) {
+                continue;
+            }
+            const eid = this.getPlacedEidAt(type, message.tileX[i], message.tileY[i], message.directions[i]);
+            if (eid === NO_EID || this.getObjectTypeIdByEid(eid) !== type.objectTypeId) {
+                continue;
+            }
+            this.engine.applyMessage(new DeleteObjectMessage(this.getObjectRefByEid(eid)), playerRef);
         }
         return true;
     }

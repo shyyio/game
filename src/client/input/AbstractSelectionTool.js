@@ -5,13 +5,14 @@ import Mouse from "@/client/input/Mouse.js";
 import Haptics from "@/client/Haptics.js";
 import {TILE_SIZE} from "@/client/constants.js";
 import {TARGET_TILE_COLOR} from "@/client/Theme.js";
+import {MAX_BLUEPRINT_ENTRIES} from "@/common/CoreMessages.js";
 
 const MARQUEE_COLOR = 0xFFFFFF;
 
 /**
  * Marquee selection into the clipboard: a drag, or two taps, spans a rectangle between two world
- * points, and the copyable objects with a cell under it are handed to the subclass in the order
- * they were placed. The paste tool takes over once a selection is taken.
+ * points, and the first `MAX_BLUEPRINT_ENTRIES` selectable objects with a cell under it, in the
+ * order they were placed, are handed to the subclass. The paste tool takes over once a selection is taken.
  */
 export class AbstractSelectionTool extends AbstractTool {
 
@@ -99,6 +100,15 @@ export class AbstractSelectionTool extends AbstractTool {
     }
 
     /**
+     * Whether a copyable object under the rectangle may be taken.
+     * @param {CacheEntry} entry
+     * @returns {boolean}
+     */
+    isSelectable(entry) {
+        return true;
+    }
+
+    /**
      * The entries the rectangle takes, in placement order.
      * @param {ObjectsView} objects
      * @param {number} fromX
@@ -108,7 +118,16 @@ export class AbstractSelectionTool extends AbstractTool {
      * @returns {CacheEntry[]}
      */
     collectSelection(objects, fromX, fromY, toX, toY) {
-        return getCopyableEntriesInRect(objects, fromX, fromY, toX, toY);
+        const selected = [];
+        for (const entry of getCopyableEntriesInRect(objects, fromX, fromY, toX, toY)) {
+            if (selected.length === MAX_BLUEPRINT_ENTRIES) {
+                break;
+            }
+            if (this.isSelectable(entry)) {
+                selected.push(entry);
+            }
+        }
+        return selected;
     }
 
     /**

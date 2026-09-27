@@ -8,8 +8,26 @@ import {
     KEYBINDING_HOME,
     KEYBINDING_PRODUCTION,
     KEYBINDING_TICK,
+    KEYBINDING_UNDO,
+    KEYBINDING_REDO,
 } from "@/common/KeybindingEntry.js";
 import {DEV} from "@/common/env.js";
+import Mouse from "@/client/input/Mouse.js";
+import {TILE_SIZE} from "@/client/constants.js";
+
+/**
+ * Floats a reason over the tile the cursor aims at, if any.
+ * @param {Client} client
+ * @param {string} text
+ * @returns {void}
+ */
+function drawReasonAtAim(client, text) {
+    const aim = Mouse.aimPoint();
+    if (aim === null) {
+        return;
+    }
+    client.drawPlacementBlockedReason(Math.floor(aim.x / TILE_SIZE), Math.floor(aim.y / TILE_SIZE), text);
+}
 
 /**
  * Binds the game's global keyboard shortcuts to the client, toolbar, and sim (local mode only).
@@ -36,6 +54,16 @@ export function bindGameKeyboardShortcuts(client, game, toolbar) {
     // Confirm fires the bottom action bar's forward action (a no-op while the bar is hidden).
     on(KEYBINDING_CONFIRM, () => {
         client.hud.bottomActionBar.pressConfirm();
+    });
+    on(KEYBINDING_UNDO, () => {
+        if (!client.undo.undo()) {
+            drawReasonAtAim(client, "Nothing to undo");
+        }
+    });
+    on(KEYBINDING_REDO, () => {
+        if (!client.undo.redo()) {
+            drawReasonAtAim(client, "Nothing to redo");
+        }
     });
     on(KEYBINDING_HOME, () => {
         client.camera.glideHome();

@@ -106,6 +106,7 @@ export {DeleteObjectMessage} from "@/common/CoreMessages.js";
 // Generic object-placement message (tagged with an ObjectType's objectTypeId) and the generic object
 // lifecycle events PlacedObjectIndex emits.
 export {CreateObjectMessage} from "@/common/CoreMessages.js";
+export {Blueprint, BlueprintEntry} from "@/common/Blueprint.js";
 export {ObjectInsertEvent, ObjectSyncEvent, ObjectDeleteEvent} from "@/common/ObjectEvents.js";
 // A synced-field delta per object (`engine.sync.eventFor` builds one for a corrective send) and the
 // per-chunk batch the engine emits.

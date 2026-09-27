@@ -2,6 +2,7 @@ import {AbstractTool} from "@/client/input/AbstractTool.js";
 import {Direction} from "@/common/constants.js";
 import {DeleteObjectMessage, CreateObjectMessage} from "@/common/CoreMessages.js";
 import Haptics from "@/client/Haptics.js";
+import {Blueprint, BlueprintEntry} from "@/common/Blueprint.js";
 import {evaluatePlacement, getPlaceOnTargetTiles} from "@/client/input/placementEvaluation.js";
 
 /**
@@ -92,10 +93,12 @@ export class ObjectTool extends AbstractTool {
         if (result.isAlreadyPlaced) {
             return null;
         }
+        const overwritten = result.overwriteIds.map(id => this._client.objects.get(id));
         for (const id of result.overwriteIds) {
             this.session.sendMessage(new DeleteObjectMessage(id));
         }
         this.session.sendMessage(new CreateObjectMessage(this._type.objectTypeId, baseX, baseY, direction));
+        this._client.undo.add(new Blueprint([new BlueprintEntry(this._type.objectTypeId, baseX, baseY, direction)]), overwritten);
         Haptics.tap();
         // Re-evaluate next frame so the just-placed tile now reads as occupied.
         this._ghostLayer.invalidateSnap();

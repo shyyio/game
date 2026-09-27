@@ -25,3 +25,10 @@ test("cut is a core binding on Ctrl+x", () => {
     const cut = CORE_KEYBINDING_ENTRIES.find(entry => entry.label === "Cut");
     assert.equal(cut.defaultValue, getBindableKeyValueByKeyOrNull("Ctrl+x"));
 });
+
+test("undo and redo are core bindings on Ctrl+z and Ctrl+y", () => {
+    const undo = CORE_KEYBINDING_ENTRIES.find(entry => entry.label === "Undo");
+    const redo = CORE_KEYBINDING_ENTRIES.find(entry => entry.label === "Redo");
+    assert.equal(undo.defaultValue, getBindableKeyValueByKeyOrNull("Ctrl+z"));
+    assert.equal(redo.defaultValue, getBindableKeyValueByKeyOrNull("Ctrl+y"));
+});

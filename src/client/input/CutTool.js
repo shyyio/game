@@ -2,6 +2,7 @@ import {AbstractSelectionTool} from "@/client/input/AbstractSelectionTool.js";
 import {KEYBINDING_CUT} from "@/common/KeybindingEntry.js";
 import {DeleteObjectMessage} from "@/common/CoreMessages.js";
 import {buildBlueprint} from "@/client/input/copySelection.js";
+import {NOTHING_PLACED} from "@/client/state/UndoCache.js";
 import {BLOCKED_TILE_COLOR} from "@/client/Theme.js";
 
 /**
@@ -38,12 +39,12 @@ export class CutTool extends AbstractSelectionTool {
         return BLOCKED_TILE_COLOR;
     }
 
-    collectSelection(objects, fromX, fromY, toX, toY) {
-        return super.collectSelection(objects, fromX, fromY, toX, toY)
-            .filter(entry => this._client.canBuildAt(entry.tileX, entry.tileY));
+    isSelectable(entry) {
+        return this._client.canBuildAt(entry.tileX, entry.tileY);
     }
 
     applySelection(selected) {
+        this._client.undo.add(NOTHING_PLACED, selected);
         this._client.clipboard = buildBlueprint(selected);
         for (const entry of selected) {
             this.session.sendMessage(new DeleteObjectMessage(entry.id));

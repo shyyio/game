@@ -1,6 +1,7 @@
 import {AbstractSelectionTool} from "@/client/input/AbstractSelectionTool.js";
 import {KEYBINDING_COPY} from "@/common/KeybindingEntry.js";
 import {buildBlueprint} from "@/client/input/copySelection.js";
+import {NOTHING_PLACED} from "@/client/state/UndoCache.js";
 
 /**
  * Copies the marquee selection into the clipboard.
@@ -28,6 +29,7 @@ export class CopyTool extends AbstractSelectionTool {
     }
 
     applySelection(selected) {
+        this._client.undo.add(NOTHING_PLACED, []);
         this._client.clipboard = buildBlueprint(selected);
     }
 }

@@ -158,7 +158,7 @@ export function placeLane(engine, tileX, tileY, direction, type = TestLaneType) 
     if (engine.placed.getEidsByTypeId(type.objectTypeId).length === before) {
         return NO_EID;
     }
-    return engine.placed.getEidAt(tileX, tileY, type.getPositionLayerTilesByDirection(direction)[0].layer);
+    return engine.placed.getPlacedEidAt(type, tileX, tileY, direction);
 }
 
 /**

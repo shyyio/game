@@ -9,6 +9,8 @@ import {
     CreateObjectMessage,
     DeleteObjectMessage,
     BLOCKED_REASON_OCCUPIED,
+    Blueprint,
+    BlueprintEntry,
 } from "@spup/sdk/client";
 import {
     BELT_NORMAL,
@@ -433,10 +435,13 @@ export class BeltTool extends AbstractTool {
             return blockedReason;
         }
         const occupant = this._cache.getObjectAtOrNull(tileX, tileY, placement.layer);
+        const overwritten = [];
         if (occupant !== null) {
             this.session.sendMessage(new DeleteObjectMessage(occupant.id));
+            overwritten.push(occupant);
         }
         this.session.sendMessage(new CreateObjectMessage(placement.type.objectTypeId, tileX, tileY, direction));
+        this._client.undo.add(new Blueprint([new BlueprintEntry(placement.type.objectTypeId, tileX, tileY, direction)]), overwritten);
         Haptics.tap();
         this._consumeArmed();
         return null;

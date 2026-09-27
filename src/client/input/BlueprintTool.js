@@ -1,7 +1,7 @@
 import {AbstractTool} from "@/client/input/AbstractTool.js";
 import {KEYBINDING_PASTE} from "@/common/KeybindingEntry.js";
-import {DeleteObjectMessage, PlaceBlueprintMessage} from "@/common/CoreMessages.js";
-import {Blueprint} from "@/common/Blueprint.js";
+import {DeleteObjectMessage, PlaceBlueprintMessage, MAX_BLUEPRINT_ENTRIES} from "@/common/CoreMessages.js";
+import {Blueprint, BlueprintEntry} from "@/common/Blueprint.js";
 import Keyboard from "@/client/input/Keyboard.js";
 import Mobile from "@/client/Mobile.js";
 import Haptics from "@/client/Haptics.js";
@@ -15,6 +15,8 @@ import {
 } from "@/client/layers/BlueprintGhostLayer.js";
 
 const NOTHING_COPIED = "Nothing copied";
+// Undo places a paste's overwrites back in one message.
+const BLOCKED_REASON_OVERWRITES_TOO_MANY = "Overwrites too many objects";
 
 /**
  * @typedef {Object} BlueprintPlacement
@@ -125,10 +127,15 @@ export class BlueprintTool extends AbstractTool {
         if (entries.length === 0) {
             return;
         }
+        const overwritten = placement.overwriteIds.map(id => this._client.objects.get(id));
         for (const id of placement.overwriteIds) {
             this.session.sendMessage(new DeleteObjectMessage(id));
         }
         this.session.sendMessage(new PlaceBlueprintMessage(anchor.x, anchor.y, new Blueprint(entries)));
+        this._client.undo.add(
+            new Blueprint(entries.map(entry => new BlueprintEntry(entry.objectTypeId, anchor.x + entry.tileX, anchor.y + entry.tileY, entry.direction))),
+            overwritten,
+        );
         Haptics.tap();
         // Re-evaluate next frame so the just-placed tiles now read as occupied.
         this._ghostLayer.invalidateSnap();
@@ -154,7 +161,8 @@ export class BlueprintTool extends AbstractTool {
 
     /**
      * Evaluates every entry at the anchor. A blocked entry is skipped when forced, otherwise it
-     * blocks the paste; a type's remaining placements cap how many of its entries are placeable.
+     * blocks the paste; a type's remaining placements cap how many of its entries are placeable, and
+     * `MAX_BLUEPRINT_ENTRIES` how many objects they overwrite.
      * @private
      * @param {number} anchorX
      * @param {number} anchorY
@@ -164,6 +172,7 @@ export class BlueprintTool extends AbstractTool {
     _evaluate(anchorX, anchorY, isForced) {
         const limits = this._client.cache.view("placementLimits");
         const placedByTypeId = new Map();
+        const overwriteIds = new Set();
         const placement = {
             states: [],
             blockedCells: [],
@@ -190,6 +199,15 @@ export class BlueprintTool extends AbstractTool {
             if (blockedReason === null && type.initialPlacementLimit !== null && placed >= limits.getRemainingByTypeId(type.objectTypeId)) {
                 blockedReason = getLimitReachedReason(type);
             }
+            let newOverwriteCount = 0;
+            for (const id of cells.overwriteIds) {
+                if (!overwriteIds.has(id)) {
+                    newOverwriteCount += 1;
+                }
+            }
+            if (blockedReason === null && overwriteIds.size + newOverwriteCount > MAX_BLUEPRINT_ENTRIES) {
+                blockedReason = BLOCKED_REASON_OVERWRITES_TOO_MANY;
+            }
             if (blockedReason !== null) {
                 if (placement.blockedReason === null) {
                     placement.blockedReason = blockedReason;
@@ -214,9 +232,10 @@ export class BlueprintTool extends AbstractTool {
                 placement.clearCells.push(cell);
             }
             for (const id of cells.overwriteIds) {
-                placement.overwriteIds.push(id);
+                overwriteIds.add(id);
             }
         }
+        placement.overwriteIds = Array.from(overwriteIds);
         return placement;
     }
 }

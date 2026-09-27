@@ -39,6 +39,8 @@ export const KEYBINDING_DETAIL_OVERLAY = new KeybindingEntry(113, "Detailed over
 export const KEYBINDING_COPY = new KeybindingEntry(114, "Copy", "Ctrl+c");
 export const KEYBINDING_PASTE = new KeybindingEntry(115, "Paste", "Ctrl+v");
 export const KEYBINDING_CUT = new KeybindingEntry(116, "Cut", "Ctrl+x");
+export const KEYBINDING_UNDO = new KeybindingEntry(117, "Undo", "Ctrl+z");
+export const KEYBINDING_REDO = new KeybindingEntry(118, "Redo", "Ctrl+y");
 
 // Player setting key of the first toolbar slot; the rest follow it in order.
 const TOOL_SLOT_SETTING_KEY = 120;
@@ -73,4 +75,6 @@ export const CORE_KEYBINDING_ENTRIES = [
     KEYBINDING_COPY,
     KEYBINDING_PASTE,
     KEYBINDING_CUT,
+    KEYBINDING_UNDO,
+    KEYBINDING_REDO,
 ].concat(KEYBINDING_TOOL_SLOTS);

@@ -4,6 +4,7 @@ import {Direction} from "@/common/constants.js";
 import {LANE_LAYERS_HIGHEST_FIRST} from "@/sim/LaneIndex.js";
 import {DeleteObjectMessage} from "@/common/CoreMessages.js";
 import Haptics from "@/client/Haptics.js";
+import {NOTHING_PLACED} from "@/client/state/UndoCache.js";
 
 /**
  * Paint-eraser: a tap or drag deletes, on each tile touched, every object on the highest layer
@@ -128,6 +129,7 @@ export class EraserTool extends AbstractTool {
         for (const target of targets) {
             this.session.sendMessage(new DeleteObjectMessage(target.id));
         }
+        this._client.undo.add(NOTHING_PLACED, targets);
         // Drop the highlight; the tile clears once the in-flight delete lands.
         this._placementFeedbackLayer.clear();
         Haptics.tap();
