@@ -20,3 +20,8 @@ test("core entries hold unique player setting keys", () => {
     const keys = CORE_KEYBINDING_ENTRIES.map(entry => entry.playerSettingKey);
     assert.equal(new Set(keys).size, keys.length);
 });
+
+test("cut is a core binding on Ctrl+x", () => {
+    const cut = CORE_KEYBINDING_ENTRIES.find(entry => entry.label === "Cut");
+    assert.equal(cut.defaultValue, getBindableKeyValueByKeyOrNull("Ctrl+x"));
+});

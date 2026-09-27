@@ -4,6 +4,7 @@ import {SpriteOverrideStore} from "@/client/spriteEditor/SpriteOverrideStore.js"
 import {DrawLayerRegistry} from "@/client/layers/DrawLayerRegistry.js";
 import {EraserTool} from "@/client/input/EraserTool.js";
 import {CopyTool} from "@/client/input/CopyTool.js";
+import {CutTool} from "@/client/input/CutTool.js";
 import {BlueprintTool} from "@/client/input/BlueprintTool.js";
 import {SetInspectedObjectsMessage} from "@/common/CoreMessages.js";
 import {SetPlayerSettingMessage, SetPlayerSettingsToolOrderMessage} from "@/common/PlayerMessages.js";
@@ -286,7 +287,7 @@ export class Client {
          */
         this.clipboard = null;
         this.blueprintTool = new BlueprintTool(this);
-        this._coreTools = [new EraserTool(this), new CopyTool(this), this.blueprintTool];
+        this._coreTools = [new EraserTool(this), new CopyTool(this), new CutTool(this), this.blueprintTool];
         // Shared placement facing, so orientation persists across tool switches.
         this.toolRotation = new ToolFacingCache();
     }

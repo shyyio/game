@@ -1,4 +1,5 @@
 import {TILE_SIZE, chunksOver, snapToChunk} from "@/client/constants.js";
+import {Blueprint, BlueprintEntry} from "@/common/Blueprint.js";
 
 /**
  * The copyable objects with a cell under the world rectangle between two points, in the order they
@@ -28,4 +29,25 @@ export function getCopyableEntriesInRect(objects, fromX, fromY, toX, toY) {
     }
     selected.sort((a, b) => a.id - b.id);
     return selected;
+}
+
+/**
+ * The selection as a blueprint, anchored on its top-left object cell.
+ * @param {CacheEntry[]} selected in placement order
+ * @returns {Blueprint}
+ */
+export function buildBlueprint(selected) {
+    let anchorTileX = Infinity;
+    let anchorTileY = Infinity;
+    for (const entry of selected) {
+        const bounds = entry.tileBounds;
+        anchorTileX = Math.min(anchorTileX, bounds.minTileX);
+        anchorTileY = Math.min(anchorTileY, bounds.minTileY);
+    }
+    return new Blueprint(selected.map(entry => new BlueprintEntry(
+        entry.data.type.objectTypeId,
+        entry.tileX - anchorTileX,
+        entry.tileY - anchorTileY,
+        entry.data.direction,
+    )));
 }

@@ -32,6 +32,7 @@ export class PlacementFeedbackLayer extends AbstractDrawLayer {
         this._blockedTiles = [];
         this._overwrite = [];
         this._clear = [];
+        this._targetColor = TARGET_TILE_COLOR;
         // Persistent blue highlight of valid target tiles (e.g. resources under an extractor tool);
         // set on tool activation, independent of the per-hover geometry feedback.
         this._highlight = [];
@@ -55,10 +56,11 @@ export class PlacementFeedbackLayer extends AbstractDrawLayer {
     /**
      * Shows the current placement's geometry feedback, replacing any previous.
      * @param {{blocked?: {x: number, y: number}[], overwrite?: {x: number, y: number}[], clear?: {x: number, y: number}[], showTarget?: boolean}} feedback
-     *     - blocked (red), overwrite (blue), clear (green target); showTarget draws the green target
-     *       even off center-lock (for a cursor-follow ghost)
+     *     - blocked (red), overwrite (blue), clear (the target, green unless targetColor says);
+     *       showTarget draws the target even off center-lock (for a cursor-follow ghost)
      */
-    show({blocked=[], overwrite=[], clear=[], shouldShowTarget=false}) {
+    show({blocked=[], overwrite=[], clear=[], shouldShowTarget=false, targetColor=TARGET_TILE_COLOR}) {
+        this._targetColor = targetColor;
         this._blockedTiles = blocked;
         this._overwrite = overwrite;
         this._clear = clear;
@@ -122,7 +124,7 @@ export class PlacementFeedbackLayer extends AbstractDrawLayer {
         // The green target means "it lands here", so suppress it entirely when any cell is blocked
         // (placement is rejected); overwrite cells are still a valid placement, so green stays.
         if ((this._centerLock || this._shouldShowTarget) && this._blockedTiles.length === 0) {
-            this._target(this._clear);
+            this._target(this._clear, this._targetColor);
         }
     }
 
