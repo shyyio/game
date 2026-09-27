@@ -6,6 +6,7 @@ import Haptics from "@/client/Haptics.js";
 import {TILE_SIZE} from "@/client/constants.js";
 import {TARGET_TILE_COLOR} from "@/client/Theme.js";
 import {MAX_BLUEPRINT_ENTRIES} from "@/common/CoreMessages.js";
+import {SelectionPreviewEntry} from "@/client/state/ToolPreviewCache.js";
 
 const MARQUEE_COLOR = 0xFFFFFF;
 
@@ -150,6 +151,7 @@ export class AbstractSelectionTool extends AbstractTool {
         this._startX = x;
         this._startY = y;
         this._marqueeLayer.start(x, y, this);
+        this._client.toolPreview.setSelection(new SelectionPreviewEntry(x / TILE_SIZE, y / TILE_SIZE, this.id));
     }
 
     /**
@@ -179,6 +181,7 @@ export class AbstractSelectionTool extends AbstractTool {
         this._startX = null;
         this._startY = null;
         this._marqueeLayer.clear();
+        this._client.toolPreview.setSelection(null);
         this.notifyStatusChange();
     }
 }

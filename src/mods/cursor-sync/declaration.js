@@ -1,7 +1,7 @@
 import {AbstractModDeclaration, PlayerSettingEntry} from "@spup/sdk";
 import {CURSOR_SETTING_SHARE, CURSOR_SETTING_DISPLAY, CURSOR_AUDIENCE_OPTIONS} from "./common/constants.js";
-import {CursorMoveMessage, CursorHideMessage} from "./common/messages.js";
-import {PlayerCursorEvent, PlayerCursorHideEvent} from "./common/events.js";
+import {CursorMoveMessage, CursorHideMessage, CursorSelectionStartMessage, CursorSelectionEndMessage, CursorPasteMessage, CursorPasteClearMessage} from "./common/messages.js";
+import {PlayerCursorEvent, PlayerCursorHideEvent, PlayerSelectionStartEvent, PlayerSelectionEndEvent, PlayerPasteEvent, PlayerPasteClearEvent} from "./common/events.js";
 
 export class CursorSyncDeclaration extends AbstractModDeclaration {
 
@@ -18,6 +18,14 @@ export class CursorSyncDeclaration extends AbstractModDeclaration {
             CursorHideMessage,
             PlayerCursorEvent,
             PlayerCursorHideEvent,
+            CursorSelectionStartMessage,
+            CursorSelectionEndMessage,
+            PlayerSelectionStartEvent,
+            PlayerSelectionEndEvent,
+            CursorPasteMessage,
+            CursorPasteClearMessage,
+            PlayerPasteEvent,
+            PlayerPasteClearEvent,
         ];
     }
 

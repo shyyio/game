@@ -9,6 +9,7 @@ import {
     TILE_SIZE,
     Tween,
     claimColor,
+    getBlueprintAnchorAt,
     linear,
 } from "@spup/sdk/client";
 import {CURSOR_SEND_INTERVAL_MS} from "../common/constants.js";
@@ -23,6 +24,11 @@ const LABEL_X = 20;
 const LABEL_Y = 22;
 const LABEL_STROKE = 0xffffff;
 const LABEL_STROKE_WIDTH = 3;
+
+// A remote selection's fill, and the claim-colored border every preview takes.
+const SELECTION_FILL_ALPHA = 0.12;
+const SELECTION_BORDER_WIDTH = 2;
+const PASTE_FILL_ALPHA = 0.3;
 
 // Idle displays kept pooled; more concurrent cursors than this is already unusual.
 const CURSOR_POOL_CAPACITY = 16;
@@ -123,17 +129,28 @@ class RemoteCursorDisplay extends Container {
 }
 
 /**
- * Other players' live cursors, drawn from the remoteCursors state. Not chunk-mounted: cursors are
- * few and cross chunks freely. Hidden outside world mode.
+ * Other players' live cursors with their tool previews, drawn from the remoteCursors state: an
+ * open selection spans from its fixed corner to the cursor, a held paste's mask snaps under it.
+ * Not chunk-mounted: cursors are few and cross chunks freely. Hidden outside world mode.
  */
 export class RemoteCursorsDrawLayer extends AbstractDrawLayer {
 
     /**
-     * @param {ClientCache} state cursor feed and username lookups
+     * @param {Client} client its cache's cursor feed and username lookups, and its tools
      */
-    constructor(state) {
+    constructor(client) {
         super();
+        const state = client.cache;
+        this._client = client;
+        this._state = state;
         this._players = state.view("players");
+        // Under the cursors, which the pool adds after it.
+        this._previewGraphics = new Graphics();
+        this.addChild(this._previewGraphics);
+        // Bumped on every preview write, so the next frame draws it.
+        this._previewVersion = 0;
+        // What the last preview draw showed; null while nothing is drawn.
+        this._drawnPreviewKey = null;
         const pool = new DisplayPool(
             () => {
                 const display = new RemoteCursorDisplay();
@@ -155,6 +172,12 @@ export class RemoteCursorsDrawLayer extends AbstractDrawLayer {
             } else {
                 this._onUpsert(cursor);
             }
+        });
+        state.subscribe("remoteCursors.selectionByPlayer", () => {
+            this._previewVersion += 1;
+        });
+        state.subscribe("remoteCursors.pasteByPlayer", () => {
+            this._previewVersion += 1;
         });
     }
 
@@ -195,6 +218,59 @@ export class RemoteCursorsDrawLayer extends AbstractDrawLayer {
         for (const display of this._displays.values()) {
             display.advance(deltaMS);
             display.scale.set(invScale);
+        }
+        this._drawPreviews();
+    }
+
+    /**
+     * Draws every shown cursor's preview when a preview, a cursor position, or the zoom changed.
+     * @private
+     * @returns {void}
+     */
+    _drawPreviews() {
+        const selections = Array.from(this._state.mapEntries("remoteCursors.selectionByPlayer"));
+        const pastes = Array.from(this._state.mapEntries("remoteCursors.pasteByPlayer"));
+        let key = `${this._previewVersion},${this.viewport.scale.x}`;
+        for (const [playerRef] of selections.concat(pastes)) {
+            const display = this._displays.get(playerRef);
+            if (display !== undefined) {
+                key += `,${display.x},${display.y}`;
+            }
+        }
+        if (key === this._drawnPreviewKey) {
+            return;
+        }
+        this._drawnPreviewKey = key;
+        const graphics = this._previewGraphics;
+        graphics.clear();
+        for (const [playerRef, selection] of selections) {
+            const display = this._displays.get(playerRef);
+            if (display === undefined) {
+                continue;
+            }
+            // The tool id comes from another client.
+            const tool = this._client.getSelectionToolByIdOrNull(selection.toolId);
+            if (tool === null) {
+                continue;
+            }
+            const startX = selection.x * TILE_SIZE;
+            const startY = selection.y * TILE_SIZE;
+            graphics
+                .rect(Math.min(startX, display.x), Math.min(startY, display.y), Math.abs(display.x - startX), Math.abs(display.y - startY))
+                .fill({color: tool.marqueeColor, alpha: SELECTION_FILL_ALPHA})
+                // A screen-space border, whatever the zoom.
+                .stroke({width: SELECTION_BORDER_WIDTH / this.viewport.scale.x, color: claimColor(playerRef)});
+        }
+        for (const [playerRef, paste] of pastes) {
+            const display = this._displays.get(playerRef);
+            if (display === undefined) {
+                continue;
+            }
+            const anchor = getBlueprintAnchorAt(display.x / TILE_SIZE, display.y / TILE_SIZE, (paste.tileWidth - 1) / 2, (paste.tileHeight - 1) / 2);
+            for (const rowRun of paste.rowRuns) {
+                graphics.rect((anchor.x + rowRun.tileX) * TILE_SIZE, (anchor.y + rowRun.tileY) * TILE_SIZE, rowRun.tileLength * TILE_SIZE, TILE_SIZE);
+            }
+            graphics.fill({color: claimColor(playerRef), alpha: PASTE_FILL_ALPHA});
         }
     }
 }

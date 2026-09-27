@@ -24,10 +24,25 @@ class FakeWindowFocus {
     }
 }
 
+class FakeMouse {
+
+    constructor() {
+        this.currentX = null;
+        this.currentY = null;
+    }
+
+    aimPoint() {
+        if (this.currentX === null) {
+            return null;
+        }
+        return {x: this.currentX, y: this.currentY};
+    }
+}
+
 function publisher() {
     const sent = [];
     const session = {sendMessage: message => sent.push(message)};
-    const mouse = {currentX: null, currentY: null};
+    const mouse = new FakeMouse();
     const state = new ClientCache();
     state.register("playerSettings", PLAYER_SETTINGS_SCHEMA, new PlayerSettingsWriter(state), new PlayerSettingsView());
     const focus = new FakeWindowFocus();

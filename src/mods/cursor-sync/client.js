@@ -3,6 +3,7 @@ import {CURSOR_SETTING_SHARE, CURSOR_SETTING_DISPLAY, CURSOR_AUDIENCE_OPTIONS, C
 import {REMOTE_CURSORS_SCHEMA, RemoteCursorsWriter} from "./client/RemoteCursorsState.js";
 import {RemoteCursorsDrawLayer} from "./client/RemoteCursorsDrawLayer.js";
 import {CursorPublisher} from "./client/CursorPublisher.js";
+import {ToolPreviewPublisher} from "./client/ToolPreviewPublisher.js";
 
 export class CursorSyncClientMod extends AbstractClientMod {
 
@@ -10,6 +11,7 @@ export class CursorSyncClientMod extends AbstractClientMod {
         super();
         this._layer = null;
         this._publisher = null;
+        this._toolPreviewPublisher = null;
     }
 
     /**
@@ -18,8 +20,9 @@ export class CursorSyncClientMod extends AbstractClientMod {
      */
     init(client) {
         client.cache.register("remoteCursors", REMOTE_CURSORS_SCHEMA, new RemoteCursorsWriter(client.cache));
-        this._layer = new RemoteCursorsDrawLayer(client.cache);
+        this._layer = new RemoteCursorsDrawLayer(client);
         this._publisher = new CursorPublisher(client.session, Mouse, client.cache, WindowFocus);
+        this._toolPreviewPublisher = new ToolPreviewPublisher(client.session, client.toolPreview, client.modRegistry);
     }
 
     /**

@@ -62,11 +62,16 @@ export class CursorPublisher {
      * @returns {void}
      */
     tick() {
-        if (!this._canSendCursor() || this._mouse.currentX === null) {
+        if (!this._canSendCursor()) {
             return;
         }
-        const x = this._mouse.currentX / TILE_SIZE;
-        const y = this._mouse.currentY / TILE_SIZE;
+        // The aim point: the crosshair in center-lock, where a paste ghost pins.
+        const aim = this._mouse.aimPoint();
+        if (aim === null) {
+            return;
+        }
+        const x = aim.x / TILE_SIZE;
+        const y = aim.y / TILE_SIZE;
         if (x === this._lastSentX && y === this._lastSentY) {
             return;
         }

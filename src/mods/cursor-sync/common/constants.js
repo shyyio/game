@@ -36,3 +36,6 @@ export function isAudienceAdmitting(mode, isSelf, isFriend) {
 // Own-cursor heartbeat interval; nothing is sent while the cursor rests. The receiver
 // interpolates over the same interval, trailing one heartbeat behind.
 export const CURSOR_SEND_INTERVAL_MS = 100;
+
+// The filled cells a paste mask may carry: a full blueprint of 4x4 objects.
+export const MAX_PASTE_CELLS = 16384;

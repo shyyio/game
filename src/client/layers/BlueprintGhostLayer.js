@@ -5,6 +5,7 @@ import {ObjectsView} from "@/client/state/ObjectsState.js";
 import Mouse from "@/client/input/Mouse.js";
 import Keyboard from "@/client/input/Keyboard.js";
 import {TILE_SIZE} from "@/client/constants.js";
+import {getBlueprintAnchorAt} from "@/common/Blueprint.js";
 import {GHOST_TINT, GHOST_ALPHA, GHOST_BLOCKED_TINT, GHOST_BLOCKED_ALPHA} from "@/client/Theme.js";
 
 /** @typedef {number} GhostEntryState */
@@ -148,10 +149,7 @@ export class BlueprintGhostLayer extends AbstractDrawLayer {
         if (target === null) {
             return null;
         }
-        return {
-            x: Math.round(target.x / TILE_SIZE - this._centerTileX - 0.5),
-            y: Math.round(target.y / TILE_SIZE - this._centerTileY - 0.5),
-        };
+        return getBlueprintAnchorAt(target.x / TILE_SIZE, target.y / TILE_SIZE, this._centerTileX, this._centerTileY);
     }
 
     /**

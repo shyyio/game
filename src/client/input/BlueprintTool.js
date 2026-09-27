@@ -102,6 +102,7 @@ export class BlueprintTool extends AbstractTool {
 
     onDeactivate() {
         this._blueprint = null;
+        this._client.toolPreview.setPaste(null);
         this._ghostLayer.clear();
         this._placementFeedbackLayer.clear();
     }
@@ -187,6 +188,7 @@ export class BlueprintTool extends AbstractTool {
         } else {
             this._blueprint = selected.rotate(this._blueprintRotation, this._client.modRegistry);
         }
+        this._client.toolPreview.setPaste(this._blueprint);
     }
 
     /**

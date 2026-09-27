@@ -36,6 +36,21 @@ export class BlueprintEntry {
  */
 
 /**
+ * The anchor tile a blueprint snaps to so its bounds center pins on a fractional tile position.
+ * @param {number} tileX
+ * @param {number} tileY
+ * @param {number} centerTileX the bounds center relative to the anchor
+ * @param {number} centerTileY
+ * @returns {Point}
+ */
+export function getBlueprintAnchorAt(tileX, tileY, centerTileX, centerTileY) {
+    return {
+        x: Math.round(tileX - centerTileX - 0.5),
+        y: Math.round(tileY - centerTileY - 0.5),
+    };
+}
+
+/**
  * A set of objects to place together, held relative to an anchor tile in placement order.
  */
 export class Blueprint {

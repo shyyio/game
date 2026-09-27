@@ -3,11 +3,13 @@ import {TextureCache} from "@/client/layers/TextureCache.js";
 import {SpriteOverrideStore} from "@/client/spriteEditor/SpriteOverrideStore.js";
 import {DrawLayerRegistry} from "@/client/layers/DrawLayerRegistry.js";
 import {EraserTool} from "@/client/input/EraserTool.js";
+import {AbstractSelectionTool} from "@/client/input/AbstractSelectionTool.js";
 import {CopyTool} from "@/client/input/CopyTool.js";
 import {CutTool} from "@/client/input/CutTool.js";
 import {UndoCache} from "@/client/state/UndoCache.js";
 import {BlueprintHistoryCache} from "@/client/state/BlueprintHistoryCache.js";
 import {BlueprintTool} from "@/client/input/BlueprintTool.js";
+import {ToolPreviewCache} from "@/client/state/ToolPreviewCache.js";
 import {SetInspectedObjectsMessage} from "@/common/CoreMessages.js";
 import {SetPlayerSettingMessage, SetPlayerSettingsToolOrderMessage} from "@/common/PlayerMessages.js";
 import {applyToolOrder} from "@/client/input/ToolOrder.js";
@@ -285,6 +287,7 @@ export class Client {
         // (reorder, resync) doesn't orphan an active core tool's identity.
         this.blueprints = new BlueprintHistoryCache(this.modRegistry, localStorage);
         this.undo = new UndoCache(this);
+        this.toolPreview = new ToolPreviewCache();
         this.blueprintTool = new BlueprintTool(this);
         this._coreTools = [new EraserTool(this), new CopyTool(this), new CutTool(this), this.blueprintTool];
         // Shared placement facing, so orientation persists across tool switches.
@@ -562,6 +565,20 @@ export class Client {
      */
     coreTools() {
         return this._coreTools;
+    }
+
+    /**
+     * A remote selection's tool; null when the id names no selection tool.
+     * @param {number} toolId
+     * @returns {AbstractSelectionTool|null}
+     */
+    getSelectionToolByIdOrNull(toolId) {
+        for (const tool of this._coreTools) {
+            if (tool instanceof AbstractSelectionTool && tool.id === toolId) {
+                return tool;
+            }
+        }
+        return null;
     }
 
     /**

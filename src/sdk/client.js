@@ -33,6 +33,8 @@ export {ObjectSprite} from "@/client/layers/ObjectSprite.js";
 export {ItemDrawLayer, PORT_SPRITE_KEY} from "@/client/layers/ItemDrawLayer.js";
 // The derived-default placement-preview ghost (single sprite + center-lock); paired with ObjectTool.
 export {ObjectGhostLayer} from "@/client/layers/ObjectGhostLayer.js";
+// The active tool's selection and held blueprint (`client.toolPreview`), for a mod mirroring them.
+export {ToolPreviewCache, SelectionPreviewEntry} from "@/client/state/ToolPreviewCache.js";
 
 // Same framed-panel toolkit the core Friends/Inspect panels use, for a mod-contributed HUD panel.
 export {UIPanel, ManagedPanel, PANEL_SCREEN_MARGIN} from "@/client/hud/UIPanel.js";

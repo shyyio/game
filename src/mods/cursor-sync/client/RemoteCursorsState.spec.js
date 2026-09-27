@@ -1,7 +1,9 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
 import {REMOTE_CURSORS_SCHEMA, RemoteCursorsWriter} from "./RemoteCursorsState.js";
-import {PlayerCursorEvent, PlayerCursorHideEvent} from "../common/events.js";
+import {
+    PlayerCursorEvent, PlayerCursorHideEvent, PlayerSelectionStartEvent, PlayerSelectionEndEvent, PlayerPasteEvent, PlayerPasteClearEvent,
+} from "../common/events.js";
 import {CURSOR_SETTING_DISPLAY, CURSOR_AUDIENCE_NONE, CURSOR_AUDIENCE_FRIENDS, CURSOR_AUDIENCE_EVERYONE} from "../common/constants.js";
 import {
     WelcomeEvent, FriendListEvent, ChunkUnsubscribeEvent, chunkKeyAt,
@@ -85,4 +87,40 @@ test("displaying friends only clears and gates non-friend cursors", () => {
     state.onEvent(new PlayerCursorEvent(2, 2, 2));
     assert.equal(upserts.length, 3, "the non-friend update is ignored, the friend's lands");
     assert.equal(upserts[2].playerRef, 2);
+});
+
+test("a player's preview mirrors its events and goes with their cursor", () => {
+    const {state} = stateWithOwnPlayer(1);
+    state.onEvent(new PlayerCursorEvent(2, 4.5, 3.5));
+    state.onEvent(new PlayerSelectionStartEvent(2, 1.5, 2.5, 40));
+    state.onEvent(new PlayerPasteEvent(2, 3, [2, 3]));
+    assert.deepEqual(state.mapGet("remoteCursors.selectionByPlayer", 2), {playerRef: 2, x: 1.5, y: 2.5, toolId: 40});
+    assert.deepEqual(state.mapGet("remoteCursors.pasteByPlayer", 2), {
+        playerRef: 2,
+        tileWidth: 3,
+        tileHeight: 2,
+        rowRuns: [{tileX: 2, tileY: 0, tileLength: 1}, {tileX: 0, tileY: 1, tileLength: 2}],
+    });
+
+    state.onEvent(new PlayerSelectionEndEvent(2));
+    state.onEvent(new PlayerPasteClearEvent(2));
+    assert.equal(state.mapGet("remoteCursors.selectionByPlayer", 2), undefined);
+    assert.equal(state.mapGet("remoteCursors.pasteByPlayer", 2), undefined);
+
+    state.onEvent(new PlayerSelectionStartEvent(2, 1.5, 2.5, 40));
+    state.onEvent(new PlayerCursorHideEvent(2));
+    assert.equal(state.mapGet("remoteCursors.selectionByPlayer", 2), undefined, "a hide drops the preview");
+
+    state.onEvent(new PlayerCursorEvent(2, 4.5, 3.5));
+    state.onEvent(new PlayerPasteEvent(2, 3, [2, 3]));
+    state.onEvent(new ChunkUnsubscribeEvent(chunkKeyAt(4.5, 3.5)));
+    assert.equal(state.mapGet("remoteCursors.pasteByPlayer", 2), undefined, "an unsubscribe drops the preview");
+});
+
+test("narrowing the display setting drops the previews it no longer admits", () => {
+    const {state} = stateWithOwnPlayer(1);
+    state.onEvent(new PlayerCursorEvent(2, 4.5, 3.5));
+    state.onEvent(new PlayerPasteEvent(2, 3, [2, 3]));
+    state.mapSet("playerSettings.values", CURSOR_SETTING_DISPLAY, CURSOR_AUDIENCE_NONE);
+    assert.equal(state.mapGet("remoteCursors.pasteByPlayer", 2), undefined);
 });
