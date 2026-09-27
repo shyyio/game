@@ -1,5 +1,5 @@
 import {NO_EID, AbstractComponent, FieldDefinition} from "@/sim/AbstractComponent.js";
-import {CreateObjectMessage, DeleteObjectMessage} from "@/common/CoreMessages.js";
+import {CreateObjectMessage, DeleteObjectMessage, PlaceBlueprintMessage} from "@/common/CoreMessages.js";
 import {ObjectInsertEvent, ObjectDeleteEvent, ObjectSyncBatchEvent} from "@/common/ObjectEvents.js";
 import {Direction, PLAYER_REF_NONE} from "@/common/constants.js";
 import {chunkKeyAt, chunkOrigin} from "@/common/util.js";
@@ -253,7 +253,40 @@ export class PlacedObjectIndex extends AbstractSystem {
         if (message instanceof DeleteObjectMessage) {
             return this._delete(message.objectRef, playerRef);
         }
+        if (message instanceof PlaceBlueprintMessage) {
+            return this._placeBlueprint(message, playerRef);
+        }
         return false;
+    }
+
+    /**
+     * Places each entry through the engine's own create path, so every gate applies per entry.
+     * @private
+     * @param {PlaceBlueprintMessage} message
+     * @param {number} playerRef
+     * @returns {boolean}
+     */
+    _placeBlueprint(message, playerRef) {
+        let pending = [];
+        for (let i = 0; i < message.objectTypeIds.length; i += 1) {
+            pending.push(new CreateObjectMessage(message.objectTypeIds[i], message.x + message.tileX[i], message.y + message.tileY[i], message.directions[i]));
+        }
+        // An entry can need one placed after it (an elevated belt its ramp), so leftovers get another pass.
+        while (pending.length > 0) {
+            const leftovers = [];
+            for (const create of pending) {
+                const objectCount = this.objects.count;
+                this.engine.applyMessage(create, playerRef);
+                if (this.objects.count === objectCount && this._types.has(create.objectTypeId)) {
+                    leftovers.push(create);
+                }
+            }
+            if (leftovers.length === pending.length) {
+                break;
+            }
+            pending = leftovers;
+        }
+        return true;
     }
 
     /**

@@ -19,7 +19,7 @@ export const PipeType = new ObjectType({
     directional: false,
     label: "Pipe",
     behavior: new PipeBehavior(),
-    placement: new PlacementRule({shouldDragToPlace: true}),
+    placement: new PlacementRule({shouldDragToPlace: true, shouldReplaceSameKind: true}),
     conveys: CONVEYS_FLUID,
 });
 

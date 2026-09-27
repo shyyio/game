@@ -178,6 +178,13 @@ export class AbstractTool {
     }
 
     /**
+     * Called when a drag gesture ends, with the tile released over.
+     * @param {number} tileX
+     * @param {number} tileY
+     */
+    onDragEnd(tileX, tileY) {}
+
+    /**
      * Optional lifecycle hook: this tool became the active tool.
      */
     onActivate() {}

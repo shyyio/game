@@ -75,6 +75,8 @@ export class PlacementRule {
      * @param {boolean} [config.shouldDragToPlace] - dragging lays one placement per tile entered
      * @param {boolean} [config.isConveyor] - the type is a straight surface lane an aligned
      *     placement may overwrite
+     * @param {boolean} [config.isCopyable] - a copy takes the object into a blueprint; off for
+     *     one the sim spawns from another placement
      */
     constructor({
         shouldReplaceSameKind = false,
@@ -83,6 +85,7 @@ export class PlacementRule {
         isSolid = true,
         shouldDragToPlace = false,
         isConveyor = false,
+        isCopyable = true,
     } = {}) {
         this.shouldReplaceSameKind = shouldReplaceSameKind;
         this.shouldAdvanceOnPlace = shouldAdvanceOnPlace;
@@ -90,6 +93,7 @@ export class PlacementRule {
         this.isSolid = isSolid;
         this.shouldDragToPlace = shouldDragToPlace;
         this.isConveyor = isConveyor;
+        this.isCopyable = isCopyable;
     }
 }
 
@@ -235,6 +239,14 @@ export class ObjectType {
      */
     _assignObjectTypeId(objectTypeId) {
         this._objectTypeId = objectTypeId;
+    }
+
+    /**
+     * The texture a placement ghost draws this type with, facing UP.
+     * @returns {string}
+     */
+    get ghostTextureName() {
+        return this.textureName;
     }
 
     /**

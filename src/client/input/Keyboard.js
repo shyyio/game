@@ -1,3 +1,5 @@
+import {getKeyNameByEvent} from "@/common/bindableKeys.js";
+
 /**
  * @callback keyboardCallback
  * @param  {KeyboardEvent} event
@@ -16,7 +18,7 @@ class Keyboard {
     }
 
     /**
-     * @param {string} key
+     * @param {string} key a bindable key name (see getKeyNameByEvent)
      * @param {keyboardCallback} callback
      */
     on(key, callback) {
@@ -55,9 +57,10 @@ class Keyboard {
      * @private
      */
     _keyDown(event) {
-        this._keys[event.key] = true;
+        const name = getKeyNameByEvent(event);
+        this._keys[name] = true;
 
-        const listeners = this._listeners[event.key];
+        const listeners = this._listeners[name];
         if (listeners) {
             for (const cb of listeners) {
                 cb(event);
@@ -70,7 +73,9 @@ class Keyboard {
      * @private
      */
     _keyUp(event) {
+        // Ctrl may lift before the key it modified, so both names go up.
         this._keys[event.key] = false;
+        this._keys[`Ctrl+${event.key}`] = false;
     }
 }
 

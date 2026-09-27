@@ -3,6 +3,8 @@ import {TextureCache} from "@/client/layers/TextureCache.js";
 import {SpriteOverrideStore} from "@/client/spriteEditor/SpriteOverrideStore.js";
 import {DrawLayerRegistry} from "@/client/layers/DrawLayerRegistry.js";
 import {EraserTool} from "@/client/input/EraserTool.js";
+import {CopyTool} from "@/client/input/CopyTool.js";
+import {BlueprintTool} from "@/client/input/BlueprintTool.js";
 import {SetInspectedObjectsMessage} from "@/common/CoreMessages.js";
 import {SetPlayerSettingMessage, SetPlayerSettingsToolOrderMessage} from "@/common/PlayerMessages.js";
 import {applyToolOrder} from "@/client/input/ToolOrder.js";
@@ -34,6 +36,8 @@ import {GridDrawLayer} from "@/client/layers/GridDrawLayer.js";
 import {TerrainDrawLayer} from "@/client/layers/TerrainDrawLayer.js";
 import {TerrainDetailLayer} from "@/client/layers/TerrainDetailLayer.js";
 import {PlacementFeedbackLayer} from "@/client/layers/PlacementFeedbackLayer.js";
+import {MarqueeLayer} from "@/client/layers/MarqueeLayer.js";
+import {BlueprintGhostLayer} from "@/client/layers/BlueprintGhostLayer.js";
 import {InspectLayer} from "@/client/layers/InspectLayer.js";
 import {ItemInspectLayer} from "@/client/layers/ItemInspectLayer.js";
 import {ObjectsView} from "@/client/state/ObjectsState.js";
@@ -45,7 +49,7 @@ import {LaneItemDrawLayer} from "@/client/layers/LaneItemDrawLayer.js";
 import {ItemDrawLayer} from "@/client/layers/ItemDrawLayer.js";
 import {HitsplatLayer} from "@/client/layers/HitsplatLayer.js";
 import {BLOCKED_TILE_COLOR} from "@/client/Theme.js";
-import {BLOCKED_REASON_CANNOT_BUILD_HERE} from "@/client/input/placementBlockedReasons.js";
+import {BLOCKED_REASON_CANNOT_BUILD_HERE, getLimitReachedReason} from "@/client/input/placementBlockedReasons.js";
 import {ProductBadgeLayer} from "@/client/layers/ProductBadgeLayer.js";
 import {WorkerDrawLayer} from "@/client/layers/WorkerDrawLayer.js";
 import {WorkerDebugLayer} from "@/client/layers/WorkerDebugLayer.js";
@@ -276,7 +280,13 @@ export class Client {
     _buildTools() {
         // Built once: coreTools() must return the same instances every call so a toolbar rebuild
         // (reorder, resync) doesn't orphan an active core tool's identity.
-        this._coreTools = [new EraserTool(this)];
+        /**
+         * The last copied blueprint, what the paste tool places.
+         * @type {Blueprint|null}
+         */
+        this.clipboard = null;
+        this.blueprintTool = new BlueprintTool(this);
+        this._coreTools = [new EraserTool(this), new CopyTool(this), this.blueprintTool];
         // Shared placement facing, so orientation persists across tool switches.
         this.toolRotation = new ToolFacingCache();
     }
@@ -298,6 +308,10 @@ export class Client {
         this.itemInspectLayer = new ItemInspectLayer(this.itemLayer, this.inspectLayer);
         // Shared placement-feedback layer, driven by whichever tool is active.
         this.placementFeedbackLayer = new PlacementFeedbackLayer();
+        // The copy tool's selection rectangle.
+        this.marqueeLayer = new MarqueeLayer(this.placementFeedbackLayer);
+        // The paste tool's ghost, one sprite per blueprint entry.
+        this.blueprintGhostLayer = new BlueprintGhostLayer(this.modRegistry);
         // Commuting worker figures for manned machines, routed over the cached road tiles.
         this.workerLayer = new WorkerDrawLayer(this.cache);
         // Debug overlay: road components, attachments, and assignments; hidden outside debug mode.
@@ -368,6 +382,8 @@ export class Client {
         this.drawLayerRegistry.add(this.terrainDetailLayer);
         this.drawLayerRegistry.add(this.gridDrawLayer);
         this.drawLayerRegistry.add(this.placementFeedbackLayer);
+        this.drawLayerRegistry.add(this.marqueeLayer);
+        this.drawLayerRegistry.add(this.blueprintGhostLayer);
         this.drawLayerRegistry.add(this.inspectLayer);
         this.drawLayerRegistry.add(this.itemInspectLayer);
         this.drawLayerRegistry.add(this.itemLayer);
@@ -488,7 +504,7 @@ export class Client {
             return buildBlockedReason;
         }
         if (this.isPlacementLimitReached(type)) {
-            return `${type.label} limit reached`;
+            return getLimitReachedReason(type);
         }
         for (const mod of this.modRegistry.clientMods) {
             const blockedReason = mod.getPlacementBlockedReasonOrNull(type, tileX, tileY, direction, this);

@@ -3,6 +3,8 @@ import {TILE_SIZE} from "@/client/constants.js";
 import {Direction} from "@/common/constants.js";
 
 const LONG_PRESS_MS = 400;
+// Screen px squared a press may wander and still release as a tap or context gesture.
+const TAP_MOVE_THRESHOLD_SQUARED = 64;
 
 // A fast, near-cardinal drag flick locks painting to one axis, laying a straight
 // run instead of a staircase of bends. A slow or angled drag releases the lock.
@@ -86,6 +88,8 @@ class Mouse {
         this._clickStartScreenY = null;
         this._longPressTimer = null;
         this._hasDragged = false;
+        // Whether onDragStart fired for the press in flight, so its release fires onDragEnd.
+        this._isDragging = false;
 
         // Straight-snap: axis the drag is locked to ("x"/"y"/null) and the previous
         // velocity sample used to detect a fast flick.
@@ -105,6 +109,22 @@ class Mouse {
 
         this._hoverTileX = null;
         this._hoverTileY = null;
+        // The right button's press: its screen origin, the pointer's screen position last frame
+        // (the pan steps from it), and the tile it fires the context gesture on if it never drags.
+        this._rightPressScreenX = null;
+        this._rightPressScreenY = null;
+        this._rightLastScreenX = null;
+        this._rightLastScreenY = null;
+        this._rightPressTileX = null;
+        this._rightPressTileY = null;
+        this._hasRightDragged = false;
+        /**
+         * The world point the press in flight aimed at, null between presses.
+         * @type {number|null}
+         */
+        this.pressX = null;
+        /** @type {number|null} */
+        this.pressY = null;
         // The pointer's screen position last frame, and whether HUD sat under it then.
         this._pointerScreenX = null;
         this._pointerScreenY = null;
@@ -133,6 +153,7 @@ class Mouse {
         this._longPressCallbacks = [];
         this._tileEnterCallbacks = [];
         this._tileExitCallbacks = [];
+        this._dragEndCallbacks = [];
     }
 
     /**
@@ -223,6 +244,14 @@ class Mouse {
     }
 
     /**
+     * A drag gesture ended; fires once after the last onTileDrag with the tile released over.
+     * @param {function(tileX: number, tileY: number)} callback
+     */
+    onDragEnd(callback) {
+        this._dragEndCallbacks.push(callback);
+    }
+
+    /**
      * The context gesture: a left button held on the same tile for LONG_PRESS_MS
      * without dragging (touch long-press), or a desktop right-click.
      * @param {function(tileX: number, tileY: number, screenX: number, screenY: number)} callback
@@ -270,8 +299,12 @@ class Mouse {
         this._clickStartTileY = null;
         this._clickStartScreenX = null;
         this._clickStartScreenY = null;
+        this.pressX = null;
+        this.pressY = null;
         this._hasDragged = false;
+        this._isDragging = false;
         this._dragAxis = null;
+        this._resetRightPress();
     }
 
     get tileX() {
@@ -326,19 +359,18 @@ class Mouse {
 
     _onPointerDown(event) {
         if (event.button === 2) {
-            // A right-click is the desktop equivalent of a touch long-press, so it
-            // fires the same context gesture.
+            // A right button pans while it drags; released in place, it is the desktop equivalent
+            // of a touch long-press and fires the same context gesture.
             event.stopPropagation();
             event.nativeEvent.stopPropagation();
             const world = this._worldFromEvent(event);
-            const tileX = Math.floor(world.x / TILE_SIZE);
-            const tileY = Math.floor(world.y / TILE_SIZE);
-            // Clear the hovered tile first so the active tool's ghost preview drops
-            // while the context gesture is up, matching the long-press path.
-            this._notifyTileExit();
-            for (const cb of this._longPressCallbacks) {
-                cb(tileX, tileY, event.global.x, event.global.y);
-            }
+            this._rightPressScreenX = event.global.x;
+            this._rightPressScreenY = event.global.y;
+            this._rightLastScreenX = event.global.x;
+            this._rightLastScreenY = event.global.y;
+            this._rightPressTileX = Math.floor(world.x / TILE_SIZE);
+            this._rightPressTileY = Math.floor(world.y / TILE_SIZE);
+            this._hasRightDragged = false;
             return;
         }
 
@@ -358,6 +390,7 @@ class Mouse {
         this._clickStartScreenX = event.global.x;
         this._clickStartScreenY = event.global.y;
         this._hasDragged = false;
+        this._isDragging = false;
         this._dragAxis = null;
         this._lastMoveTime = null;
 
@@ -366,6 +399,9 @@ class Mouse {
         if (this._centerLock) {
             ({tileX: pressTileX, tileY: pressTileY} = this._centerTile());
         }
+        const aim = this.aimPoint();
+        this.pressX = aim.x;
+        this.pressY = aim.y;
         for (const cb of this._pressCallbacks) {
             cb(pressTileX, pressTileY, event.shiftKey);
         }
@@ -390,6 +426,10 @@ class Mouse {
     }
 
     _onPointerUp(event) {
+        if (event.button === 2) {
+            this._onRightPointerUp(event);
+            return;
+        }
         if (this._clickStartX == null) {
             return;
         }
@@ -402,7 +442,7 @@ class Mouse {
         if (!this._hasDragged) {
             const dx = event.global.x - this._clickStartScreenX;
             const dy = event.global.y - this._clickStartScreenY;
-            if (dx * dx + dy * dy > 64) {
+            if (dx * dx + dy * dy > TAP_MOVE_THRESHOLD_SQUARED) {
                 this._hasDragged = true;
             }
         }
@@ -419,6 +459,12 @@ class Mouse {
                 cb(tapTileX, tapTileY);
             }
         }
+        if (this._isDragging) {
+            this._isDragging = false;
+            for (const cb of this._dragEndCallbacks) {
+                cb(this.tileX, this.tileY);
+            }
+        }
 
         this._clickStartX = null;
         this._clickStartY = null;
@@ -426,7 +472,78 @@ class Mouse {
         this._clickStartTileY = null;
         this._clickStartScreenX = null;
         this._clickStartScreenY = null;
+        this.pressX = null;
+        this.pressY = null;
         this._hasDragged = false;
+    }
+
+    /**
+     * Ends the right button's press: a press that never dragged fires the context gesture.
+     * @private
+     * @param {FederatedPointerEvent} event
+     * @returns {void}
+     */
+    _onRightPointerUp(event) {
+        if (this._rightPressScreenX === null) {
+            return;
+        }
+        const tileX = this._rightPressTileX;
+        const tileY = this._rightPressTileY;
+        const screenX = this._rightPressScreenX;
+        const screenY = this._rightPressScreenY;
+        const hasDragged = this._hasRightDragged;
+        this._resetRightPress();
+        if (hasDragged) {
+            return;
+        }
+        // Clear the hovered tile first so the active tool's ghost preview drops while the context
+        // gesture is up, matching the long-press path.
+        this._notifyTileExit();
+        for (const cb of this._longPressCallbacks) {
+            cb(tileX, tileY, screenX, screenY);
+        }
+    }
+
+    /**
+     * @private
+     * @returns {void}
+     */
+    _resetRightPress() {
+        this._rightPressScreenX = null;
+        this._rightPressScreenY = null;
+        this._rightLastScreenX = null;
+        this._rightLastScreenY = null;
+        this._rightPressTileX = null;
+        this._rightPressTileY = null;
+        this._hasRightDragged = false;
+    }
+
+    /**
+     * Pans the viewport by the pointer's screen movement since last frame while the right button
+     * is held; past the tap threshold the press counts as a drag.
+     * @private
+     * @returns {void}
+     */
+    _resyncRightDrag() {
+        if (this._rightPressScreenX === null) {
+            return;
+        }
+        const pointer = this._app.renderer.events.pointer.global;
+        const dx = pointer.x - this._rightLastScreenX;
+        const dy = pointer.y - this._rightLastScreenY;
+        this._rightLastScreenX = pointer.x;
+        this._rightLastScreenY = pointer.y;
+        if (dx === 0 && dy === 0) {
+            return;
+        }
+        const fromPressX = pointer.x - this._rightPressScreenX;
+        const fromPressY = pointer.y - this._rightPressScreenY;
+        if (fromPressX * fromPressX + fromPressY * fromPressY > TAP_MOVE_THRESHOLD_SQUARED) {
+            this._hasRightDragged = true;
+        }
+        this._viewport.x += dx;
+        this._viewport.y += dy;
+        this._viewport.emit("moved", {viewport: this._viewport, type: "drag"});
     }
 
     /**
@@ -462,6 +579,7 @@ class Mouse {
     }
 
     _resyncCurrentMousePos() {
+        this._resyncRightDrag();
         const world = this._viewport.toWorld(
             this._app.renderer.events.pointer.global.x,
             this._app.renderer.events.pointer.global.y,
@@ -496,7 +614,7 @@ class Mouse {
         if (this._longPressTimer != null) {
             const screenDx = this._app.renderer.events.pointer.global.x - this._clickStartScreenX;
             const screenDy = this._app.renderer.events.pointer.global.y - this._clickStartScreenY;
-            if (screenDx * screenDx + screenDy * screenDy > 64) {
+            if (screenDx * screenDx + screenDy * screenDy > TAP_MOVE_THRESHOLD_SQUARED) {
                 window.clearTimeout(this._longPressTimer);
                 this._longPressTimer = null;
             }
@@ -520,6 +638,7 @@ class Mouse {
 
         if (!this._hasDragged) {
             this._hasDragged = true;
+            this._isDragging = true;
             if (this._longPressTimer != null) {
                 window.clearTimeout(this._longPressTimer);
                 this._longPressTimer = null;

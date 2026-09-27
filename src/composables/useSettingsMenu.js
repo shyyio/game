@@ -3,7 +3,7 @@ import {AbstractPlayerSettingControl} from "@/client/hud/AbstractPlayerSettingCo
 import {PlayerSettingChoice} from "@/client/hud/PlayerSettingChoice.js";
 import {PlayerSettingToggle} from "@/client/hud/PlayerSettingToggle.js";
 import {PlayerSettingKeybind} from "@/client/hud/PlayerSettingKeybind.js";
-import {BINDABLE_KEY_UNBOUND, getBindableKeyByValue, getBindableKeyValueByKeyOrNull} from "@/common/bindableKeys.js";
+import {BINDABLE_KEY_UNBOUND, getBindableKeyByValue, getBindableKeyValueByKeyOrNull, getKeyNameByEvent} from "@/common/bindableKeys.js";
 import {keyLabel} from "@/client/hud/panelButton.js";
 import {DeviceSettingToggle} from "@/client/hud/DeviceSettingToggle.js";
 import {DeviceSettingChoice} from "@/client/hud/DeviceSettingChoice.js";
@@ -204,14 +204,15 @@ export function useSettingsMenu() {
         // The game's own shortcuts listen on window; a captured press is not one of them.
         event.stopPropagation();
         event.preventDefault();
-        if (event.key === "Escape") {
+        const key = getKeyNameByEvent(event);
+        if (key === "Escape") {
             capturingControl.value = null;
             return;
         }
-        if (getBindableKeyValueByKeyOrNull(event.key) === null) {
+        if (getBindableKeyValueByKeyOrNull(key) === null) {
             return;
         }
-        boundClient.keybindings.setKeyByEntry(control.keybinding, event.key);
+        boundClient.keybindings.setKeyByEntry(control.keybinding, key);
         capturingControl.value = null;
     }
 

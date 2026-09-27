@@ -1,0 +1,219 @@
+import {AbstractTool} from "@/client/input/AbstractTool.js";
+import {KEYBINDING_PASTE} from "@/common/KeybindingEntry.js";
+import {DeleteObjectMessage, PlaceBlueprintMessage} from "@/common/CoreMessages.js";
+import {Blueprint} from "@/common/Blueprint.js";
+import Keyboard from "@/client/input/Keyboard.js";
+import Mobile from "@/client/Mobile.js";
+import Haptics from "@/client/Haptics.js";
+import {evaluatePlacement} from "@/client/input/placementEvaluation.js";
+import {getLimitReachedReason} from "@/client/input/placementBlockedReasons.js";
+import {
+    GHOST_ENTRY_STATE_CLEAR,
+    GHOST_ENTRY_STATE_BLOCKED,
+    GHOST_ENTRY_STATE_SKIPPED,
+    FORCE_PASTE_KEY,
+} from "@/client/layers/BlueprintGhostLayer.js";
+
+const NOTHING_COPIED = "Nothing copied";
+
+/**
+ * @typedef {Object} BlueprintPlacement
+ * @property {GhostEntryState[]} states one per entry
+ * @property {Point[]} blockedCells
+ * @property {Point[]} overwriteCells
+ * @property {Point[]} clearCells
+ * @property {number[]} overwriteIds the occupants the placeable entries overwrite
+ * @property {string|null} blockedReason the first blocked entry's reason, null when none is blocked
+ * @property {Point|null} blockedTile where that entry lands
+ */
+
+/**
+ * Pastes the clipboard: the blueprint ghost snaps under the cursor, every entry is evaluated on its
+ * own, and a tap places them all through one message. One blocked entry blocks the paste unless
+ * the force key is held, which skips the blocked entries instead.
+ */
+export class BlueprintTool extends AbstractTool {
+
+    /**
+     * @param {Client} client
+     */
+    constructor(client) {
+        super(client.session);
+        this._client = client;
+        this._ghostLayer = client.blueprintGhostLayer;
+        this._placementFeedbackLayer = client.placementFeedbackLayer;
+        this._blueprint = null;
+        this._ghostLayer.setFollowCursor((anchorX, anchorY) => this._previewFollow(anchorX, anchorY));
+    }
+
+    get label() {
+        return "Paste";
+    }
+
+    get id() {
+        return 41;
+    }
+
+    get keybinding() {
+        return KEYBINDING_PASTE;
+    }
+
+    get textureName() {
+        // Placeholder
+        return "inspect/1x1";
+    }
+
+    get paintsOnDrag() {
+        return false;
+    }
+
+    get orientable() {
+        return this._blueprint !== null;
+    }
+
+    get statusText() {
+        if (this._blueprint === null) {
+            return NOTHING_COPIED;
+        }
+        if (Mobile.isEnabled) {
+            return "Tap to paste";
+        }
+        return `Paste [Click], skip blocked [${FORCE_PASTE_KEY}+Click]`;
+    }
+
+    onActivate() {
+        this._blueprint = this._client.clipboard;
+    }
+
+    onDeactivate() {
+        this._blueprint = null;
+        this._ghostLayer.clear();
+        this._placementFeedbackLayer.clear();
+    }
+
+    rotate(rotation) {
+        if (this._blueprint === null) {
+            return;
+        }
+        this._blueprint = this._blueprint.rotate(rotation, this._client.modRegistry);
+    }
+
+    onTileEnter(tileX, tileY) {
+        if (this._blueprint === null) {
+            return;
+        }
+        this._ghostLayer.show(this._blueprint);
+    }
+
+    onTileExit(tileX, tileY) {
+        this._ghostLayer.hide();
+        this._placementFeedbackLayer.clear();
+    }
+
+    onTap(tileX, tileY) {
+        const anchor = this._ghostLayer.snapAnchor();
+        if (anchor === null) {
+            return;
+        }
+        const isForced = Keyboard.isKeyDown(FORCE_PASTE_KEY);
+        const placement = this._evaluate(anchor.x, anchor.y, isForced);
+        if (!isForced && placement.blockedReason !== null) {
+            this._client.drawPlacementBlockedReason(placement.blockedTile.x, placement.blockedTile.y, placement.blockedReason);
+            return;
+        }
+        const entries = this._blueprint.entries.filter((entry, index) => placement.states[index] === GHOST_ENTRY_STATE_CLEAR);
+        if (entries.length === 0) {
+            return;
+        }
+        for (const id of placement.overwriteIds) {
+            this.session.sendMessage(new DeleteObjectMessage(id));
+        }
+        this.session.sendMessage(new PlaceBlueprintMessage(anchor.x, anchor.y, new Blueprint(entries)));
+        Haptics.tap();
+        // Re-evaluate next frame so the just-placed tiles now read as occupied.
+        this._ghostLayer.invalidateSnap();
+    }
+
+    /**
+     * Repaints the placement feedback as the ghost snaps; returns each entry's state for its tint.
+     * @private
+     * @param {number} anchorX
+     * @param {number} anchorY
+     * @returns {GhostEntryState[]}
+     */
+    _previewFollow(anchorX, anchorY) {
+        const placement = this._evaluate(anchorX, anchorY, Keyboard.isKeyDown(FORCE_PASTE_KEY));
+        this._placementFeedbackLayer.show({
+            blocked: placement.blockedCells,
+            overwrite: placement.overwriteCells,
+            clear: placement.clearCells,
+            shouldShowTarget: true,
+        });
+        return placement.states;
+    }
+
+    /**
+     * Evaluates every entry at the anchor. A blocked entry is skipped when forced, otherwise it
+     * blocks the paste; a type's remaining placements cap how many of its entries are placeable.
+     * @private
+     * @param {number} anchorX
+     * @param {number} anchorY
+     * @param {boolean} isForced
+     * @returns {BlueprintPlacement}
+     */
+    _evaluate(anchorX, anchorY, isForced) {
+        const limits = this._client.cache.view("placementLimits");
+        const placedByTypeId = new Map();
+        const placement = {
+            states: [],
+            blockedCells: [],
+            overwriteCells: [],
+            clearCells: [],
+            overwriteIds: [],
+            blockedReason: null,
+            blockedTile: null,
+        };
+        for (const entry of this._blueprint.entries) {
+            const type = this._client.modRegistry.getObjectTypeByTypeId(entry.objectTypeId);
+            const tileX = anchorX + entry.tileX;
+            const tileY = anchorY + entry.tileY;
+            const cells = evaluatePlacement(this._client, type, tileX, tileY, entry.direction);
+            if (cells.isAlreadyPlaced) {
+                placement.states.push(GHOST_ENTRY_STATE_SKIPPED);
+                continue;
+            }
+            let blockedReason = cells.blockedReason;
+            const placed = placedByTypeId.has(type.objectTypeId) ? placedByTypeId.get(type.objectTypeId) : 0;
+            if (blockedReason === null && type.initialPlacementLimit !== null && placed >= limits.getRemainingByTypeId(type.objectTypeId)) {
+                blockedReason = getLimitReachedReason(type);
+            }
+            if (blockedReason !== null) {
+                if (placement.blockedReason === null) {
+                    placement.blockedReason = blockedReason;
+                    placement.blockedTile = {x: tileX, y: tileY};
+                }
+                if (isForced) {
+                    placement.states.push(GHOST_ENTRY_STATE_SKIPPED);
+                } else {
+                    placement.states.push(GHOST_ENTRY_STATE_BLOCKED);
+                    for (const cell of type.geometry.getTilesByDirection(entry.direction)) {
+                        placement.blockedCells.push({x: tileX + cell.x, y: tileY + cell.y});
+                    }
+                }
+                continue;
+            }
+            placedByTypeId.set(type.objectTypeId, placed + 1);
+            placement.states.push(GHOST_ENTRY_STATE_CLEAR);
+            for (const cell of cells.overwriteCells) {
+                placement.overwriteCells.push(cell);
+            }
+            for (const cell of cells.clearCells) {
+                placement.clearCells.push(cell);
+            }
+            for (const id of cells.overwriteIds) {
+                placement.overwriteIds.push(id);
+            }
+        }
+        return placement;
+    }
+}

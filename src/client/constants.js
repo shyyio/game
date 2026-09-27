@@ -77,7 +77,7 @@ export function viewportChunks(viewport) {
  * @param {number} bottom snapped tile y
  * @returns {Set<number>}
  */
-function chunksOver(left, top, right, bottom) {
+export function chunksOver(left, top, right, bottom) {
     const chunks = new Set();
     for (let x = left; x <= right; x += CHUNK_SIZE) {
         for (let y = top; y <= bottom; y += CHUNK_SIZE) {

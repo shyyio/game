@@ -151,8 +151,8 @@ export async function createPixiApp() {
     }
 
     viewport
-        // wheel: false — the wheel zooms, never pans.
-        .drag({wheel: false})
+        // The wheel zooms, never pans; the right button pans through Mouse, so only the left one here.
+        .drag({wheel: false, mouseButtons: "left"})
         .wheel()
         .clampZoom({
             maxScale: 2,

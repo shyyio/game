@@ -3,8 +3,9 @@ import {
     BELT_UNDERGROUND,
     getBuildLevelByBeltKind,
     getDrawLevelByBeltKind,
+    beltFrameBase,
 } from "../common/constants.js";
-import {BeltSprite, beltFrameBase, ELEVATED_DRAW_HEIGHT} from "./BeltDrawLayer.js";
+import {BeltSprite, ELEVATED_DRAW_HEIGHT} from "./BeltDrawLayer.js";
 
 // Tints for tool preview ghosts.
 const GHOST_TINT = 0xFFFFFF; // untinted normal preview

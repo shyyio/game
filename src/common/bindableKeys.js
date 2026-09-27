@@ -1,6 +1,6 @@
 /**
- * The KeyboardEvent.key values a keybinding may hold, in the order their stored values index
- * them. Index 0 is the empty key: the binding is unbound and fires nothing.
+ * The key names a keybinding may hold (a KeyboardEvent.key, or one prefixed "Ctrl+"), in the order
+ * their stored values index them. Index 0 is the empty key: the binding is unbound and fires nothing.
  */
 export const BINDABLE_KEYS = [
     "",
@@ -12,7 +12,25 @@ export const BINDABLE_KEYS = [
     "Enter", "Escape", " ", "Backspace", "Delete", "Insert", "Home", "End", "PageUp", "PageDown",
     "-", "=", "[", "]", "\\", ";", "'", ",", ".", "/", "`",
     "Alt",
+    "Ctrl+a", "Ctrl+b", "Ctrl+c", "Ctrl+d", "Ctrl+e", "Ctrl+f", "Ctrl+g", "Ctrl+h", "Ctrl+i", "Ctrl+j",
+    "Ctrl+k", "Ctrl+l", "Ctrl+m", "Ctrl+n", "Ctrl+o", "Ctrl+p", "Ctrl+q", "Ctrl+r", "Ctrl+s", "Ctrl+t",
+    "Ctrl+u", "Ctrl+v", "Ctrl+w", "Ctrl+x", "Ctrl+y", "Ctrl+z",
 ];
+
+// The KeyboardEvent.key values that are themselves the Ctrl modifier.
+const CTRL_KEYS = new Set(["Control", "Meta"]);
+
+/**
+ * The bindable name a key event fires: its key, prefixed "Ctrl+" while Ctrl or Meta is held.
+ * @param {KeyboardEvent} event
+ * @returns {string}
+ */
+export function getKeyNameByEvent(event) {
+    if ((event.ctrlKey || event.metaKey) && !CTRL_KEYS.has(event.key)) {
+        return `Ctrl+${event.key}`;
+    }
+    return event.key;
+}
 
 // The stored value of a binding no key fires.
 export const BINDABLE_KEY_UNBOUND = 0;

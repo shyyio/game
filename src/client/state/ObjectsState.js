@@ -134,14 +134,6 @@ export class ObjectClientEntry {
 }
 
 /**
- * @typedef {Object} TileBounds
- * @property {number} minTileX
- * @property {number} minTileY
- * @property {number} maxTileX
- * @property {number} maxTileY
- */
-
-/**
  * @typedef {Object} PortMatch
  * @property {CacheEntry} entry
  * @property {string} portName

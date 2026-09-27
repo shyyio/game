@@ -1,6 +1,9 @@
 import protobuf from "protobufjs";
 
-import {SetViewportMessage, SetInspectedObjectsMessage, DeleteObjectMessage, CreateObjectMessage, OverworldRequestMessage} from "@/common/CoreMessages.js";
+import {
+    SetViewportMessage, SetInspectedObjectsMessage, DeleteObjectMessage, CreateObjectMessage, OverworldRequestMessage,
+    PlaceBlueprintMessage,
+} from "@/common/CoreMessages.js";
 import {OverworldSnapshotEvent} from "@/common/OverworldEvents.js";
 import {PortItemSetEvent, PortItemClearEvent, PortItemBatchEvent} from "@/common/PortItemEvents.js";
 import {
@@ -97,6 +100,7 @@ const CORE_WIRE_CLASSES = [
     OwnPlacementLimitsSyncEvent,
     OwnPlacedCountEvent,
     PlacementLimitBonusGrantedEvent,
+    PlaceBlueprintMessage,
 ];
 
 class WireFieldDefinition {

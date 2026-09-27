@@ -229,3 +229,36 @@ export const LOGIC_CONDITION_TABLE = "LogicRuleCondition";
 export function isWithinWireRange(x1, y1, x2, y2) {
     return Math.max(Math.abs(x1 - x2), Math.abs(y1 - y2)) <= WIRE_LINK_RANGE;
 }
+
+// Sprite sequence tokens, indexed by Direction; the atlas names a belt by the way items travel.
+const DIRECTION_TOKENS = ["up", "right", "down", "left"];
+
+/**
+ * The spritesheet base sequence for a belt's travel and type (frames under "<base>/0..7").
+ * @param {Direction} incoming - the way items travel as they enter the belt
+ * @param {Direction} direction - the belt's facing, the way items leave it
+ * @param {BeltType} type
+ * @returns {string}
+ */
+export function beltFrameBase(incoming, direction, type) {
+    if (type === BELT_UNDERGROUND) {
+        return "belt-underground";
+    }
+    if (type === BELT_TUNNEL_UP) {
+        return "belt-tunnel-up";
+    }
+    if (type === BELT_TUNNEL_DOWN) {
+        return "belt-tunnel-down";
+    }
+    if (isBeltRamp(type)) {
+        const ramp = getBeltKindEntryByKind(type);
+        if (ramp.outLevel > ramp.inLevel) {
+            return "belt-ramp-up";
+        }
+        return "belt-ramp-down";
+    }
+    if (incoming === direction) {
+        return `belt-${DIRECTION_TOKENS[direction]}`;
+    }
+    return `belt-${DIRECTION_TOKENS[incoming]}-${DIRECTION_TOKENS[direction]}`;
+}

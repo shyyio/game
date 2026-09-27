@@ -13,6 +13,7 @@ import {
     BELT_TUNNEL_DOWN,
     BELT_TUNNEL_UP,
     BELT_UNDERGROUND,
+    beltFrameBase,
     BELT_RAMP_UP_1,
     BELT_ELEVATED_1,
     BELT_RAMP_DOWN_1,
@@ -47,7 +48,7 @@ class BeltObjectType extends ObjectType {
             behavior: new BeltBehavior({beltKind}),
             bespokeClient: true,
             conveys: CONVEYS_ITEM,
-            placement: new PlacementRule({isConveyor: beltKind === BELT_NORMAL}),
+            placement: new PlacementRule({isConveyor: beltKind === BELT_NORMAL, isCopyable: beltKind !== BELT_UNDERGROUND}),
             inputPorts: [
                 new PortDefinition("virtualLeft", {x: 0, y: 0, direction: Direction.RIGHT}),
                 new PortDefinition("virtualDown", {x: 0, y: 0, direction: Direction.UP}),
@@ -58,6 +59,10 @@ class BeltObjectType extends ObjectType {
             ],
         });
         this.beltKind = beltKind;
+    }
+
+    get ghostTextureName() {
+        return `${beltFrameBase(Direction.UP, Direction.UP, this.beltKind)}/0`;
     }
 
     // A non-merging kind takes only its straight-axis input (local UP); outputs are unchanged.

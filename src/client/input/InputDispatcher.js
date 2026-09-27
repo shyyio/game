@@ -1,10 +1,10 @@
 import Mouse from "@/client/input/Mouse.js";
 import Keyboard from "@/client/input/Keyboard.js";
 import {AbstractTool} from "@/client/input/AbstractTool.js";
-import {KEYBINDING_ERASER, KEYBINDING_TOOL_SLOTS} from "@/common/KeybindingEntry.js";
+import {KEYBINDING_ERASER, KEYBINDING_COPY, KEYBINDING_PASTE, KEYBINDING_TOOL_SLOTS} from "@/common/KeybindingEntry.js";
 
 // Bindings the core tools select on, matched against each core tool's declared `keybinding`.
-const CORE_TOOL_KEYBINDINGS = [KEYBINDING_ERASER];
+const CORE_TOOL_KEYBINDINGS = [KEYBINDING_ERASER, KEYBINDING_COPY, KEYBINDING_PASTE];
 
 export class InputDispatcher {
 
@@ -90,6 +90,13 @@ export class InputDispatcher {
                 return;
             }
             this.activeTool.onDragTile(tileX, tileY, direction);
+        });
+
+        Mouse.onDragEnd((tileX, tileY) => {
+            if (!this._isPaintingTool()) {
+                return;
+            }
+            this.activeTool.onDragEnd(tileX, tileY);
         });
 
         Mouse.onTileEnter((tileX, tileY) => {

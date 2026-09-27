@@ -13,20 +13,14 @@ import {
     removeFromGroup,
 } from "@spup/sdk";
 import {
-    BELT_TUNNEL_DOWN,
-    BELT_TUNNEL_UP,
     BELT_UNDERGROUND,
-    getBeltKindEntryByKind,
-    isBeltRamp,
     MAP_COLOR_BELT,
     MAP_COLOR_BELT_TUNNEL,
     MAP_COLOR_BELT_RAMP,
     MAP_COLOR_BELT_ELEVATED_1,
+    beltFrameBase,
 } from "../common/constants.js";
 import {getBeltTypeByKind} from "../common/objectTypes.js";
-
-// Sprite sequence tokens, indexed by Direction; the atlas names a belt by the way items travel.
-const DIRECTION_TOKENS = ["up", "right", "down", "left"];
 
 // The shadows are drawn into each sequence, so a belt draws its own facing rather than a rotation.
 const NO_QUARTER_TURNS = 0;
@@ -58,36 +52,6 @@ const BELT_MAP_COLORS = [
     MAP_COLOR_BELT_RAMP,
     MAP_COLOR_BELT_ELEVATED_1,
 ];
-
-/**
- * The spritesheet base sequence for a belt's travel and type (frames under "<base>/0..7").
- * @param {Direction} incoming - the way items travel as they enter the belt
- * @param {Direction} direction - the belt's facing, the way items leave it
- * @param {BeltType} type
- * @returns {string}
- */
-export function beltFrameBase(incoming, direction, type) {
-    if (type === BELT_UNDERGROUND) {
-        return "belt-underground";
-    }
-    if (type === BELT_TUNNEL_UP) {
-        return "belt-tunnel-up";
-    }
-    if (type === BELT_TUNNEL_DOWN) {
-        return "belt-tunnel-down";
-    }
-    if (isBeltRamp(type)) {
-        const ramp = getBeltKindEntryByKind(type);
-        if (ramp.outLevel > ramp.inLevel) {
-            return "belt-ramp-up";
-        }
-        return "belt-ramp-down";
-    }
-    if (incoming === direction) {
-        return `belt-${DIRECTION_TOKENS[direction]}`;
-    }
-    return `belt-${DIRECTION_TOKENS[incoming]}-${DIRECTION_TOKENS[direction]}`;
-}
 
 export class BeltEntry {
 

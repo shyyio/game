@@ -1,6 +1,6 @@
 import {AbstractDrawLayer, currentAnimationFrame} from "@spup/sdk/client";
-import {BELT_UNDERGROUND} from "../common/constants.js";
-import {BeltSprite, beltFrameBase} from "./BeltDrawLayer.js";
+import {BELT_UNDERGROUND, beltFrameBase} from "../common/constants.js";
+import {BeltSprite} from "./BeltDrawLayer.js";
 
 /**
  * Reveals the buried belts of an underground tunnel on hover; driven imperatively by LogisticsClientMod.onInspect.

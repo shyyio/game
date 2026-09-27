@@ -4,6 +4,7 @@ import {REGION_SIZE} from "@/common/constants.js";
 const MAX_VIEWPORT_CHUNKS = 256;
 const MAX_INSPECTED_OBJECTS = 32;
 const MAX_OVERWORLD_REQUEST_AREA = REGION_SIZE * REGION_SIZE;
+const MAX_BLUEPRINT_ENTRIES = 1024;
 
 export class SetViewportMessage extends AbstractMessage {
 
@@ -143,5 +144,47 @@ export class CreateObjectMessage extends AbstractMessage {
         this.x = x;
         this.y = y;
         this.direction = direction;
+    }
+}
+
+/**
+ * Places a blueprint's entries at an anchor tile, as packed columns: entry `i` is `objectTypeIds[i]`
+ * at (`x + tileX[i]`, `y + tileY[i]`) facing `directions[i]`, placed in column order.
+ */
+export class PlaceBlueprintMessage extends AbstractMessage {
+
+    static wireFields = {
+        x: "sint32",
+        y: "sint32",
+        objectTypeIds: "int32[]",
+        tileX: "sint32[]",
+        tileY: "sint32[]",
+        directions: "int32[]",
+    };
+
+    /**
+     * @param {number} x - the anchor tile
+     * @param {number} y
+     * @param {Blueprint} blueprint
+     */
+    constructor(x, y, blueprint) {
+        super();
+        this.x = x;
+        this.y = y;
+        this.objectTypeIds = blueprint.entries.map(entry => entry.objectTypeId);
+        this.tileX = blueprint.entries.map(entry => entry.tileX);
+        this.tileY = blueprint.entries.map(entry => entry.tileY);
+        this.directions = blueprint.entries.map(entry => entry.direction);
+    }
+
+    /**
+     * @param {GameAPI} api
+     * @param {AbstractSession} session
+     * @returns {boolean}
+     */
+    validate(api, session) {
+        const count = this.objectTypeIds.length;
+        return count <= MAX_BLUEPRINT_ENTRIES
+            && this.tileX.length === count && this.tileY.length === count && this.directions.length === count;
     }
 }
