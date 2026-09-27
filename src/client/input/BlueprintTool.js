@@ -1,5 +1,6 @@
-import {AbstractTool} from "@/client/input/AbstractTool.js";
-import {KEYBINDING_PASTE} from "@/common/KeybindingEntry.js";
+import {AbstractTool, ToolActionEntry} from "@/client/input/AbstractTool.js";
+import {KEYBINDING_PASTE, KEYBINDING_BLUEPRINT_OLDER, KEYBINDING_BLUEPRINT_NEWER} from "@/common/KeybindingEntry.js";
+import {Direction} from "@/common/constants.js";
 import {DeleteObjectMessage, PlaceBlueprintMessage, MAX_BLUEPRINT_ENTRIES} from "@/common/CoreMessages.js";
 import {Blueprint, BlueprintEntry} from "@/common/Blueprint.js";
 import Keyboard from "@/client/input/Keyboard.js";
@@ -30,8 +31,8 @@ const BLOCKED_REASON_OVERWRITES_TOO_MANY = "Overwrites too many objects";
  */
 
 /**
- * Pastes the clipboard: the blueprint ghost snaps under the cursor, every entry is evaluated on its
- * own, and a tap places them all through one message. One blocked entry blocks the paste unless
+ * Pastes the blueprint history's selected blueprint: the blueprint ghost snaps under the cursor,
+ * every entry is evaluated on its own, and a tap places them all through one message. One blocked entry blocks the paste unless
  * the force key is held, which skips the blocked entries instead.
  */
 export class BlueprintTool extends AbstractTool {
@@ -44,7 +45,9 @@ export class BlueprintTool extends AbstractTool {
         this._client = client;
         this._ghostLayer = client.blueprintGhostLayer;
         this._placementFeedbackLayer = client.placementFeedbackLayer;
+        // The selected blueprint as turned by the player.
         this._blueprint = null;
+        this._blueprintRotation = Direction.UP;
         this._ghostLayer.setFollowCursor((anchorX, anchorY) => this._previewFollow(anchorX, anchorY));
     }
 
@@ -77,14 +80,24 @@ export class BlueprintTool extends AbstractTool {
         if (this._blueprint === null) {
             return NOTHING_COPIED;
         }
+        const blueprints = this._client.blueprints;
+        const position = `${blueprints.selectedPosition}/${blueprints.count}`;
         if (Mobile.isEnabled) {
-            return "Tap to paste";
+            return `Tap to paste ${position}`;
         }
-        return `Paste [Click], skip blocked [${FORCE_PASTE_KEY}+Click]`;
+        return `Paste ${position} [Click], skip blocked [${FORCE_PASTE_KEY}+Click]`;
+    }
+
+    get actions() {
+        return [
+            new ToolActionEntry("Older", KEYBINDING_BLUEPRINT_OLDER, () => this._selectOlder()),
+            new ToolActionEntry("Newer", KEYBINDING_BLUEPRINT_NEWER, () => this._selectNewer()),
+        ];
     }
 
     onActivate() {
-        this._blueprint = this._client.clipboard;
+        this._blueprintRotation = Direction.UP;
+        this._applySelected();
     }
 
     onDeactivate() {
@@ -97,7 +110,8 @@ export class BlueprintTool extends AbstractTool {
         if (this._blueprint === null) {
             return;
         }
-        this._blueprint = this._blueprint.rotate(rotation, this._client.modRegistry);
+        this._blueprintRotation = Direction.rotate(this._blueprintRotation, rotation);
+        this._applySelected();
     }
 
     onTileEnter(tileX, tileY) {
@@ -139,6 +153,40 @@ export class BlueprintTool extends AbstractTool {
         Haptics.tap();
         // Re-evaluate next frame so the just-placed tiles now read as occupied.
         this._ghostLayer.invalidateSnap();
+    }
+
+    /**
+     * @private
+     * @returns {void}
+     */
+    _selectOlder() {
+        if (this._client.blueprints.selectOlder()) {
+            this._applySelected();
+        }
+    }
+
+    /**
+     * @private
+     * @returns {void}
+     */
+    _selectNewer() {
+        if (this._client.blueprints.selectNewer()) {
+            this._applySelected();
+        }
+    }
+
+    /**
+     * Takes the history's selected blueprint, turned by the player's rotation.
+     * @private
+     * @returns {void}
+     */
+    _applySelected() {
+        const selected = this._client.blueprints.selected;
+        if (selected === null) {
+            this._blueprint = null;
+        } else {
+            this._blueprint = selected.rotate(this._blueprintRotation, this._client.modRegistry);
+        }
     }
 
     /**

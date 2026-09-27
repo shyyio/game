@@ -6,6 +6,7 @@ import {EraserTool} from "@/client/input/EraserTool.js";
 import {CopyTool} from "@/client/input/CopyTool.js";
 import {CutTool} from "@/client/input/CutTool.js";
 import {UndoCache} from "@/client/state/UndoCache.js";
+import {BlueprintHistoryCache} from "@/client/state/BlueprintHistoryCache.js";
 import {BlueprintTool} from "@/client/input/BlueprintTool.js";
 import {SetInspectedObjectsMessage} from "@/common/CoreMessages.js";
 import {SetPlayerSettingMessage, SetPlayerSettingsToolOrderMessage} from "@/common/PlayerMessages.js";
@@ -282,11 +283,7 @@ export class Client {
     _buildTools() {
         // Built once: coreTools() must return the same instances every call so a toolbar rebuild
         // (reorder, resync) doesn't orphan an active core tool's identity.
-        /**
-         * The last copied blueprint, what the paste tool places.
-         * @type {Blueprint|null}
-         */
-        this.clipboard = null;
+        this.blueprints = new BlueprintHistoryCache(this.modRegistry, localStorage);
         this.undo = new UndoCache(this);
         this.blueprintTool = new BlueprintTool(this);
         this._coreTools = [new EraserTool(this), new CopyTool(this), new CutTool(this), this.blueprintTool];

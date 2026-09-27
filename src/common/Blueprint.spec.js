@@ -48,3 +48,23 @@ test("the bounds cover every entry's footprint", () => {
 
     assert.deepEqual(blueprint.getBounds(modRegistry), {minTileX: -1, minTileY: 0, maxTileX: 2, maxTileY: 4});
 });
+
+test("a blueprint survives serializing through JSON", () => {
+    const blueprint = new Blueprint([
+        new BlueprintEntry(BeltType.objectTypeId, 2, 0, Direction.LEFT),
+        new BlueprintEntry(HousingType.objectTypeId, -1, 3, Direction.UP),
+        new BlueprintEntry(BeltType.objectTypeId, 0, 1, Direction.DOWN),
+    ]);
+
+    const data = JSON.parse(JSON.stringify(blueprint.serialize(modRegistry)));
+
+    assert.deepEqual(Blueprint.deserialize(data, modRegistry).entries, blueprint.entries);
+});
+
+test("a blueprint naming a type outside the loadout cannot be deserialized", () => {
+    const data = new Blueprint([new BlueprintEntry(BeltType.objectTypeId, 0, 0, Direction.UP)]).serialize(modRegistry);
+
+    assert.equal(Blueprint.canDeserialize(data, modRegistry), true);
+    data.typeNames[0] = "unloaded-mod-type";
+    assert.equal(Blueprint.canDeserialize(data, modRegistry), false);
+});

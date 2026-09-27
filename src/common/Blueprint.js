@@ -26,6 +26,16 @@ export class BlueprintEntry {
  */
 
 /**
+ * A blueprint as plain data that holds across loadouts: each entry's type by index into `typeNames`.
+ * @typedef {Object} SerializedBlueprint
+ * @property {string[]} typeNames
+ * @property {number[]} typeIndexes
+ * @property {number[]} tileX
+ * @property {number[]} tileY
+ * @property {Direction[]} directions
+ */
+
+/**
  * A set of objects to place together, held relative to an anchor tile in placement order.
  */
 export class Blueprint {
@@ -36,6 +46,56 @@ export class Blueprint {
     constructor(entries) {
         /** @type {ReadonlyArray<BlueprintEntry>} */
         this.entries = Object.freeze(Array.from(entries));
+    }
+
+    /**
+     * Whether the loadout declares every type the blueprint names.
+     * @param {SerializedBlueprint} data
+     * @param {ModRegistry} modRegistry
+     * @returns {boolean}
+     */
+    static canDeserialize(data, modRegistry) {
+        return data.typeNames.every(name => modRegistry.hasObjectTypeByName(name));
+    }
+
+    /**
+     * @param {SerializedBlueprint} data
+     * @param {ModRegistry} modRegistry
+     * @returns {Blueprint}
+     */
+    static deserialize(data, modRegistry) {
+        const typeIds = data.typeNames.map(name => modRegistry.getObjectTypeByName(name).objectTypeId);
+        return new Blueprint(data.typeIndexes.map((typeIndex, index) => new BlueprintEntry(
+            typeIds[typeIndex],
+            data.tileX[index],
+            data.tileY[index],
+            data.directions[index],
+        )));
+    }
+
+    /**
+     * @param {ModRegistry} modRegistry
+     * @returns {SerializedBlueprint}
+     */
+    serialize(modRegistry) {
+        const typeNames = [];
+        const typeIndexes = [];
+        for (const entry of this.entries) {
+            const name = modRegistry.getObjectTypeByTypeId(entry.objectTypeId).name;
+            let typeIndex = typeNames.indexOf(name);
+            if (typeIndex === -1) {
+                typeIndex = typeNames.length;
+                typeNames.push(name);
+            }
+            typeIndexes.push(typeIndex);
+        }
+        return {
+            typeNames,
+            typeIndexes,
+            tileX: this.entries.map(entry => entry.tileX),
+            tileY: this.entries.map(entry => entry.tileY),
+            directions: this.entries.map(entry => entry.direction),
+        };
     }
 
     /**

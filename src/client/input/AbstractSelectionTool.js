@@ -10,7 +10,7 @@ import {MAX_BLUEPRINT_ENTRIES} from "@/common/CoreMessages.js";
 const MARQUEE_COLOR = 0xFFFFFF;
 
 /**
- * Marquee selection into the clipboard: a drag, or two taps, spans a rectangle between two world
+ * Marquee selection into the blueprint history: a drag, or two taps, spans a rectangle between two world
  * points, and the first `MAX_BLUEPRINT_ENTRIES` selectable objects with a cell under it, in the
  * order they were placed, are handed to the subclass. The paste tool takes over once a selection is taken.
  */
@@ -131,7 +131,7 @@ export class AbstractSelectionTool extends AbstractTool {
     }
 
     /**
-     * Takes a non-empty selection into the clipboard.
+     * Takes a non-empty selection into the blueprint history.
      * @abstract
      * @param {CacheEntry[]} selected in placement order
      * @returns {void}
@@ -153,7 +153,7 @@ export class AbstractSelectionTool extends AbstractTool {
     }
 
     /**
-     * Takes the rectangle from the start point to (x, y) and hands the paste tool the clipboard.
+     * Takes the rectangle from the start point to (x, y) and hands over to the paste tool.
      * @private
      * @param {number} x
      * @param {number} y

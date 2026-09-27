@@ -32,3 +32,10 @@ test("undo and redo are core bindings on Ctrl+z and Ctrl+y", () => {
     assert.equal(undo.defaultValue, getBindableKeyValueByKeyOrNull("Ctrl+z"));
     assert.equal(redo.defaultValue, getBindableKeyValueByKeyOrNull("Ctrl+y"));
 });
+
+test("older and newer blueprints are core bindings on - and =", () => {
+    const older = CORE_KEYBINDING_ENTRIES.find(entry => entry.label === "Older blueprint");
+    const newer = CORE_KEYBINDING_ENTRIES.find(entry => entry.label === "Newer blueprint");
+    assert.equal(older.defaultValue, getBindableKeyValueByKeyOrNull("-"));
+    assert.equal(newer.defaultValue, getBindableKeyValueByKeyOrNull("="));
+});

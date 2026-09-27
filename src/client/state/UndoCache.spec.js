@@ -3,14 +3,31 @@ import assert from "node:assert/strict";
 import {Direction} from "@/common/constants.js";
 import {Blueprint, BlueprintEntry} from "@/common/Blueprint.js";
 import {UndoCache, NOTHING_PLACED, UNDO_DEPTH} from "@/client/state/UndoCache.js";
+import {BlueprintHistoryCache} from "@/client/state/BlueprintHistoryCache.js";
+import {BeltType} from "@/mods/logistics/common/objectTypes.js";
+import {ecsModRegistry} from "@/test/ecsSim.js";
 
-const OBJECT_TYPE_ID = 7;
+const modRegistry = ecsModRegistry();
+const OBJECT_TYPE_ID = BeltType.objectTypeId;
 const PLACED_OBJECT = {tileX: 5, tileY: 6, data: {type: {objectTypeId: OBJECT_TYPE_ID}, direction: Direction.LEFT}};
+
+function makeStorage() {
+    const items = new Map();
+    return {
+        getItem: key => {
+            if (!items.has(key)) {
+                return null;
+            }
+            return items.get(key);
+        },
+        setItem: (key, value) => items.set(key, value),
+    };
+}
 
 function makeClient() {
     const client = {
         sent: [],
-        clipboard: null,
+        blueprints: new BlueprintHistoryCache(modRegistry, makeStorage()),
         blueprintTool: {},
         hud: {toolbarLayer: {activeTool: null}},
     };
@@ -29,33 +46,45 @@ test("undoing a placement deletes it by tile, before the placement has echoed ba
     assert.deepEqual([client.sent[0].objectTypeIds, client.sent[0].tileX, client.sent[0].tileY], [[OBJECT_TYPE_ID], [5], [6]]);
 });
 
-test("undoing a delete places the object back and restores the clipboard", () => {
+test("undoing a delete places the object back", () => {
     const client = makeClient();
     const undo = new UndoCache(client);
-    const before = new Blueprint([]);
-    client.clipboard = before;
     undo.add(NOTHING_PLACED, [PLACED_OBJECT]);
-    client.clipboard = new Blueprint([]);
 
     undo.undo();
 
     assert.deepEqual([client.sent[0].tileX, client.sent[0].tileY], [[5], [6]]);
-    assert.equal(client.clipboard, before);
 });
 
-test("redo repeats what undo reverted, clipboard included", () => {
+test("undoing a cut places the objects back and takes its blueprint out of the history", () => {
+    const client = makeClient();
+    const undo = new UndoCache(client);
+    const before = new Blueprint([]);
+    const cut = new Blueprint([]);
+    client.blueprints.push(before);
+    client.blueprints.push(cut);
+    undo.addCopied(cut, [PLACED_OBJECT]);
+
+    undo.undo();
+
+    assert.deepEqual([client.sent[0].tileX, client.sent[0].tileY], [[5], [6]]);
+    assert.equal(client.blueprints.selected, before);
+    assert.equal(client.blueprints.count, 1);
+});
+
+test("redo repeats what undo reverted, copied blueprint included", () => {
     const client = makeClient();
     const undo = new UndoCache(client);
     const copied = new Blueprint([]);
-    undo.add(NOTHING_PLACED, [PLACED_OBJECT]);
-    client.clipboard = copied;
+    client.blueprints.push(copied);
+    undo.addCopied(copied, [PLACED_OBJECT]);
     undo.undo();
     client.sent = [];
 
     assert.equal(undo.redo(), true);
 
     assert.deepEqual([client.sent[0].objectTypeIds, client.sent[0].tileX], [[OBJECT_TYPE_ID], [5]]);
-    assert.equal(client.clipboard, copied);
+    assert.equal(client.blueprints.selected, copied);
 });
 
 test("a new action drops what could be redone", () => {

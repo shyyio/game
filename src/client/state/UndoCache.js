@@ -8,19 +8,22 @@ export const UNDO_DEPTH = 100;
 export const NOTHING_PLACED = new Blueprint([]);
 
 /**
- * One player action: the objects it placed and deleted, in world tiles, and the clipboard it found.
+ * One player action: the objects it placed and deleted, in world tiles, and the blueprint it pushed
+ * onto or removed from the blueprint history.
  */
 class UndoEntry {
 
     /**
      * @param {Blueprint} placed
      * @param {Blueprint} deleted
-     * @param {Blueprint|null} clipboard
+     * @param {Blueprint|null} pushedBlueprint
+     * @param {Blueprint|null} removedBlueprint
      */
-    constructor(placed, deleted, clipboard) {
+    constructor(placed, deleted, pushedBlueprint, removedBlueprint) {
         this.placed = placed;
         this.deleted = deleted;
-        this.clipboard = clipboard;
+        this.pushedBlueprint = pushedBlueprint;
+        this.removedBlueprint = removedBlueprint;
     }
 }
 
@@ -35,8 +38,8 @@ function buildWorldBlueprint(objects) {
 
 /**
  * The player's undo and redo stacks. Undoing an entry deletes what it placed by tile, which the sim
- * resolves in message order after the placement, places back what it deleted, restores its
- * clipboard, and hands its inverse to the other stack.
+ * resolves in message order after the placement, places back what it deleted, reverses its
+ * blueprint history change, and hands its inverse to the other stack.
  */
 export class UndoCache {
 
@@ -52,17 +55,24 @@ export class UndoCache {
     }
 
     /**
-     * Adds a new action with the current clipboard, dropping everything that could be redone.
+     * Adds a new action, dropping everything that could be redone.
      * @param {Blueprint} placed in world tiles
      * @param {CacheEntry[]} deletedObjects
      * @returns {void}
      */
     add(placed, deletedObjects) {
-        this._undoEntries.push(new UndoEntry(placed, buildWorldBlueprint(deletedObjects), this._client.clipboard));
-        if (this._undoEntries.length > UNDO_DEPTH) {
-            this._undoEntries.shift();
-        }
-        this._redoEntries = [];
+        this._addEntry(new UndoEntry(placed, buildWorldBlueprint(deletedObjects), null, null));
+    }
+
+    /**
+     * Adds a copy or cut that pushed `copied` onto the blueprint history, dropping everything that
+     * could be redone.
+     * @param {Blueprint} copied
+     * @param {CacheEntry[]} deletedObjects
+     * @returns {void}
+     */
+    addCopied(copied, deletedObjects) {
+        this._addEntry(new UndoEntry(NOTHING_PLACED, buildWorldBlueprint(deletedObjects), copied, null));
     }
 
     /**
@@ -92,6 +102,19 @@ export class UndoCache {
     }
 
     /**
+     * @private
+     * @param {UndoEntry} entry
+     * @returns {void}
+     */
+    _addEntry(entry) {
+        this._undoEntries.push(entry);
+        if (this._undoEntries.length > UNDO_DEPTH) {
+            this._undoEntries.shift();
+        }
+        this._redoEntries = [];
+    }
+
+    /**
      * Reverses an entry and returns its inverse.
      * @private
      * @param {UndoEntry} entry
@@ -99,21 +122,24 @@ export class UndoCache {
      */
     _apply(entry) {
         const client = this._client;
-        const inverse = new UndoEntry(entry.deleted, entry.placed, client.clipboard);
+        const inverse = new UndoEntry(entry.deleted, entry.placed, entry.removedBlueprint, entry.pushedBlueprint);
         if (entry.placed.entries.length > 0) {
             client.session.sendMessage(new DeleteBlueprintMessage(entry.placed));
         }
         if (entry.deleted.entries.length > 0) {
             client.session.sendMessage(new PlaceBlueprintMessage(0, 0, entry.deleted));
         }
-        if (entry.clipboard !== client.clipboard) {
-            client.clipboard = entry.clipboard;
-            const toolbar = client.hud.toolbarLayer;
-            if (toolbar.activeTool === client.blueprintTool) {
-                // Re-activating makes the paste tool take the restored clipboard.
-                toolbar.setActiveTool(null);
-                toolbar.setActiveTool(client.blueprintTool);
-            }
+        if (entry.pushedBlueprint !== null) {
+            client.blueprints.remove(entry.pushedBlueprint);
+        }
+        if (entry.removedBlueprint !== null) {
+            client.blueprints.push(entry.removedBlueprint);
+        }
+        const toolbar = client.hud.toolbarLayer;
+        if (toolbar.activeTool === client.blueprintTool && (entry.pushedBlueprint !== null || entry.removedBlueprint !== null)) {
+            // Re-activating makes the paste tool take the history's selected blueprint.
+            toolbar.setActiveTool(null);
+            toolbar.setActiveTool(client.blueprintTool);
         }
         return inverse;
     }

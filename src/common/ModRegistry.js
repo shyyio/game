@@ -39,6 +39,8 @@ export class ModRegistry {
         this._frozen = false;
         this._objectTypes = [];
         this._objectTypeById = new Map();
+        /** @type {Map<string, ObjectType>} */
+        this._objectTypeByName = new Map();
         /**
          * @type {ObjectType[]}
          */
@@ -175,13 +177,12 @@ export class ModRegistry {
      * @returns {void}
      */
     _assignObjectTypeIds() {
-        const typeNames = new Set();
         for (const pkg of this._packages) {
             for (const type of pkg.declaration.objectTypes) {
-                if (typeNames.has(type.name)) {
+                if (this._objectTypeByName.has(type.name)) {
                     throw new Error(`Duplicate object type "${type.name}"`);
                 }
-                typeNames.add(type.name);
+                this._objectTypeByName.set(type.name, type);
                 type._assignObjectTypeId(this._objectTypes.length);
                 this._objectTypeById.set(this._objectTypes.length, type);
                 this._objectTypes.push(type);
@@ -463,6 +464,29 @@ export class ModRegistry {
         const type = this._objectTypeById.get(objectTypeId);
         if (type === undefined) {
             throw new Error(`Unknown object objectTypeId ${objectTypeId}`);
+        }
+        return type;
+    }
+
+    /**
+     * @param {string} name
+     * @returns {boolean}
+     */
+    hasObjectTypeByName(name) {
+        this._assertFrozen();
+        return this._objectTypeByName.has(name);
+    }
+
+    /**
+     * The object type with the given name; throws on an unknown name.
+     * @param {string} name
+     * @returns {ObjectType}
+     */
+    getObjectTypeByName(name) {
+        this._assertFrozen();
+        const type = this._objectTypeByName.get(name);
+        if (type === undefined) {
+            throw new Error(`Unknown object type "${name}"`);
         }
         return type;
     }

@@ -2,11 +2,10 @@ import {AbstractSelectionTool} from "@/client/input/AbstractSelectionTool.js";
 import {KEYBINDING_CUT} from "@/common/KeybindingEntry.js";
 import {DeleteObjectMessage} from "@/common/CoreMessages.js";
 import {buildBlueprint} from "@/client/input/copySelection.js";
-import {NOTHING_PLACED} from "@/client/state/UndoCache.js";
 import {BLOCKED_TILE_COLOR} from "@/client/Theme.js";
 
 /**
- * Cuts the marquee selection: copies it into the clipboard and deletes it at once. Objects in
+ * Cuts the marquee selection: copies it into the blueprint history and deletes it at once. Objects in
  * chunks the player cannot build in are left out, since the sim would refuse their delete.
  */
 export class CutTool extends AbstractSelectionTool {
@@ -44,8 +43,9 @@ export class CutTool extends AbstractSelectionTool {
     }
 
     applySelection(selected) {
-        this._client.undo.add(NOTHING_PLACED, selected);
-        this._client.clipboard = buildBlueprint(selected);
+        const blueprint = buildBlueprint(selected);
+        this._client.blueprints.push(blueprint);
+        this._client.undo.addCopied(blueprint, selected);
         for (const entry of selected) {
             this.session.sendMessage(new DeleteObjectMessage(entry.id));
         }
