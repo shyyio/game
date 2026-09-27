@@ -180,6 +180,9 @@ export class BlueprintTool extends AbstractTool {
             const cells = evaluatePlacement(this._client, type, tileX, tileY, entry.direction);
             if (cells.isAlreadyPlaced) {
                 placement.states.push(GHOST_ENTRY_STATE_SKIPPED);
+                for (const cell of cells.overwriteCells) {
+                    placement.overwriteCells.push(cell);
+                }
                 continue;
             }
             let blockedReason = cells.blockedReason;

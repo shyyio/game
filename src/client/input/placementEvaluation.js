@@ -5,7 +5,7 @@ import {BLOCKED_REASON_CROSSES_CHUNK, BLOCKED_REASON_OCCUPIED} from "@/client/in
 /**
  * @typedef {Object} PlacementCells
  * @property {Point[]} blockedCells
- * @property {Point[]} overwriteCells
+ * @property {Point[]} overwriteCells the occupied cells, or every cell when the same object already stands there
  * @property {Point[]} clearCells
  * @property {number[]} overwriteIds the occupants an overwrite deletes
  * @property {string|null} blockedReason why the placement is blocked, null when it is not
@@ -47,7 +47,8 @@ export function getPlaceOnTargetTiles(client, type) {
  */
 export function evaluatePlacement(client, type, tileX, tileY, direction) {
     if (isAlreadyPlacedAt(client, type, tileX, tileY, direction)) {
-        return {blockedCells: [], overwriteCells: [], clearCells: [], overwriteIds: [], blockedReason: null, isAlreadyPlaced: true};
+        const overwriteCells = type.geometry.getTilesByDirection(direction).map(cell => ({x: tileX + cell.x, y: tileY + cell.y}));
+        return {blockedCells: [], overwriteCells, clearCells: [], overwriteIds: [], blockedReason: null, isAlreadyPlaced: true};
     }
     const base = chunkKeyAt(tileX, tileY);
     let targetKeys = null;
